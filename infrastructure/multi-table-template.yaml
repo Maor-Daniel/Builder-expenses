@@ -1,0 +1,388 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Construction Expenses Tracker - Multi-Table Database Architecture'
+
+Parameters:
+  StackName:
+    Type: String
+    Default: 'construction-expenses-production'
+    Description: 'Name of the CloudFormation stack'
+  
+  Environment:
+    Type: String
+    Default: 'production'
+    AllowedValues: ['production', 'staging']
+    Description: 'Environment name'
+
+Resources:
+  # 1. Users Table
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-users'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: email-index
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+        - Key: Table
+          Value: Users
+
+  # 2. Projects Table
+  ProjectsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-projects'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: startDate
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: projectId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: status-date-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      LocalSecondaryIndexes:
+        - IndexName: name-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: name
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+        - Key: Table
+          Value: Projects
+
+  # 3. Contractors Table
+  ContractorsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-contractors'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: contractorId
+          KeyType: RANGE
+      LocalSecondaryIndexes:
+        - IndexName: name-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: name
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+        - Key: Table
+          Value: Contractors
+
+  # 4. Expenses Table (Enhanced)
+  ExpensesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-expenses'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: expenseId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+        - AttributeName: invoiceNum
+          AttributeType: S
+        - AttributeName: amount
+          AttributeType: N
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: expenseId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: project-date-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: projectId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: contractor-date-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: contractorId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: invoice-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: invoiceNum
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      LocalSecondaryIndexes:
+        - IndexName: amount-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: amount
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+        - Key: Table
+          Value: Expenses
+
+  # 5. Works Table
+  WorksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-works'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: workId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: WorkName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: workId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: project-status-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: projectId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: contractor-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: contractorId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+        - Key: Table
+          Value: Works
+
+  # IAM Role for Lambda Functions (Updated for multi-table access)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-multi-table-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MultiTableDynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt UsersTable.Arn
+                  - !Sub '${UsersTable.Arn}/index/*'
+                  - !GetAtt ProjectsTable.Arn
+                  - !Sub '${ProjectsTable.Arn}/index/*'
+                  - !GetAtt ContractorsTable.Arn
+                  - !Sub '${ContractorsTable.Arn}/index/*'
+                  - !GetAtt ExpensesTable.Arn
+                  - !Sub '${ExpensesTable.Arn}/index/*'
+                  - !GetAtt WorksTable.Arn
+                  - !Sub '${WorksTable.Arn}/index/*'
+
+  # Cognito User Pool (unchanged from original)
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${StackName}-users'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: true
+          Mutable: true
+
+  # Cognito User Pool Client (unchanged from original)
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${StackName}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+
+Outputs:
+  UsersTableName:
+    Description: 'Users Table Name'
+    Value: !Ref UsersTable
+    Export:
+      Name: !Sub '${StackName}-users-table'
+
+  ProjectsTableName:
+    Description: 'Projects Table Name'
+    Value: !Ref ProjectsTable
+    Export:
+      Name: !Sub '${StackName}-projects-table'
+
+  ContractorsTableName:
+    Description: 'Contractors Table Name'
+    Value: !Ref ContractorsTable
+    Export:
+      Name: !Sub '${StackName}-contractors-table'
+
+  ExpensesTableName:
+    Description: 'Expenses Table Name'
+    Value: !Ref ExpensesTable
+    Export:
+      Name: !Sub '${StackName}-expenses-table'
+
+  WorksTableName:
+    Description: 'Works Table Name'
+    Value: !Ref WorksTable
+    Export:
+      Name: !Sub '${StackName}-works-table'
+
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${StackName}-user-pool-id'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${StackName}-user-pool-client-id'
+
+  LambdaExecutionRoleArn:
+    Description: 'Lambda Execution Role ARN'
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${StackName}-lambda-role-arn'
