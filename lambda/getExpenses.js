@@ -1,116 +1,190 @@
 // lambda/getExpenses.js
-// Get all expenses for a user
+// Get all expenses with related project and contractor data
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  getCurrentTimestamp,
+  dynamodb,
+  isLocal,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('getExpenses event received', event);
+  console.log('getExpenses event received:', JSON.stringify(event, null, 2));
 
   try {
-    // Get user ID from event context or use default for single user app
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    // Get user ID from event context
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
     // Parse query parameters for filtering
     const queryParams = event.queryStringParameters || {};
-    const { startDate, endDate, project, contractor } = queryParams;
+    const { startDate, endDate, projectId, contractorId } = queryParams;
+    
+    console.log('Query parameters:', queryParams);
 
-    // Build DynamoDB query parameters
-    let params = {
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': userId
+    let expenses = [];
+
+    if (projectId) {
+      // Query expenses by project using GSI
+      const params = {
+        TableName: TABLE_NAMES.EXPENSES,
+        IndexName: 'project-date-index',
+        KeyConditionExpression: 'userId = :userProjectId',
+        ExpressionAttributeValues: {
+          ':userProjectId': `${userId}#${projectId}`
+        }
+      };
+
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        params.KeyConditionExpression += ' AND #date BETWEEN :startDate AND :endDate';
+        params.ExpressionAttributeNames = { '#date': 'date' };
+        params.ExpressionAttributeValues[':startDate'] = startDate;
+        params.ExpressionAttributeValues[':endDate'] = endDate;
+      }
+
+      const result = await dynamodb.query(params).promise();
+      expenses = result.Items || [];
+      
+    } else if (contractorId) {
+      // Query expenses by contractor using GSI
+      const params = {
+        TableName: TABLE_NAMES.EXPENSES,
+        IndexName: 'contractor-date-index',
+        KeyConditionExpression: 'userId = :userContractorId',
+        ExpressionAttributeValues: {
+          ':userContractorId': `${userId}#${contractorId}`
+        }
+      };
+
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        params.KeyConditionExpression += ' AND #date BETWEEN :startDate AND :endDate';
+        params.ExpressionAttributeNames = { '#date': 'date' };
+        params.ExpressionAttributeValues[':startDate'] = startDate;
+        params.ExpressionAttributeValues[':endDate'] = endDate;
+      }
+
+      const result = await dynamodb.query(params).promise();
+      expenses = result.Items || [];
+      
+    } else {
+      // Get all expenses for the user
+      const params = {
+        TableName: TABLE_NAMES.EXPENSES,
+        KeyConditionExpression: 'userId = :userId',
+        ExpressionAttributeValues: {
+          ':userId': userId
+        }
+      };
+
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        params.FilterExpression = '#date BETWEEN :startDate AND :endDate';
+        params.ExpressionAttributeNames = { '#date': 'date' };
+        params.ExpressionAttributeValues[':startDate'] = startDate;
+        params.ExpressionAttributeValues[':endDate'] = endDate;
+      }
+
+      const result = await dynamodb.query(params).promise();
+      expenses = result.Items || [];
+    }
+
+    console.log(`Found ${expenses.length} expenses`);
+
+    // Enhance expenses with project and contractor information
+    const enhancedExpenses = await Promise.all(
+      expenses.map(async (expense) => {
+        try {
+          // Get project information
+          const projectParams = {
+            TableName: TABLE_NAMES.PROJECTS,
+            Key: { userId: expense.userId, projectId: expense.projectId }
+          };
+          
+          const projectResult = await dynamodb.get(projectParams).promise();
+          const project = projectResult.Item;
+
+          // Get contractor information  
+          const contractorParams = {
+            TableName: TABLE_NAMES.CONTRACTORS,
+            Key: { userId: expense.userId, contractorId: expense.contractorId }
+          };
+          
+          const contractorResult = await dynamodb.get(contractorParams).promise();
+          const contractor = contractorResult.Item;
+
+          // Return enhanced expense with related data
+          return {
+            ...expense,
+            projectName: project ? project.name : 'Unknown Project',
+            contractorName: contractor ? contractor.name : 'Unknown Contractor',
+            contractorPhone: contractor ? contractor.phone : ''
+          };
+        } catch (enhanceError) {
+          console.error('Error enhancing expense:', enhanceError);
+          // Return original expense if enhancement fails
+          return {
+            ...expense,
+            projectName: 'Error loading project',
+            contractorName: 'Error loading contractor',
+            contractorPhone: ''
+          };
+        }
+      })
+    );
+
+    // Sort by date (newest first)
+    enhancedExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Calculate summary statistics
+    const summary = {
+      totalCount: enhancedExpenses.length,
+      totalAmount: enhancedExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0),
+      dateRange: {
+        earliest: enhancedExpenses.length > 0 ? 
+          Math.min(...enhancedExpenses.map(e => new Date(e.date).getTime())) : null,
+        latest: enhancedExpenses.length > 0 ? 
+          Math.max(...enhancedExpenses.map(e => new Date(e.date).getTime())) : null
       }
     };
 
-    // Add filters if provided
-    const filterExpressions = [];
-    
-    // Only return actual expenses (not projects or contractors)
-    filterExpressions.push('attribute_not_exists(projectId) AND attribute_not_exists(contractorId)');
-    
-    if (startDate && endDate) {
-      filterExpressions.push('#date BETWEEN :startDate AND :endDate');
-      params.ExpressionAttributeValues[':startDate'] = startDate;
-      params.ExpressionAttributeValues[':endDate'] = endDate;
+    // Convert timestamps back to date strings
+    if (summary.dateRange.earliest) {
+      summary.dateRange.earliest = new Date(summary.dateRange.earliest).toISOString().split('T')[0];
     }
-    
-    if (project) {
-      filterExpressions.push('contains(#project, :project)');
-      params.ExpressionAttributeValues[':project'] = project;
-    }
-    
-    if (contractor) {
-      filterExpressions.push('contains(#contractor, :contractor)');
-      params.ExpressionAttributeValues[':contractor'] = contractor;
+    if (summary.dateRange.latest) {
+      summary.dateRange.latest = new Date(summary.dateRange.latest).toISOString().split('T')[0];
     }
 
-    // Add filter expression if we have any filters
-    if (filterExpressions.length > 0) {
-      params.FilterExpression = filterExpressions.join(' AND ');
-      
-      // Only add ExpressionAttributeNames if we actually need them
-      const attributeNames = {};
-      if (startDate && endDate) {
-        attributeNames['#date'] = 'date';
-      }
-      if (project) {
-        attributeNames['#project'] = 'project';
-      }
-      if (contractor) {
-        attributeNames['#contractor'] = 'contractor';
-      }
-      
-      if (Object.keys(attributeNames).length > 0) {
-        params.ExpressionAttributeNames = attributeNames;
-      }
-    }
-
-    // Query DynamoDB
-    const result = await dynamoOperation('query', params);
-
-    // Sort by date (newest first)
-    const expenses = (result.Items || []).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    // Calculate totals
-    const totalAmount = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-    const totalCount = expenses.length;
-
-    debugLog('Query results', {
-      totalCount,
-      totalAmount,
-      hasFilters: filterExpressions.length > 0
-    });
+    console.log('Expenses retrieved successfully');
 
     return createResponse(200, {
       success: true,
-      items: expenses,
-      count: totalCount,
-      totalAmount: totalAmount,
-      timestamp: new Date().toISOString()
+      message: `Retrieved ${enhancedExpenses.length} expenses`,
+      data: {
+        expenses: enhancedExpenses,
+        summary,
+        filters: {
+          projectId: projectId || null,
+          contractorId: contractorId || null,
+          startDate: startDate || null,
+          endDate: endDate || null
+        }
+      },
+      timestamp: getCurrentTimestamp()
     });
 
   } catch (error) {
     console.error('Error in getExpenses:', error);
-    
+
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');
     }
-    
+
     return createErrorResponse(500, 'Failed to retrieve expenses', error);
   }
 };

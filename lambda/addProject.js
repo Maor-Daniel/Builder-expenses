@@ -1,50 +1,25 @@
 // lambda/addProject.js
-// Add a new project
+// Add a new project with SpentAmount tracking
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
+  validateProject,
+  generateProjectId,
   getCurrentTimestamp,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
-
-function validateProject(project) {
-  const required = ['name', 'startDate'];
-  const missing = required.filter(field => !project[field]);
-  
-  if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(', ')}`);
-  }
-  
-  // Validate date format
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(project.startDate)) {
-    throw new Error('Start date must be in YYYY-MM-DD format');
-  }
-  
-  return true;
-}
-
-function generateProjectId() {
-  return `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+  dynamodb,
+  isLocal,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('addProject event received', event);
+  console.log('addProject event received:', JSON.stringify(event, null, 2));
 
   try {
-    // Get user ID from event context or use default for single user app
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    // Get user ID from event context
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
     // Parse request body
     let projectData;
@@ -54,7 +29,7 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Project data received', projectData);
+    console.log('Project data received:', projectData);
 
     // Validate project data
     try {
@@ -63,56 +38,59 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
-    // Generate project ID and timestamps
-    const projectId = generateProjectId();
-    const timestamp = getCurrentTimestamp();
-
-    // Create project object - use projectId as expenseId for table compatibility
-    const project = {
-      userId,
-      expenseId: projectId, // DynamoDB table expects expenseId as sort key
-      projectId,
-      name: projectData.name.trim(),
-      startDate: projectData.startDate,
-      description: projectData.description ? projectData.description.trim() : '',
-      status: 'active',
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
     // Check for duplicate project name
     const duplicateCheckParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.PROJECTS,
       KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#name = :name AND attribute_exists(projectId)',
+      FilterExpression: '#name = :name',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
       ExpressionAttributeValues: {
         ':userId': userId,
-        ':name': project.name
+        ':name': projectData.name.trim()
       }
     };
 
     try {
-      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
+      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Project name "${project.name}" already exists`);
+        return createErrorResponse(409, `Project with name "${projectData.name}" already exists`);
       }
     } catch (error) {
-      debugLog('Duplicate check had error, continuing', error.message);
+      console.error('Duplicate check failed:', error);
+      // Continue but log the error
     }
 
-    // Save to DynamoDB
-    const putParams = {
-      TableName: TABLE_NAME,
-      Item: project,
-      ConditionExpression: 'attribute_not_exists(expenseId)' // Use expenseId which is the sort key
+    // Generate project ID and timestamps
+    const projectId = generateProjectId();
+    const timestamp = getCurrentTimestamp();
+
+    // Create project object with multi-table structure
+    const project = {
+      userId,
+      projectId,
+      name: projectData.name.trim(),
+      startDate: projectData.startDate,
+      description: projectData.description ? projectData.description.trim() : '',
+      status: projectData.status || 'active',
+      SpentAmount: projectData.SpentAmount || 0, // Initialize SpentAmount
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await dynamoOperation('put', putParams);
+    console.log('Creating project:', project);
 
-    debugLog('Project saved successfully', { projectId });
+    // Save to DynamoDB Projects table
+    const putParams = {
+      TableName: TABLE_NAMES.PROJECTS,
+      Item: project,
+      ConditionExpression: 'attribute_not_exists(projectId)' // Prevent overwrites
+    };
+
+    await dynamodb.put(putParams).promise();
+
+    console.log('Project saved successfully:', { projectId });
 
     return createResponse(201, {
       success: true,

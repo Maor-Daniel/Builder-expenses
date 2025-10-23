@@ -1,52 +1,25 @@
 // lambda/addContractor.js
-// Add a new contractor/supplier
+// Add a new contractor with multi-table architecture
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
+  validateContractor,
+  generateContractorId,
   getCurrentTimestamp,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
-
-function validateContractor(contractor) {
-  const required = ['name'];
-  const missing = required.filter(field => !contractor[field]);
-  
-  if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(', ')}`);
-  }
-  
-  // Validate phone number if provided (more flexible validation)
-  if (contractor.phone && contractor.phone.trim()) {
-    const phoneRegex = /^[\d\-\+\(\)\s\u0590-\u05FF\u0600-\u06FF\*\#\.]*$/; // Allow Hebrew, Arabic, and common phone characters
-    if (!phoneRegex.test(contractor.phone)) {
-      throw new Error('Invalid phone number format');
-    }
-  }
-  
-  return true;
-}
-
-function generateContractorId() {
-  return `contr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+  dynamodb,
+  isLocal,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('addContractor event received', event);
+  console.log('addContractor event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
     // Parse request body
     let contractorData;
@@ -56,7 +29,7 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Contractor data received', contractorData);
+    console.log('Contractor data received:', contractorData);
 
     // Validate contractor data
     try {
@@ -65,64 +38,56 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
-    // Generate contractor ID and timestamps
-    const contractorId = generateContractorId();
-    const timestamp = getCurrentTimestamp();
-
-    // Create contractor object - use contractorId as expenseId for table compatibility
-    const contractor = {
-      userId,
-      expenseId: contractorId, // DynamoDB table expects expenseId as sort key
-      contractorId,
-      name: contractorData.name.trim(),
-      phone: contractorData.phone ? contractorData.phone.trim() : '',
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    // Add optional signature if provided
-    if (contractorData.signature) {
-      contractor.signature = {
-        name: contractorData.signature.name,
-        data: contractorData.signature.data,
-        type: contractorData.signature.type,
-        size: contractorData.signature.size
-      };
-    }
-
     // Check for duplicate contractor name
     const duplicateCheckParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.CONTRACTORS,
       KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#name = :name AND attribute_exists(contractorId)',
+      FilterExpression: '#name = :name',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
       ExpressionAttributeValues: {
         ':userId': userId,
-        ':name': contractor.name
+        ':name': contractorData.name.trim()
       }
     };
 
     try {
-      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
+      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Contractor "${contractor.name}" already exists`);
+        return createErrorResponse(409, `Contractor with name "${contractorData.name}" already exists`);
       }
     } catch (error) {
-      debugLog('Duplicate check had error, continuing', error.message);
+      console.error('Duplicate check failed:', error);
+      // Continue but log the error
     }
 
-    // Save to DynamoDB
-    const putParams = {
-      TableName: TABLE_NAME,
-      Item: contractor,
-      ConditionExpression: 'attribute_not_exists(expenseId)' // Use expenseId which is the sort key
+    // Generate contractor ID and timestamps
+    const contractorId = generateContractorId();
+    const timestamp = getCurrentTimestamp();
+
+    // Create contractor object with multi-table structure
+    const contractor = {
+      userId,
+      contractorId,
+      name: contractorData.name.trim(),
+      phone: contractorData.phone.trim(),
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
-    await dynamoOperation('put', putParams);
+    console.log('Creating contractor:', contractor);
 
-    debugLog('Contractor saved successfully', { contractorId });
+    // Save to DynamoDB Contractors table
+    const putParams = {
+      TableName: TABLE_NAMES.CONTRACTORS,
+      Item: contractor,
+      ConditionExpression: 'attribute_not_exists(contractorId)' // Prevent overwrites
+    };
+
+    await dynamodb.put(putParams).promise();
+
+    console.log('Contractor saved successfully:', { contractorId });
 
     return createResponse(201, {
       success: true,

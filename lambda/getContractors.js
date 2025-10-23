@@ -1,63 +1,72 @@
 // lambda/getContractors.js
-// Get all contractors for a user
+// Get all contractors 
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  getCurrentTimestamp,
+  dynamodb,
+  isLocal,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('getContractors event received', event);
+  console.log('getContractors event received:', JSON.stringify(event, null, 2));
 
   try {
-    // Get user ID from event context or use default for single user app
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    // Get user ID from event context
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
-    // Build query parameters
-    const queryDBParams = {
-      TableName: TABLE_NAME,
+    // Parse query parameters for filtering
+    const queryParams = event.queryStringParameters || {};
+    const { sortBy } = queryParams;
+    
+    console.log('Query parameters:', queryParams);
+
+    // Build DynamoDB query parameters
+    const params = {
+      TableName: TABLE_NAMES.CONTRACTORS,
       KeyConditionExpression: 'userId = :userId',
-      FilterExpression: 'attribute_exists(contractorId)',
       ExpressionAttributeValues: {
         ':userId': userId
       }
     };
 
-    debugLog('Query parameters', queryDBParams);
+    console.log('DynamoDB query params:', params);
 
-    // Query DynamoDB
-    const result = await dynamoOperation('query', queryDBParams);
+    const result = await dynamodb.query(params).promise();
+    let contractors = result.Items || [];
 
-    const contractors = result.Items || [];
+    console.log(`Found ${contractors.length} contractors`);
 
-    debugLog(`Found ${contractors.length} contractors`);
-
-    // Sort contractors by name
-    contractors.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort contractors based on sortBy parameter
+    if (sortBy === 'name') {
+      contractors.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Default sort by creation date (newest first)
+      contractors.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
 
     // Calculate summary statistics
     const summary = {
-      totalContractors: contractors.length,
-      contractorsWithSignatures: contractors.filter(c => c.signature).length
+      totalCount: contractors.length
     };
+
+    console.log('Contractors retrieved successfully');
 
     return createResponse(200, {
       success: true,
-      message: `Found ${contractors.length} contractors`,
-      data: contractors,
-      summary,
-      timestamp: new Date().toISOString()
+      message: `Retrieved ${contractors.length} contractors`,
+      data: {
+        contractors,
+        summary,
+        filters: {
+          sortBy: sortBy || 'createdAt'
+        }
+      },
+      timestamp: getCurrentTimestamp()
     });
 
   } catch (error) {

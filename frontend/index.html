@@ -2759,7 +2759,10 @@
                             <button class="delete-button" style="position: absolute; top: -5px; left: -5px; z-index: 10;" onclick="event.stopPropagation(); deleteProject('${project.name}')" title="מחק פרויקט">🗑</button>
                             <div class="project-title" onclick="showProjectDetails('${project.name}')" style="cursor: pointer;">${project.name}</div>
                         </div>
-                        <div class="project-amount-large" onclick="showProjectDetails('${project.name}')" style="cursor: pointer;">${formatCurrency(project.totalAmount)}</div>
+                        <div class="project-amount-large" onclick="showProjectDetails('${project.name}')" style="cursor: pointer;">
+                            <div>${formatCurrency(project.totalAmount)}</div>
+                            <div style="font-size: 0.7rem; color: #718096; margin-top: 2px;">סך הוצאות</div>
+                        </div>
                         
                         <div class="project-stats-grid" onclick="showProjectDetails('${project.name}')" style="cursor: pointer;">
                             <div class="stat-item">
@@ -2916,8 +2919,6 @@
                                 <span class="detail-value">${expense.invoiceNum}</span>
                             </div>
                             <div class="detail-item">
-                                <span class="detail-label">תנאי תשלום:</span>
-                                <span class="detail-value">${expense.paymentTerms}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">אמצעי תשלום:</span>
@@ -3011,14 +3012,25 @@
             }
             
             try {
+                // Updated project data structure for multi-table architecture
                 const projectData = {
-                name: document.getElementById('projectNameInput').value,
-                location: document.getElementById('projectLocation').value || '',
-                budget: parseFloat(document.getElementById('projectBudget').value) || 0,
+                name: document.getElementById('projectNameInput').value.trim(),
                 startDate: document.getElementById('projectStartDate').value || '',
-                status: document.getElementById('projectStatus').value,
-                description: document.getElementById('projectDescription').value || ''
+                status: document.getElementById('projectStatus').value || 'active',
+                description: document.getElementById('projectDescription').value.trim() || '',
+                SpentAmount: 0 // Initialize SpentAmount to 0 for new projects
             };
+            
+            // Validate required fields
+            const missingFields = [];
+            if (!projectData.name) missingFields.push('שם הפרויקט');
+            if (!projectData.startDate) missingFields.push('תאריך התחלה');
+            
+            if (missingFields.length > 0) {
+                document.getElementById('projectFormMessage').innerHTML = 
+                    `<div class="error-message">חסרים שדות חובה: ${missingFields.join(', ')}</div>`;
+                return;
+            }
 
             // Generate unique ID
             const projectId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -3101,10 +3113,27 @@
             removeImage('contractorSignature', 'signaturePreview');
         }
 
+        // Double submission prevention
+        let expenseSubmitting = false;
+        
         async function submitExpense(event) {
             event.preventDefault();
             
-            // Handle file uploads
+            // Prevent double submission
+            if (expenseSubmitting) {
+                console.log('Expense submission already in progress');
+                return;
+            }
+            
+            expenseSubmitting = true;
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'שומר...';
+            }
+            
+            try {
+                // Handle file uploads
             const receiptImageFile = document.getElementById('receiptImage').files[0];
             const signatureFile = document.getElementById('contractorSignature').files[0];
             
@@ -3132,19 +3161,32 @@
                 }
             }
 
+            // Updated form data structure for multi-table architecture
             const formData = {
-                project: document.getElementById('projectName').value,
-                contractor: document.getElementById('contractorName').value,
+                projectId: document.getElementById('projectName').value,     // Updated field
+                contractorId: document.getElementById('contractorName').value, // Updated field
                 invoiceNum: document.getElementById('invoiceNumber').value,
                 amount: parseFloat(document.getElementById('expenseAmount').value),
-                paymentTerms: document.getElementById('paymentTerms').value,
                 paymentMethod: document.getElementById('paymentMethod').value,
                 date: document.getElementById('expenseDate').value,
-                status: document.getElementById('expenseStatus').value || 'pending',
                 description: document.getElementById('expenseDescription').value || '',
                 receiptImage: receiptImage,
                 contractorSignature: contractorSignature
             };
+            
+            // Validate required fields
+            const missingFields = [];
+            if (!formData.projectId) missingFields.push('פרויקט');
+            if (!formData.contractorId) missingFields.push('קבלן');
+            if (!formData.invoiceNum) missingFields.push('מספר חשבונית');
+            if (!formData.amount || formData.amount <= 0) missingFields.push('סכום');
+            if (!formData.paymentMethod) missingFields.push('אמצעי תשלום');
+            if (!formData.date) missingFields.push('תאריך');
+            
+            if (missingFields.length > 0) {
+                showMessage('formMessage', `חסרים שדות חובה: ${missingFields.join(', ')}`, 'error');
+                return;
+            }
 
             // Generate unique ID
             const expenseId = `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -3162,13 +3204,22 @@
             originalMockData.push(newExpense);
             mockData = [...originalMockData];
             
-            // Save to API
+            // Save to API with error handling
             try {
-                await saveExpense(newExpense);
+                await saveExpense(formData); // Send formData directly to API
             } catch (error) {
                 console.error('Failed to save expense:', error);
-                const messageDiv = document.getElementById('formMessage');
-                messageDiv.innerHTML = `<div class="error-message">שגיאה בשמירת ההוצאה. נשמרה מקומית.</div>`;
+                let errorMessage = 'שגיאה בשמירת ההוצאה';
+                
+                if (error.message?.includes('Foreign key validation')) {
+                    errorMessage = 'שגיאה: הפרויקט או הקבלן שנבחרו לא קיימים במערכת';
+                } else if (error.message?.includes('already exists')) {
+                    errorMessage = 'מספר החשבונית כבר קיים במערכת';
+                } else if (error.message?.includes('Amount exceeds')) {
+                    errorMessage = 'הסכום חורג מהמגבלה המותרת';
+                }
+                
+                showMessage('formMessage', errorMessage, 'error');
                 return;
             }
 
@@ -3198,10 +3249,22 @@
                 }, 1000);
             }
 
-            // Reset form after showing success message
-            setTimeout(() => {
-                closeExpenseForm();
-            }, 2000);
+                // Reset form after showing success message
+                setTimeout(() => {
+                    closeExpenseForm();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error in submitExpense:', error);
+                showMessage('formMessage', 'שגיאה בשמירת ההוצאה', 'error');
+            } finally {
+                // Re-enable form submission
+                expenseSubmitting = false;
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'הוסף הוצאה';
+                }
+            }
         }
 
         // Contractor management variables
@@ -3866,21 +3929,26 @@
             }
             
             try {
+                // Updated work data structure for multi-table architecture
                 const workData = {
-                workId: `work_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-                name: document.getElementById('workNameInput').value.trim(),
-                project: document.getElementById('workProject').value,
-                contractor: document.getElementById('workContractor').value,
-                cost: parseFloat(document.getElementById('workCost').value),
+                projectId: document.getElementById('workProject').value,      // Updated field
+                contractorId: document.getElementById('workContractor').value, // Updated field
+                WorkName: document.getElementById('workNameInput').value.trim(), // Updated field name
+                TotalWorkCost: parseFloat(document.getElementById('workCost').value), // Updated field name
                 description: document.getElementById('workDescription').value.trim(),
-                createdAt: new Date().toISOString(),
-                status: 'active'
+                status: 'planned' // Default status for new works
             };
 
             // Validate required fields
-            if (!workData.name || !workData.project || !workData.contractor || !workData.cost) {
+            const missingFields = [];
+            if (!workData.WorkName) missingFields.push('שם העבודה');
+            if (!workData.projectId) missingFields.push('פרויקט');
+            if (!workData.contractorId) missingFields.push('קבלן');
+            if (!workData.TotalWorkCost || workData.TotalWorkCost <= 0) missingFields.push('עלות העבודה');
+            
+            if (missingFields.length > 0) {
                 document.getElementById('worksFormMessage').innerHTML = 
-                    '<div class="error-message">נא למלא את כל השדות החובה</div>';
+                    `<div class="error-message">חסרים שדות חובה: ${missingFields.join(', ')}</div>`;
                 return;
             }
 
@@ -3898,15 +3966,8 @@
                 }
             }
 
-            // Check for duplicate work names in same project
-            const duplicateWork = works.find(work => 
-                work.name === workData.name && work.project === workData.project
-            );
-            if (duplicateWork) {
-                document.getElementById('worksFormMessage').innerHTML = 
-                    '<div class="error-message">עבודה עם השם הזה כבר קיימת בפרויקט זה</div>';
-                return;
-            }
+            // The backend will handle duplicate checking and foreign key validation
+            // Remove client-side duplicate checking as the server has the authoritative data
 
         } catch (error) {
             console.error('Error in work data preparation:', error);
@@ -4578,21 +4639,20 @@
                             <div class="expense-actions">
                                 <button class="delete-button" onclick="deleteExpense('${expense.expenseId}')" title="מחק הוצאה">🗑</button>
                             </div>
-                            <div class="project-name">${expense.project}</div>
+                            <div class="project-name">${expense.projectName || expense.project || 'פרויקט לא ידוע'}</div>
                             <div class="amount">${formatCurrency(expense.amount)}</div>
                         </div>
                         <div class="expense-details">
                             <div class="detail-item">
                                 <span class="detail-label">קבלן/ספק:</span>
-                                <span class="detail-value">${expense.contractor}</span>
+                                <span class="detail-value">${expense.contractorName || expense.contractor || 'קבלן לא ידוע'}</span>
+                                ${expense.contractorPhone ? `<span class="detail-extra"> (${expense.contractorPhone})</span>` : ''}
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">מספר חשבונית:</span>
                                 <span class="detail-value">${expense.invoiceNum}</span>
                             </div>
                             <div class="detail-item">
-                                <span class="detail-label">תנאי תשלום:</span>
-                                <span class="detail-value">${expense.paymentTerms}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">אמצעי תשלום:</span>
