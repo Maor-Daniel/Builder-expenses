@@ -1,49 +1,27 @@
 // lambda/addWork.js
-// Add a new work
+// Add a new work item with WorkName and TotalWorkCost
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
+  validateWork,
+  generateWorkId,
   getCurrentTimestamp,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
-
-function validateWork(work) {
-  const required = ['name', 'project', 'contractor', 'cost'];
-  const missing = required.filter(field => !work[field]);
-  
-  if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(', ')}`);
-  }
-  
-  // Validate cost is a positive number
-  if (isNaN(work.cost) || work.cost < 0) {
-    throw new Error('Cost must be a positive number');
-  }
-  
-  return true;
-}
-
-function generateWorkId() {
-  return `work_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+  dynamodb,
+  isLocal,
+  validateProjectExists,
+  validateContractorExists,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('addWork event received', event);
+  console.log('addWork event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
     // Parse request body
     let workData;
@@ -53,7 +31,7 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Work data received', workData);
+    console.log('Work data received:', workData);
 
     // Validate work data
     try {
@@ -62,70 +40,45 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
+    // Validate foreign key relationships
+    try {
+      await validateProjectExists(userId, workData.projectId);
+      await validateContractorExists(userId, workData.contractorId);
+    } catch (fkError) {
+      return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
+    }
+
     // Generate work ID and timestamps
     const workId = generateWorkId();
     const timestamp = getCurrentTimestamp();
 
-    // Create work object - use workId as expenseId for table compatibility
+    // Create work object with multi-table structure
     const work = {
       userId,
-      expenseId: workId, // DynamoDB table expects expenseId as sort key
       workId,
-      name: workData.name.trim(),
-      project: workData.project.trim(),
-      contractor: workData.contractor.trim(),
-      cost: parseFloat(workData.cost),
+      projectId: workData.projectId.trim(),
+      contractorId: workData.contractorId.trim(),
+      expenseId: workData.expenseId ? workData.expenseId.trim() : null, // Optional FK to Expenses
+      WorkName: workData.WorkName.trim(), // Updated field name
       description: workData.description ? workData.description.trim() : '',
-      status: workData.status || 'active',
+      TotalWorkCost: parseFloat(workData.TotalWorkCost), // Updated field name
+      status: workData.status || 'planned',
       createdAt: timestamp,
       updatedAt: timestamp
     };
 
-    // Add optional contract if provided
-    if (workData.contract) {
-      work.contract = {
-        name: workData.contract.name,
-        data: workData.contract.data,
-        type: workData.contract.type,
-        size: workData.contract.size
-      };
-    }
+    console.log('Creating work:', work);
 
-    // Check for duplicate work name within the same project
-    const duplicateCheckParams = {
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#name = :name AND #project = :project AND attribute_exists(workId)',
-      ExpressionAttributeNames: {
-        '#name': 'name',
-        '#project': 'project'
-      },
-      ExpressionAttributeValues: {
-        ':userId': userId,
-        ':name': work.name,
-        ':project': work.project
-      }
-    };
-
-    try {
-      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
-      if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Work "${work.name}" already exists in project "${work.project}"`);
-      }
-    } catch (error) {
-      debugLog('Duplicate check had error, continuing', error.message);
-    }
-
-    // Save to DynamoDB
+    // Save to DynamoDB Works table
     const putParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.WORKS,
       Item: work,
-      ConditionExpression: 'attribute_not_exists(expenseId)' // Use expenseId which is the sort key
+      ConditionExpression: 'attribute_not_exists(workId)' // Prevent overwrites
     };
 
-    await dynamoOperation('put', putParams);
+    await dynamodb.put(putParams).promise();
 
-    debugLog('Work saved successfully', { workId });
+    console.log('Work saved successfully:', { workId });
 
     return createResponse(201, {
       success: true,

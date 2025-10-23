@@ -1,5 +1,5 @@
 // lambda/addExpense.js
-// Add a new expense
+// Add a new expense with multi-table architecture
 
 const {
   createResponse,
@@ -8,10 +8,13 @@ const {
   validateExpense,
   generateExpenseId,
   getCurrentTimestamp,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  dynamodb,
+  isLocal,
+  validateProjectExists,
+  validateContractorExists,
+  updateProjectSpentAmount,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
   debugLog('addExpense event received', event);
@@ -48,19 +51,25 @@ exports.handler = async (event) => {
     const expenseId = generateExpenseId();
     const timestamp = getCurrentTimestamp();
 
-    // Create expense object
+    // Validate foreign key relationships
+    try {
+      await validateProjectExists(userId, expenseData.projectId);
+      await validateContractorExists(userId, expenseData.contractorId);
+    } catch (fkError) {
+      return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
+    }
+
+    // Create expense object with multi-table structure
     const expense = {
       userId,
       expenseId,
-      project: expenseData.project.trim(),
-      contractor: expenseData.contractor.trim(),
+      projectId: expenseData.projectId.trim(),
+      contractorId: expenseData.contractorId.trim(),
       invoiceNum: expenseData.invoiceNum.trim(),
       amount: parseFloat(expenseData.amount),
-      paymentTerms: expenseData.paymentTerms.trim(),
       paymentMethod: expenseData.paymentMethod.trim(),
       date: expenseData.date,
       description: expenseData.description ? expenseData.description.trim() : '',
-      status: expenseData.status || 'pending',
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -104,10 +113,11 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Amount exceeds maximum limit (1,000,000)');
     }
 
-    // Check for duplicate invoice number using scan (since GSI doesn't exist)
+    // Check for duplicate invoice number using GSI
     const duplicateCheckParams = {
-      TableName: TABLE_NAME,
-      FilterExpression: 'userId = :userId AND invoiceNum = :invoiceNum',
+      TableName: TABLE_NAMES.EXPENSES,
+      IndexName: 'invoice-index',
+      KeyConditionExpression: 'userId = :userId AND invoiceNum = :invoiceNum',
       ExpressionAttributeValues: {
         ':userId': userId,
         ':invoiceNum': expense.invoiceNum
@@ -115,24 +125,33 @@ exports.handler = async (event) => {
     };
 
     try {
-      const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
+      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
         return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
       }
     } catch (error) {
-      debugLog('Duplicate check failed, continuing', error.message);
+      console.error('Duplicate check failed:', error);
+      // Continue but log the error
     }
 
-    // Save to DynamoDB
+    // Save to DynamoDB Expenses table
     const putParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.EXPENSES,
       Item: expense,
       ConditionExpression: 'attribute_not_exists(expenseId)' // Prevent overwrites
     };
 
-    await dynamoOperation('put', putParams);
+    await dynamodb.put(putParams).promise();
 
-    debugLog('Expense saved successfully', { expenseId });
+    // Update project's SpentAmount
+    try {
+      await updateProjectSpentAmount(userId, expense.projectId, expense.amount);
+    } catch (updateError) {
+      console.error('Failed to update project SpentAmount:', updateError);
+      // Don't fail the expense creation for this
+    }
+
+    console.log('Expense saved successfully:', { expenseId });
 
     return createResponse(201, {
       success: true,

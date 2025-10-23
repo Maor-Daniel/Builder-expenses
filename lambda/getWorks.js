@@ -1,55 +1,178 @@
 // lambda/getWorks.js
-// Get all works for a user
+// Get all works with related project and contractor data
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
   getCurrentTimestamp,
-  debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  dynamodb,
+  isLocal,
+  TABLE_NAMES
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('getWorks event received', event);
+  console.log('getWorks event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
-    // Query DynamoDB for works
-    const params = {
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'userId = :userId',
-      FilterExpression: 'attribute_exists(workId)',
-      ExpressionAttributeValues: {
-        ':userId': userId
+    // Parse query parameters for filtering
+    const queryParams = event.queryStringParameters || {};
+    const { projectId, contractorId, status, sortBy } = queryParams;
+    
+    console.log('Query parameters:', queryParams);
+
+    let works = [];
+
+    if (projectId) {
+      // Query works by project using GSI
+      const params = {
+        TableName: TABLE_NAMES.WORKS,
+        IndexName: 'project-status-index',
+        KeyConditionExpression: 'userId = :userProjectId',
+        ExpressionAttributeValues: {
+          ':userProjectId': `${userId}#${projectId}`
+        }
+      };
+
+      // Add status filter if provided
+      if (status) {
+        params.KeyConditionExpression += ' AND begins_with(#statusWorkName, :status)';
+        params.ExpressionAttributeNames = { '#statusWorkName': 'status#WorkName' };
+        params.ExpressionAttributeValues[':status'] = status;
       }
+
+      const result = await dynamodb.query(params).promise();
+      works = result.Items || [];
+      
+    } else if (contractorId) {
+      // Query works by contractor using GSI
+      const params = {
+        TableName: TABLE_NAMES.WORKS,
+        IndexName: 'contractor-index',
+        KeyConditionExpression: 'userId = :userContractorId',
+        ExpressionAttributeValues: {
+          ':userContractorId': `${userId}#${contractorId}`
+        }
+      };
+
+      const result = await dynamodb.query(params).promise();
+      works = result.Items || [];
+      
+    } else {
+      // Get all works for the user
+      const params = {
+        TableName: TABLE_NAMES.WORKS,
+        KeyConditionExpression: 'userId = :userId',
+        ExpressionAttributeValues: {
+          ':userId': userId
+        }
+      };
+
+      // Add status filter if provided
+      if (status) {
+        params.FilterExpression = '#status = :status';
+        params.ExpressionAttributeNames = { '#status': 'status' };
+        params.ExpressionAttributeValues[':status'] = status;
+      }
+
+      const result = await dynamodb.query(params).promise();
+      works = result.Items || [];
+    }
+
+    console.log(`Found ${works.length} works`);
+
+    // Enhance works with project and contractor information
+    const enhancedWorks = await Promise.all(
+      works.map(async (work) => {
+        try {
+          // Get project information
+          const projectParams = {
+            TableName: TABLE_NAMES.PROJECTS,
+            Key: { userId: work.userId, projectId: work.projectId }
+          };
+          
+          const projectResult = await dynamodb.get(projectParams).promise();
+          const project = projectResult.Item;
+
+          // Get contractor information  
+          const contractorParams = {
+            TableName: TABLE_NAMES.CONTRACTORS,
+            Key: { userId: work.userId, contractorId: work.contractorId }
+          };
+          
+          const contractorResult = await dynamodb.get(contractorParams).promise();
+          const contractor = contractorResult.Item;
+
+          // Return enhanced work with related data
+          return {
+            ...work,
+            projectName: project ? project.name : 'Unknown Project',
+            contractorName: contractor ? contractor.name : 'Unknown Contractor',
+            contractorPhone: contractor ? contractor.phone : ''
+          };
+        } catch (enhanceError) {
+          console.error('Error enhancing work:', enhanceError);
+          // Return original work if enhancement fails
+          return {
+            ...work,
+            projectName: 'Error loading project',
+            contractorName: 'Error loading contractor',
+            contractorPhone: ''
+          };
+        }
+      })
+    );
+
+    // Sort works based on sortBy parameter
+    if (sortBy === 'name') {
+      enhancedWorks.sort((a, b) => a.WorkName.localeCompare(b.WorkName));
+    } else if (sortBy === 'cost') {
+      enhancedWorks.sort((a, b) => (b.TotalWorkCost || 0) - (a.TotalWorkCost || 0)); // Highest cost first
+    } else if (sortBy === 'status') {
+      enhancedWorks.sort((a, b) => a.status.localeCompare(b.status));
+    } else {
+      // Default sort by creation date (newest first)
+      enhancedWorks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    // Calculate summary statistics
+    const summary = {
+      totalCount: enhancedWorks.length,
+      totalPlannedCost: enhancedWorks.reduce((sum, work) => sum + (work.TotalWorkCost || 0), 0),
+      averagePlannedCost: enhancedWorks.length > 0 ? 
+        enhancedWorks.reduce((sum, work) => sum + (work.TotalWorkCost || 0), 0) / enhancedWorks.length : 0,
+      statusCounts: enhancedWorks.reduce((counts, work) => {
+        const status = work.status || 'unknown';
+        counts[status] = (counts[status] || 0) + 1;
+        return counts;
+      }, {})
     };
 
-    const result = await dynamoOperation('query', params);
-    const works = result.Items || [];
-
-    debugLog('Works retrieved', { count: works.length });
+    console.log('Works retrieved successfully');
 
     return createResponse(200, {
       success: true,
-      items: works,
-      count: works.length,
+      message: `Retrieved ${enhancedWorks.length} works`,
+      data: {
+        works: enhancedWorks,
+        summary,
+        filters: {
+          projectId: projectId || null,
+          contractorId: contractorId || null,
+          status: status || null,
+          sortBy: sortBy || 'createdAt'
+        }
+      },
       timestamp: getCurrentTimestamp()
     });
 
   } catch (error) {
     console.error('Error in getWorks:', error);
-    
+
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');
     }
