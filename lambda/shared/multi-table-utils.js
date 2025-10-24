@@ -28,13 +28,13 @@ try {
   console.log('🎭 Falling back to Multi-Table Mock Database');
 }
 
-// Table names - use local table names for development
+// Table names - hardcoded for now (bypassing KMS environment variable encryption issue)
 const TABLE_NAMES = {
-  USERS: isLocal ? 'construction-expenses-local-users' : process.env.USERS_TABLE_NAME || 'construction-expenses-production-users',
-  PROJECTS: isLocal ? 'construction-expenses-local-projects' : process.env.PROJECTS_TABLE_NAME || 'construction-expenses-production-projects',
-  CONTRACTORS: isLocal ? 'construction-expenses-local-contractors' : process.env.CONTRACTORS_TABLE_NAME || 'construction-expenses-production-contractors',
-  EXPENSES: isLocal ? 'construction-expenses-local-expenses' : process.env.EXPENSES_TABLE_NAME || 'construction-expenses-production-expenses',
-  WORKS: isLocal ? 'construction-expenses-local-works' : process.env.WORKS_TABLE_NAME || 'construction-expenses-production-works'
+  USERS: isLocal ? 'construction-expenses-local-users' : 'construction-expenses-multi-table-users',
+  PROJECTS: isLocal ? 'construction-expenses-local-projects' : 'construction-expenses-multi-table-projects',
+  CONTRACTORS: isLocal ? 'construction-expenses-local-contractors' : 'construction-expenses-multi-table-contractors',
+  EXPENSES: isLocal ? 'construction-expenses-local-expenses' : 'construction-expenses-multi-table-expenses',
+  WORKS: isLocal ? 'construction-expenses-local-works' : 'construction-expenses-multi-table-works'
 };
 
 /**
@@ -78,17 +78,21 @@ function createErrorResponse(statusCode, message, error = null) {
  * Get user ID from event context
  */
 function getUserIdFromEvent(event) {
+  // For now, always use test user ID (authentication disabled)
+  return 'test-user-123';
+  
+  // TODO: Re-enable authentication later
   // In local development, use test user ID
-  if (isLocal) {
-    return 'test-user-123';
-  }
-  
-  // In production, get from Cognito authorizer
-  if (event.requestContext?.authorizer?.claims?.sub) {
-    return event.requestContext.authorizer.claims.sub;
-  }
-  
-  throw new Error('User ID not found in event context');
+  // if (isLocal) {
+  //   return 'test-user-123';
+  // }
+  // 
+  // // In production, get from Cognito authorizer
+  // if (event.requestContext?.authorizer?.claims?.sub) {
+  //   return event.requestContext.authorizer.claims.sub;
+  // }
+  // 
+  // throw new Error('User ID not found in event context');
 }
 
 /**

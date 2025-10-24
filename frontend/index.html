@@ -2389,11 +2389,11 @@
     </div>
 
     <script>
-        // AWS Config for production
+        // AWS Config for production - Multi-Table Architecture
         const AWS_CONFIG = {
             region: 'us-east-1',
-            userPoolId: 'us-east-1_dTyGBkXv2',
-            userPoolClientId: '3viku7ridp5tcvjd2n1j1f6nf5',
+            userPoolId: 'us-east-1_OBAlNkRnG',
+            userPoolClientId: '7pj7f63p2vq6inffdhnq9mqvrf',
             apiEndpoint: 'https://drn8tyjw93.execute-api.us-east-1.amazonaws.com/prod'
         };
         
@@ -3928,9 +3928,11 @@
             if (submitButton) {
             }
             
+            // Updated work data structure for multi-table architecture
+            let workData;
+            
             try {
-                // Updated work data structure for multi-table architecture
-                const workData = {
+                workData = {
                 projectId: document.getElementById('workProject').value,      // Updated field
                 contractorId: document.getElementById('workContractor').value, // Updated field
                 WorkName: document.getElementById('workNameInput').value.trim(), // Updated field name
