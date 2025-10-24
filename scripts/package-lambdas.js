@@ -60,10 +60,10 @@ function createZipFile(functionName) {
 
     archive.pipe(output);
 
-    // Add the main Lambda function file
+    // Add the main Lambda function file (rename to index.js for Lambda handler compatibility)
     const lambdaFilePath = path.join(__dirname, '..', 'lambda', `${functionName}.js`);
     if (fs.existsSync(lambdaFilePath)) {
-      archive.file(lambdaFilePath, { name: `${functionName}.js` });
+      archive.file(lambdaFilePath, { name: 'index.js' });
     } else {
       reject(new Error(`Lambda function file not found: ${lambdaFilePath}`));
       return;

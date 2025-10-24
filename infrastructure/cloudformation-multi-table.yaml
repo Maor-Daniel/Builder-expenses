@@ -1,0 +1,375 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Construction Expenses Tracker - Multi-Table AWS Infrastructure for Mission2'
+
+Parameters:
+  StackName:
+    Type: String
+    Default: 'construction-expenses-multi-table'
+    Description: 'Name of the CloudFormation stack'
+  
+  Environment:
+    Type: String
+    Default: 'production'
+    AllowedValues: ['production', 'staging']
+    Description: 'Environment name'
+
+Resources:
+  # Users Table
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-users'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+  # Projects Table
+  ProjectsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-projects'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: projectId
+          KeyType: RANGE
+
+  # Contractors Table
+  ContractorsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-contractors'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: contractorId
+          KeyType: RANGE
+
+  # Expenses Table
+  ExpensesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-expenses'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: expenseId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: expenseId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: project-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: projectId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: contractor-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: contractorId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Works Table
+  WorksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-works'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: workId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: contractorId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: workId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: project-works-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: projectId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: contractor-works-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: contractorId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${StackName}-user-pool'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub '${StackName}-client'
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  # S3 Bucket for Frontend
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${StackName}-frontend-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  # S3 Bucket Policy for Frontend
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${FrontendBucket}/*'
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt UsersTable.Arn
+                  - !GetAtt ProjectsTable.Arn
+                  - !GetAtt ContractorsTable.Arn
+                  - !GetAtt ExpensesTable.Arn
+                  - !GetAtt WorksTable.Arn
+                  - !Sub '${UsersTable.Arn}/index/*'
+                  - !Sub '${ProjectsTable.Arn}/index/*'
+                  - !Sub '${ContractorsTable.Arn}/index/*'
+                  - !Sub '${ExpensesTable.Arn}/index/*'
+                  - !Sub '${WorksTable.Arn}/index/*'
+
+  # API Gateway
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${StackName}-api'
+      Description: 'Construction Expenses Tracker API'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Authorizer
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub '${StackName}-authorizer'
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref RestApi
+      ProviderARNs:
+        - !GetAtt UserPool.Arn
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - OptionsMethod
+    Properties:
+      RestApiId: !Ref RestApi
+      StageName: prod
+
+  # CORS Options Method
+  OptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !GetAtt RestApi.RootResourceId
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+            ResponseTemplates:
+              application/json: ''
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+Outputs:
+  # Cognito Outputs
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${StackName}-user-pool-id'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${StackName}-user-pool-client-id'
+
+  # API Gateway Outputs
+  ApiGatewayUrl:
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${StackName}-api-url'
+
+  # DynamoDB Table Names
+  UsersTableName:
+    Description: 'Users DynamoDB Table Name'
+    Value: !Ref UsersTable
+    Export:
+      Name: !Sub '${StackName}-users-table-name'
+
+  ProjectsTableName:
+    Description: 'Projects DynamoDB Table Name'
+    Value: !Ref ProjectsTable
+    Export:
+      Name: !Sub '${StackName}-projects-table-name'
+
+  ContractorsTableName:
+    Description: 'Contractors DynamoDB Table Name'
+    Value: !Ref ContractorsTable
+    Export:
+      Name: !Sub '${StackName}-contractors-table-name'
+
+  ExpensesTableName:
+    Description: 'Expenses DynamoDB Table Name'
+    Value: !Ref ExpensesTable
+    Export:
+      Name: !Sub '${StackName}-expenses-table-name'
+
+  WorksTableName:
+    Description: 'Works DynamoDB Table Name'
+    Value: !Ref WorksTable
+    Export:
+      Name: !Sub '${StackName}-works-table-name'
+
+  # S3 Frontend
+  FrontendBucketName:
+    Description: 'S3 Frontend Bucket Name'
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${StackName}-frontend-bucket'
+
+  FrontendUrl:
+    Description: 'Frontend URL (S3 Website)'
+    Value: !GetAtt FrontendBucket.WebsiteURL
+    Export:
+      Name: !Sub '${StackName}-frontend-url'
+
+  # IAM Role
+  LambdaExecutionRoleArn:
+    Description: 'Lambda Execution Role ARN'
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${StackName}-lambda-role-arn'
