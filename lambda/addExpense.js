@@ -13,6 +13,7 @@ const {
   validateProjectExists,
   validateContractorExists,
   updateProjectSpentAmount,
+  debugLog,
   TABLE_NAMES
 } = require('./shared/multi-table-utils');
 
