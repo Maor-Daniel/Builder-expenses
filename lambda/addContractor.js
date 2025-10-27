@@ -10,7 +10,8 @@ const {
   getCurrentTimestamp,
   dynamodb,
   isLocal,
-  TABLE_NAMES
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -38,11 +39,10 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
-    // Check for duplicate contractor name
+    // Check for duplicate contractor name - using scan for now
     const duplicateCheckParams = {
       TableName: TABLE_NAMES.CONTRACTORS,
-      KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#name = :name',
+      FilterExpression: 'userId = :userId AND #name = :name',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
@@ -53,7 +53,7 @@ exports.handler = async (event) => {
     };
 
     try {
-      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
+      const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
         return createErrorResponse(409, `Contractor with name "${contractorData.name}" already exists`);
       }
@@ -71,7 +71,7 @@ exports.handler = async (event) => {
       userId,
       contractorId,
       name: contractorData.name.trim(),
-      phone: contractorData.phone.trim(),
+      phone: contractorData.phone ? contractorData.phone.trim() : '',
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -85,7 +85,7 @@ exports.handler = async (event) => {
       ConditionExpression: 'attribute_not_exists(contractorId)' // Prevent overwrites
     };
 
-    await dynamodb.put(putParams).promise();
+    await dynamoOperation('put', putParams);
 
     console.log('Contractor saved successfully:', { contractorId });
 

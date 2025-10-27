@@ -6,10 +6,11 @@ const {
   createErrorResponse,
   getUserIdFromEvent,
   getCurrentTimestamp,
+  dynamodb,
   debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  TABLE_NAMES,
+  dynamoOperation
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
   debugLog('deleteProject event received', event);
@@ -35,10 +36,10 @@ exports.handler = async (event) => {
 
     // First, verify that the project exists and belongs to the user
     const getParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.PROJECTS,
       Key: {
         userId,
-        expenseId: projectId // Projects use expenseId as sort key for table compatibility
+        projectId
       }
     };
 
@@ -62,15 +63,12 @@ exports.handler = async (event) => {
 
     // Check if project has associated expenses
     const expensesCheckParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.EXPENSES,
       KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#project = :projectName AND attribute_not_exists(projectId) AND attribute_not_exists(contractorId)',
-      ExpressionAttributeNames: {
-        '#project': 'project'
-      },
+      FilterExpression: 'projectId = :projectId',
       ExpressionAttributeValues: {
         ':userId': userId,
-        ':projectName': existingProject.name
+        ':projectId': projectId
       }
     };
 
@@ -90,7 +88,7 @@ exports.handler = async (event) => {
         // Delete all associated expenses
         const deletePromises = expensesCheck.Items.map(expense => {
           const deleteParams = {
-            TableName: TABLE_NAME,
+            TableName: TABLE_NAMES.EXPENSES,
             Key: {
               userId: expense.userId,
               expenseId: expense.expenseId
@@ -108,12 +106,12 @@ exports.handler = async (event) => {
 
     // Delete the project
     const deleteParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.PROJECTS,
       Key: {
         userId,
-        expenseId: projectId
+        projectId
       },
-      ConditionExpression: 'attribute_exists(expenseId)',
+      ConditionExpression: 'attribute_exists(projectId)',
       ReturnValues: 'ALL_OLD'
     };
 

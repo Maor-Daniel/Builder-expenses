@@ -153,7 +153,7 @@ function validateProject(project) {
  * Validate contractor data
  */
 function validateContractor(contractor) {
-  const required = ['name', 'phone'];
+  const required = ['name'];
   const missing = required.filter(field => !contractor[field]);
   
   if (missing.length > 0) {
@@ -167,7 +167,7 @@ function validateContractor(contractor) {
  * Validate work data (updated fields)
  */
 function validateWork(work) {
-  const required = ['projectId', 'contractorId', 'WorkName', 'description', 'TotalWorkCost'];
+  const required = ['projectId', 'contractorId', 'WorkName', 'TotalWorkCost'];
   const missing = required.filter(field => !work[field]);
   
   if (missing.length > 0) {

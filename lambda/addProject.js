@@ -10,7 +10,8 @@ const {
   getCurrentTimestamp,
   dynamodb,
   isLocal,
-  TABLE_NAMES
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -38,11 +39,10 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
-    // Check for duplicate project name
+    // Check for duplicate project name - using scan for now
     const duplicateCheckParams = {
       TableName: TABLE_NAMES.PROJECTS,
-      KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#name = :name',
+      FilterExpression: 'userId = :userId AND #name = :name',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
@@ -53,7 +53,7 @@ exports.handler = async (event) => {
     };
 
     try {
-      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
+      const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
         return createErrorResponse(409, `Project with name "${projectData.name}" already exists`);
       }
@@ -88,7 +88,7 @@ exports.handler = async (event) => {
       ConditionExpression: 'attribute_not_exists(projectId)' // Prevent overwrites
     };
 
-    await dynamodb.put(putParams).promise();
+    await dynamoOperation('put', putParams);
 
     console.log('Project saved successfully:', { projectId });
 

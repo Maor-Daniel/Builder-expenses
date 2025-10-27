@@ -12,7 +12,8 @@ const {
   isLocal,
   validateProjectExists,
   validateContractorExists,
-  TABLE_NAMES
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -76,7 +77,7 @@ exports.handler = async (event) => {
       ConditionExpression: 'attribute_not_exists(workId)' // Prevent overwrites
     };
 
-    await dynamodb.put(putParams).promise();
+    await dynamoOperation('put', putParams);
 
     console.log('Work saved successfully:', { workId });
 
