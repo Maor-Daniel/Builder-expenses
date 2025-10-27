@@ -13,9 +13,9 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #ffffff;
             min-height: 100vh;
-            color: #333;
+            color: #000000;
             direction: rtl;
         }
 
@@ -28,9 +28,11 @@
         .header {
             text-align: center;
             margin-bottom: 30px;
-            color: white;
+            color: #ffffff;
             position: relative;
-            padding: 0 140px;
+            padding: 30px 140px 20px 140px;
+            background: #000000;
+            border-bottom: 2px solid #000000;
         }
 
         .header h1 {
@@ -50,7 +52,8 @@
             right: 0;
             width: 120px;
             height: auto;
-            border-radius: 10px;
+            border-radius: 0;
+            border: 2px solid #000000;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             background: white;
             padding: 8px;
@@ -70,58 +73,62 @@
         }
 
         .status-panel {
-            background: white;
-            border-radius: 15px;
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0;
             padding: 25px;
             margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 0 0 rgba(0,0,0,0);
+            color: #000000;
         }
 
         .status-title {
             font-size: 1.5rem;
             margin-bottom: 20px;
-            color: #4a5568;
+            color: #000000;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-weight: bold;
         }
 
         .demo-section {
-            background: #f8f9fa;
-            border-radius: 10px;
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0;
             padding: 20px;
             margin-bottom: 20px;
-            border-left: 4px solid #3182ce;
         }
 
         .demo-title {
             font-weight: bold;
-            color: #2d3748;
+            color: #000000;
             margin-bottom: 15px;
             font-size: 1.1rem;
         }
 
 
         .results-area {
-            background: #1a202c;
-            color: #e2e8f0;
-            border-radius: 10px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 0;
             padding: 20px;
             margin-top: 15px;
             font-family: 'Courier New', monospace;
             white-space: pre-wrap;
             max-height: 400px;
             overflow-y: auto;
-            border: 2px solid #4a5568;
         }
 
         .expense-card {
-            background: white;
-            border-radius: 10px;
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0;
             padding: 20px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border-left: 4px solid #3182ce;
+            box-shadow: none;
+            color: #000000;
         }
 
         .expense-header {
@@ -141,10 +148,10 @@
         }
         
         .delete-button {
-            background: #e53e3e;
-            color: white;
-            border: none;
-            border-radius: 4px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 0;
             width: 30px;
             height: 30px;
             cursor: pointer;
@@ -152,18 +159,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
         }
         
         .delete-button:hover {
-            background: #c53030;
+            background: #ffffff;
+            color: #000000;
         }
         
         .edit-button {
-            background: #3182ce;
-            color: white;
-            border: none;
-            border-radius: 4px;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            border-radius: 0;
             width: 30px;
             height: 30px;
             cursor: pointer;
@@ -171,23 +179,24 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
         }
         
         .edit-button:hover {
-            background: #2c5282;
+            background: #000000;
+            color: #ffffff;
         }
 
         .project-name {
             font-size: 1.3rem;
             font-weight: bold;
-            color: #2d3748;
+            color: #000000;
         }
 
         .amount {
             font-size: 1.4rem;
             font-weight: bold;
-            color: #38a169;
+            color: #000000;
         }
 
         .expense-details {
@@ -289,7 +298,7 @@
         .project-summary {
             background: #e6fffa;
             border: 2px solid #38b2ac;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -304,7 +313,7 @@
 
         .project-item {
             background: white;
-            border-radius: 8px;
+            border-radius: 0;
             padding: 15px;
             margin-bottom: 10px;
             display: flex;
@@ -332,7 +341,7 @@
 
         .filter-controls {
             background: #f7fafc;
-            border-radius: 8px;
+            border-radius: 0;
             padding: 15px;
             margin-bottom: 15px;
             border: 1px solid #e2e8f0;
@@ -345,34 +354,35 @@
 
         .tab-navigation {
             display: flex;
-            background: white;
-            border-radius: 10px;
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0;
             margin-bottom: 20px;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: none;
         }
 
         .tab-button {
             flex: 1;
             padding: 15px 20px;
             border: none;
-            background: #f7fafc;
-            color: #4a5568;
+            background: #ffffff;
+            color: #000000;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
         }
 
         .tab-button:hover {
-            background: #edf2f7;
+            background: #000000;
+            color: #ffffff;
         }
 
         .tab-button.active {
-            background: white;
-            color: #2d3748;
-            border-bottom-color: #3182ce;
+            background: #000000;
+            color: #ffffff;
+            font-weight: bold;
         }
 
         .tab-content {
@@ -436,7 +446,7 @@
             text-align: center;
             padding: 10px;
             background: #f7fafc;
-            border-radius: 8px;
+            border-radius: 0;
         }
 
         .stat-number {
@@ -460,19 +470,21 @@
         }
 
         .back-button {
-            background: #718096;
-            color: white;
-            border: none;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             margin-bottom: 20px;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
+            font-weight: bold;
         }
 
         .back-button:hover {
-            background: #4a5568;
+            background: #000000;
+            color: #ffffff;
         }
 
         .project-header {
@@ -489,22 +501,24 @@
         }
 
         .add-expense-button {
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: bold;
             margin-bottom: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(72, 187, 120, 0.3);
+            transition: all 0.2s ease;
+            box-shadow: none;
         }
 
         .add-expense-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+            background: #ffffff;
+            color: #000000;
+            transform: none;
+            box-shadow: none;
         }
 
 
@@ -567,8 +581,8 @@
 
         .form-input, .form-select, .form-textarea {
             padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            border: 2px solid #000000;
+            border-radius: 0;
             font-size: 1rem;
             transition: border-color 0.3s ease;
             direction: rtl;
@@ -576,6 +590,8 @@
             box-sizing: border-box;
             max-width: 100%;
             overflow: hidden;
+            background: #ffffff;
+            color: #000000;
         }
 
         .form-input:focus, .form-select:focus, .form-textarea:focus {
@@ -599,11 +615,11 @@
         }
 
         .form-submit {
-            background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 12px 30px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
@@ -620,7 +636,7 @@
             color: white;
             border: none;
             padding: 12px 30px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             transition: background 0.3s ease;
@@ -634,7 +650,7 @@
             background: #c6f6d5;
             color: #2f855a;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 0;
             margin-bottom: 20px;
             border-left: 4px solid #38a169;
         }
@@ -643,17 +659,17 @@
             background: #fed7d7;
             color: #c53030;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 0;
             margin-bottom: 20px;
             border-left: 4px solid #e53e3e;
         }
 
         .add-project-button {
-            background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
@@ -709,7 +725,7 @@
             color: white;
             border: none;
             padding: 12px 16px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 0.9rem;
             white-space: nowrap;
@@ -721,11 +737,11 @@
         }
 
         .add-contractor-button {
-            background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
@@ -755,11 +771,11 @@
 
         .new-project-button,
         .new-contractor-button {
-            background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 8px 16px;
-            border-radius: 6px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: 600;
@@ -821,7 +837,7 @@
             text-align: center;
             padding: 8px;
             background: #faf5f0;
-            border-radius: 6px;
+            border-radius: 0;
         }
 
         .contractor-stat-number {
@@ -905,7 +921,7 @@
         .contractor-contact-info {
             background: #f7fafc;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 0;
             margin-bottom: 30px;
         }
 
@@ -922,7 +938,7 @@
         .payments-summary {
             background: #edf2f7;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 0;
             margin-bottom: 30px;
         }
 
@@ -944,7 +960,7 @@
             align-items: center;
             padding: 10px;
             background: white;
-            border-radius: 6px;
+            border-radius: 0;
             border-right: 4px solid #ed8936;
         }
 
@@ -968,7 +984,7 @@
         .payment-card {
             background: white;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 0;
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1032,7 +1048,7 @@
             font-style: italic;
             padding: 40px;
             background: #f7fafc;
-            border-radius: 8px;
+            border-radius: 0;
         }
 
         .no-data {
@@ -1041,7 +1057,7 @@
             font-style: italic;
             padding: 40px;
             background: #f7fafc;
-            border-radius: 8px;
+            border-radius: 0;
         }
 
         /* File Upload Styles */
@@ -1055,10 +1071,10 @@
 
         .file-upload-button {
             display: inline-block;
-            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-            color: white;
+            background: #000000;
+            color: #ffffff;
             padding: 12px 20px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 0.9rem;
             font-weight: 600;
@@ -1096,7 +1112,7 @@
         .image-preview img {
             max-width: 200px;
             max-height: 150px;
-            border-radius: 8px;
+            border-radius: 0;
             border: 2px solid #e2e8f0;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             object-fit: cover;
@@ -1173,7 +1189,7 @@
         .image-modal img {
             max-width: 100%;
             max-height: 70vh;
-            border-radius: 8px;
+            border-radius: 0;
             object-fit: contain;
         }
 
@@ -1263,14 +1279,14 @@
             margin-bottom: 30px;
             padding: 20px;
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 0;
         }
 
         .stat-card {
             text-align: center;
             padding: 15px;
             background: white;
-            border-radius: 8px;
+            border-radius: 0;
             border: 2px solid #ed8936;
         }
 
@@ -1298,7 +1314,7 @@
         .expense-item {
             background: white;
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -1388,7 +1404,7 @@
             margin-bottom: 30px;
             padding: 20px;
             background: #f8fafc;
-            border-radius: 8px;
+            border-radius: 0;
             border: 1px solid #e2e8f0;
         }
 
@@ -1410,7 +1426,7 @@
         .form-message {
             margin-bottom: 20px;
             padding: 12px;
-            border-radius: 6px;
+            border-radius: 0;
             text-align: center;
             font-weight: 600;
         }
@@ -1437,11 +1453,11 @@
         }
 
         .form-submit-tab {
-            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 15px 30px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1.1rem;
             font-weight: 600;
@@ -1459,7 +1475,7 @@
             color: white;
             border: none;
             padding: 15px 30px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1.1rem;
             font-weight: 600;
@@ -1479,7 +1495,7 @@
 
         #signatureCanvas {
             border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: crosshair;
             background: white;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -1497,7 +1513,7 @@
         .signature-button {
             padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 0;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
@@ -1527,7 +1543,7 @@
             margin-top: 20px;
             padding: 15px;
             background: white;
-            border-radius: 8px;
+            border-radius: 0;
             border: 1px solid #e2e8f0;
         }
 
@@ -1735,11 +1751,11 @@
 
         /* Works Styles */
         .add-work-button {
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-            color: white;
-            border: none;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
@@ -1803,14 +1819,14 @@
         }
         .work-progress-bar {
             background: #e2e8f0;
-            border-radius: 10px;
+            border-radius: 0;
             height: 8px;
             overflow: hidden;
         }
         .work-progress-fill {
             background: linear-gradient(90deg, #48bb78, #38a169);
             height: 100%;
-            border-radius: 10px;
+            border-radius: 0;
             transition: width 0.3s ease;
         }
         .work-progress-text {
@@ -1841,9 +1857,10 @@
             z-index: 1000;
         }
         .works-form-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 0;
+            box-shadow: none;
             max-width: 500px;
             width: 90%;
             max-height: 90vh;
@@ -1874,11 +1891,13 @@
             position: relative;
         }
         .work-modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #000000;
+            color: #ffffff;
             padding: 25px 30px;
-            border-radius: 20px 20px 0 0;
+            border-radius: 0;
             position: relative;
+            border: 2px solid #ffffff;
+            border-bottom: none;
         }
         .work-modal-title {
             font-size: 1.5rem;
@@ -1891,6 +1910,10 @@
         }
         .work-modal-body {
             padding: 30px;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #ffffff;
+            border-top: none;
         }
         .work-summary-stats {
             display: grid;
@@ -2316,14 +2339,14 @@
                 
                 <div class="form-group">
                     <label class="form-label" for="workProject">פרויקט *</label>
-                    <select id="workProject" class="form-input" required>
+                    <select id="workProject" class="form-select" required>
                         <option value="">בחר פרויקט</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="workContractor">קבלן/ספק *</label>
-                    <select id="workContractor" class="form-input" required>
+                    <select id="workContractor" class="form-select" required>
                         <option value="">בחר קבלן/ספק</option>
                     </select>
                 </div>
@@ -2335,8 +2358,14 @@
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label" for="workPhone">מספר טלפון</label>
+                    <input type="tel" id="workPhone" class="form-input" 
+                           placeholder="לדוגמה: 050-1234567">
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label" for="workDescription">תיאור העבודה</label>
-                    <textarea id="workDescription" class="form-input" rows="3"
+                    <textarea id="workDescription" class="form-textarea" rows="3"
                              placeholder="תיאור מפורט של העבודה הנדרשת..."></textarea>
                 </div>
                 
@@ -2673,7 +2702,7 @@
             }).format(amount);
         }
 
-        function switchTab(tabName) {
+        function switchTab(tabName, event = null) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -2688,7 +2717,15 @@
             document.getElementById(tabName + 'Tab').classList.add('active');
             
             // Add active class to selected tab button
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find and activate the corresponding tab button when called programmatically
+                const tabBtn = document.querySelector(`[onclick*="switchTab('${tabName}')"]`);
+                if (tabBtn) {
+                    tabBtn.classList.add('active');
+                }
+            }
             
             // Load content based on tab
             if (tabName === 'projects') {
@@ -3864,10 +3901,8 @@
             try {
                 const formData = new FormData(event.target);
             const contractorData = {
-                contractorId: `contractor_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
                 name: document.getElementById('contractorNameInput').value.trim(),
-                phone: document.getElementById('contractorPhone').value.trim() || '',
-                createdAt: new Date().toISOString()
+                phone: document.getElementById('contractorPhone').value.trim() || ''
             };
 
             // Validate required fields

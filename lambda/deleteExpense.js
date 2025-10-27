@@ -6,10 +6,10 @@ const {
   createErrorResponse,
   getUserIdFromEvent,
   getCurrentTimestamp,
+  dynamodb,
   debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  TABLE_NAMES.EXPENSESS
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
   debugLog('deleteExpense event received', event);
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
 
     // First, verify that the expense exists and belongs to the user
     const getParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.EXPENSES,
       Key: {
         userId,
         expenseId
@@ -44,7 +44,7 @@ exports.handler = async (event) => {
 
     let existingExpense;
     try {
-      const getResult = await dynamoOperation('get', getParams);
+      const getResult = await dynamodb.get( getParams);
       existingExpense = getResult.Item;
       
       if (!existingExpense) {
@@ -76,7 +76,7 @@ exports.handler = async (event) => {
     if (softDelete) {
       // Soft delete: Update status to 'deleted'
       const updateParams = {
-        TableName: TABLE_NAME,
+        TableName: TABLE_NAMES.EXPENSES,
         Key: {
           userId,
           expenseId
@@ -94,7 +94,7 @@ exports.handler = async (event) => {
         ReturnValues: 'ALL_NEW'
       };
 
-      const updateResult = await dynamoOperation('update', updateParams);
+      const updateResult = await dynamodb.update(updateParams).promise();
       
       debugLog('Expense soft deleted successfully', { expenseId });
 
@@ -112,7 +112,7 @@ exports.handler = async (event) => {
     } else {
       // Hard delete: Remove from database completely
       const deleteParams = {
-        TableName: TABLE_NAME,
+        TableName: TABLE_NAMES.EXPENSES,
         Key: {
           userId,
           expenseId
@@ -121,7 +121,7 @@ exports.handler = async (event) => {
         ReturnValues: 'ALL_OLD'
       };
 
-      const deleteResult = await dynamoOperation('delete', deleteParams);
+      const deleteResult = await dynamodb.delete( deleteParams);
       const deletedExpense = deleteResult.Attributes;
 
       debugLog('Expense hard deleted successfully', { expenseId });

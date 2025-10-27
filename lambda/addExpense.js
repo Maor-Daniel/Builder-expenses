@@ -14,7 +14,8 @@ const {
   validateContractorExists,
   updateProjectSpentAmount,
   debugLog,
-  TABLE_NAMES
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -126,7 +127,7 @@ exports.handler = async (event) => {
     };
 
     try {
-      const duplicateCheck = await dynamodb.query(duplicateCheckParams).promise();
+      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
         return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
       }
@@ -142,7 +143,7 @@ exports.handler = async (event) => {
       ConditionExpression: 'attribute_not_exists(expenseId)' // Prevent overwrites
     };
 
-    await dynamodb.put(putParams).promise();
+    await dynamoOperation('put', putParams);
 
     // Update project's SpentAmount
     try {

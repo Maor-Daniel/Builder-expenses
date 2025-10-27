@@ -6,10 +6,11 @@ const {
   createErrorResponse,
   getUserIdFromEvent,
   getCurrentTimestamp,
+  dynamodb,
   debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  TABLE_NAMES,
+  dynamoOperation
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
   debugLog('deleteContractor event received', event);
@@ -35,10 +36,10 @@ exports.handler = async (event) => {
 
     // First, verify that the contractor exists and belongs to the user
     const getParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.CONTRACTORS,
       Key: {
         userId,
-        expenseId: contractorId // Contractors use expenseId as sort key for table compatibility
+        contractorId
       }
     };
 
@@ -62,15 +63,12 @@ exports.handler = async (event) => {
 
     // Check if contractor has associated expenses
     const expensesCheckParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.EXPENSES,
       KeyConditionExpression: 'userId = :userId',
-      FilterExpression: '#contractor = :contractorName AND attribute_not_exists(projectId) AND attribute_not_exists(contractorId)',
-      ExpressionAttributeNames: {
-        '#contractor': 'contractor'
-      },
+      FilterExpression: 'contractorId = :contractorId',
       ExpressionAttributeValues: {
         ':userId': userId,
-        ':contractorName': existingContractor.name
+        ':contractorId': contractorId
       }
     };
 
@@ -88,12 +86,12 @@ exports.handler = async (event) => {
 
     // Delete the contractor
     const deleteParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.CONTRACTORS,
       Key: {
         userId,
-        expenseId: contractorId
+        contractorId
       },
-      ConditionExpression: 'attribute_exists(expenseId)',
+      ConditionExpression: 'attribute_exists(contractorId)',
       ReturnValues: 'ALL_OLD'
     };
 

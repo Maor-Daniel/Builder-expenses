@@ -6,10 +6,10 @@ const {
   createErrorResponse,
   getUserIdFromEvent,
   getCurrentTimestamp,
+  dynamodb,
   debugLog,
-  dynamoOperation,
-  TABLE_NAME
-} = require('./shared/utils');
+  TABLE_NAMES.WORKSS
+} = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
   debugLog('deleteWork event received', event);
@@ -35,16 +35,16 @@ exports.handler = async (event) => {
 
     // First, verify that the work exists and belongs to the user
     const getParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.WORKS,
       Key: {
         userId,
-        expenseId: workId // Works use expenseId as sort key for table compatibility
+        workId // Works use expenseId as sort key for table compatibility
       }
     };
 
     let existingWork;
     try {
-      const getResult = await dynamoOperation('get', getParams);
+      const getResult = await dynamodb.get( getParams);
       existingWork = getResult.Item;
       
       if (!existingWork || !existingWork.workId) {
@@ -63,7 +63,7 @@ exports.handler = async (event) => {
 
     // Check if work has associated expenses
     const expensesCheckParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.WORKS,
       KeyConditionExpression: 'userId = :userId',
       FilterExpression: '#workId = :workId AND attribute_not_exists(projectId) AND attribute_not_exists(contractorId) AND attribute_not_exists(workId)',
       ExpressionAttributeNames: {
@@ -91,7 +91,7 @@ exports.handler = async (event) => {
         // Remove work association from expenses (don't delete the expenses)
         const updatePromises = expensesCheck.Items.map(expense => {
           const updateParams = {
-            TableName: TABLE_NAME,
+            TableName: TABLE_NAMES.WORKS,
             Key: {
               userId: expense.userId,
               expenseId: expense.expenseId
@@ -111,16 +111,16 @@ exports.handler = async (event) => {
 
     // Delete the work
     const deleteParams = {
-      TableName: TABLE_NAME,
+      TableName: TABLE_NAMES.WORKS,
       Key: {
         userId,
-        expenseId: workId
+        workId
       },
       ConditionExpression: 'attribute_exists(expenseId)',
       ReturnValues: 'ALL_OLD'
     };
 
-    const deleteResult = await dynamoOperation('delete', deleteParams);
+    const deleteResult = await dynamodb.delete( deleteParams);
     const deletedWork = deleteResult.Attributes;
 
     debugLog('Work deleted successfully', { workId });
