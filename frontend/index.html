@@ -2433,8 +2433,11 @@
         // API Data Functions
         async function loadExpenses() {
             try {
+                console.log('Loading expenses from API...');
                 const result = await apiCall('/expenses');
-                originalMockData = result.items || [];
+                console.log('Expenses API result:', result);
+                originalMockData = result.data?.expenses || result.items || [];
+                console.log('Expenses after assignment:', originalMockData, 'isArray:', Array.isArray(originalMockData));
                 mockData = [...originalMockData];
                 
                 // Refresh works display when expenses are loaded
@@ -2460,8 +2463,9 @@
                 console.log('Loading projects from API...');
                 const result = await apiCall('/projects');
                 console.log('Projects API result:', result);
-                projects = result.data || result.items || [];
-                console.log('Projects after assignment:', projects);
+                console.log('result.data?.projects type:', typeof result.data?.projects, 'isArray:', Array.isArray(result.data?.projects));
+                projects = result.data?.projects || result.data || result.items || [];
+                console.log('Projects after assignment:', projects, 'type:', typeof projects, 'isArray:', Array.isArray(projects));
                 return projects;
             } catch (error) {
                 console.warn('Failed to load projects from API:', error);
@@ -2479,8 +2483,11 @@
         
         async function loadContractors() {
             try {
+                console.log('Loading contractors from API...');
                 const result = await apiCall('/contractors');
-                contractors = result.data || result.items || [];
+                console.log('Contractors API result:', result);
+                contractors = result.data?.contractors || result.data || result.items || [];
+                console.log('Contractors after assignment:', contractors, 'isArray:', Array.isArray(contractors));
                 return contractors;
             } catch (error) {
                 console.warn('Failed to load contractors from API:', error);
@@ -2709,6 +2716,40 @@
         function renderProjectsGrid() {
             const grid = document.getElementById('projectsGrid');
             
+            // DEBUG: Log what projects contains
+            console.log('🔍 renderProjectsGrid: projects variable:', projects, 'type:', typeof projects, 'isArray:', Array.isArray(projects));
+            
+            // Comprehensive safety check for all arrays
+        function ensureArraysInitialized() {
+            if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array, resetting to empty array');
+                projects = [];
+            }
+            if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array, resetting to empty array');
+                contractors = [];
+            }
+            if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array, resetting to empty array');
+                originalMockData = [];
+            }
+            if (!Array.isArray(mockData)) {
+                console.warn('🚨 mockData is not an array, resetting to empty array');
+                mockData = [];
+            }
+            if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array, resetting to empty array');
+                works = [];
+            }
+        }
+
+        // Safety check: ensure projects is an array
+            ensureArraysInitialized();
+            if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array, resetting to empty array');
+                projects = [];
+            }
+            
             if (!projects || projects.length === 0) {
                 grid.innerHTML = '<p class="no-data">אין פרויקטים במערכת. לחץ על "יצירת פרויקט חדש" כדי להוסיף פרויקט.</p>';
                 return;
@@ -2847,6 +2888,12 @@
             grid.style.display = 'none';
             detailsView.style.display = 'block';
             
+            // Safety check: ensure originalMockData is an array
+            if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array in showProjectDetails, resetting');
+                originalMockData = [];
+            }
+            
             // Get project data
             const projectExpenses = originalMockData.filter(expense => expense.project === projectName);
             const totalAmount = projectExpenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -2879,6 +2926,12 @@
                 <h3 style="margin-bottom: 15px; color: #2d3748;">קבלנים בפרויקט:</h3>
                 <div style="margin-bottom: 25px;">
             `;
+            
+            // Safety check: ensure contractors array is valid
+            if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array in showProjectDetails, resetting');
+                contractors = [];
+            }
             
             contractors.forEach(contractor => {
                 const contractorExpenses = projectExpenses.filter(e => e.contractor === contractor);
@@ -3679,6 +3732,12 @@
         function populateNewExpenseProjectFilter() {
             const select = document.getElementById('newProjectName');
             
+            // Safety check: ensure projects is an array
+            if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateNewExpenseProjectFilter, resetting');
+                projects = [];
+            }
+            
             // Clear existing options except the first one
             select.innerHTML = '<option value="">בחר פרויקט</option>';
             
@@ -3708,6 +3767,16 @@
         function populateNewExpenseContractorFilter() {
             const select = document.getElementById('newContractorName');
             
+            // Safety checks: ensure arrays exist
+            if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array, resetting');
+                originalMockData = [];
+            }
+            if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array, resetting');
+                contractors = [];
+            }
+            
             // Get contractors from expenses
             const contractorNamesFromExpenses = [...new Set(originalMockData.map(expense => expense.contractor))];
             
@@ -3730,6 +3799,12 @@
 
         function populateNewExpenseWorkFilter() {
             const select = document.getElementById('newWorkName');
+            
+            // Safety check: ensure works is an array
+            if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array in populateNewExpenseWorkFilter, resetting');
+                works = [];
+            }
             
             // Clear existing options
             select.innerHTML = '<option value="">בחר עבודה (אופציונלי)</option>';
@@ -3869,10 +3944,16 @@
             const select = document.getElementById('workProject');
             select.innerHTML = '<option value="">בחר פרויקט</option>';
             
+            // Safety check: ensure projects is an array
+            if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateWorkProjectDropdown, resetting');
+                projects = [];
+            }
+            
             if (projects && projects.length > 0) {
                 projects.forEach(project => {
                     const option = document.createElement('option');
-                    option.value = project.name;
+                    option.value = project.projectId;  // Use projectId for API call
                     option.textContent = project.name;
                     select.appendChild(option);
                 });
@@ -3883,10 +3964,16 @@
             const select = document.getElementById('workContractor');
             select.innerHTML = '<option value="">בחר קבלן/ספק</option>';
             
+            // Safety check: ensure contractors is an array
+            if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array in populateWorkContractorDropdown, resetting');
+                contractors = [];
+            }
+            
             if (contractors && contractors.length > 0) {
                 contractors.forEach(contractor => {
                     const option = document.createElement('option');
-                    option.value = contractor.name;
+                    option.value = contractor.contractorId;  // Use contractorId for API call
                     option.textContent = contractor.name;
                     select.appendChild(option);
                 });
@@ -3940,6 +4027,12 @@
                 description: document.getElementById('workDescription').value.trim(),
                 status: 'planned' // Default status for new works
             };
+
+            // DEBUG: Log the work data being sent
+            console.log('🔍 DEBUG: Work data being sent:', JSON.stringify(workData, null, 2));
+            console.log('🔍 DEBUG: projectId type:', typeof workData.projectId, 'value:', workData.projectId);
+            console.log('🔍 DEBUG: contractorId type:', typeof workData.contractorId, 'value:', workData.contractorId);
+            console.log('🔍 DEBUG: TotalWorkCost type:', typeof workData.TotalWorkCost, 'value:', workData.TotalWorkCost);
 
             // Validate required fields
             const missingFields = [];
@@ -4014,6 +4107,18 @@
 
         function renderContractorsGrid() {
             const grid = document.getElementById('contractorsGrid');
+            
+            // Safety check: ensure contractors is an array
+            if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array in renderContractorsGrid, resetting');
+                contractors = [];
+            }
+            
+            // Safety check: ensure originalMockData is an array
+            if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array in renderContractorsGrid, resetting');
+                originalMockData = [];
+            }
             
             if (contractors.length === 0) {
                 grid.innerHTML = '<p class="no-data">אין קבלנים/ספקים במערכת. לחץ על "הוספת קבלן/ספק חדש" כדי להוסיף קבלן/ספק.</p>';
@@ -4215,6 +4320,12 @@
         function renderWorksGrid() {
             const grid = document.getElementById('worksGrid');
             
+            // Safety check: ensure works is an array
+            if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array in renderWorksGrid, resetting');
+                works = [];
+            }
+            
             if (works.length === 0) {
                 grid.innerHTML = '<p class="no-data">אין עבודות במערכת. לחץ על "הוספת עבודה חדשה" כדי להוסיף עבודה.</p>';
                 return;
@@ -4274,8 +4385,11 @@
 
         async function loadWorks() {
             try {
+                console.log('Loading works from API...');
                 const result = await apiCall('/works');
-                works = result.items || [];
+                console.log('Works API result:', result);
+                works = result.data?.works || result.items || [];
+                console.log('Works after assignment:', works, 'isArray:', Array.isArray(works));
                 return works;
             } catch (error) {
                 console.warn('Failed to load works from API:', error);
@@ -4511,6 +4625,12 @@
         function populateProjectFilter() {
             const select = document.getElementById('projectFilter');
             
+            // Safety check: ensure projects is an array
+            if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateProjectFilter, resetting');
+                projects = [];
+            }
+            
             // Clear existing options except the first one
             select.innerHTML = '<option value="">כל הפרויקטים</option>';
             
@@ -4739,6 +4859,12 @@
         
         async function deleteProject(projectName) {
             if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה? זה ימחק גם את כל ההוצאות שלו.')) {
+                // Safety check: ensure projects is an array
+                if (!Array.isArray(projects)) {
+                    console.warn('🚨 projects is not an array in deleteProject, resetting');
+                    projects = [];
+                }
+                
                 // Find project by name to get ID
                 const project = projects.find(p => p.name === projectName);
                 if (!project) {
@@ -4770,6 +4896,12 @@
         
         async function deleteContractor(contractorName) {
             if (confirm('האם אתה בטוח שברצונך למחוק קבלן זה?')) {
+                // Safety check: ensure contractors is an array
+                if (!Array.isArray(contractors)) {
+                    console.warn('🚨 contractors is not an array in deleteContractor, resetting');
+                    contractors = [];
+                }
+                
                 // Find contractor by name to get ID
                 const contractor = contractors.find(c => c.name === contractorName);
                 if (!contractor) {
