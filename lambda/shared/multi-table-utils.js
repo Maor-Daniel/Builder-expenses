@@ -2,39 +2,22 @@
 // Multi-table utilities for Lambda functions
 
 const AWS = require('aws-sdk');
-const { mockMultiTableDB } = require('./multi-table-mock-db');
 
-// Configure AWS SDK for local development
-const isLocal = process.env.NODE_ENV === 'development' || process.env.IS_LOCAL === 'true';
-
-const dynamoConfig = isLocal ? {
-  region: 'localhost',
-  endpoint: 'http://localhost:8001',
-  accessKeyId: 'fakeMyKeyId',
-  secretAccessKey: 'fakeSecretAccessKey'
-} : {
+// Always use real AWS DynamoDB - no mock databases
+const dynamoConfig = {
   region: process.env.AWS_REGION || 'us-east-1'
 };
 
-// Use mock DB if no real DynamoDB is available, otherwise use AWS SDK
-let dynamodb;
-try {
-  dynamodb = isLocal ? mockMultiTableDB : new AWS.DynamoDB.DocumentClient(dynamoConfig);
-  if (isLocal) {
-    console.log('🎭 Using Multi-Table Mock Database');
-  }
-} catch (error) {
-  dynamodb = mockMultiTableDB;
-  console.log('🎭 Falling back to Multi-Table Mock Database');
-}
+// Initialize DynamoDB client - always real AWS
+const dynamodb = new AWS.DynamoDB.DocumentClient(dynamoConfig);
 
-// Table names - hardcoded for now (bypassing KMS environment variable encryption issue)
+// Table names - always production tables
 const TABLE_NAMES = {
-  USERS: isLocal ? 'construction-expenses-local-users' : 'construction-expenses-multi-table-users',
-  PROJECTS: isLocal ? 'construction-expenses-local-projects' : 'construction-expenses-multi-table-projects',
-  CONTRACTORS: isLocal ? 'construction-expenses-local-contractors' : 'construction-expenses-multi-table-contractors',
-  EXPENSES: isLocal ? 'construction-expenses-local-expenses' : 'construction-expenses-multi-table-expenses',
-  WORKS: isLocal ? 'construction-expenses-local-works' : 'construction-expenses-multi-table-works'
+  USERS: 'construction-expenses-multi-table-users',
+  PROJECTS: 'construction-expenses-multi-table-projects',
+  CONTRACTORS: 'construction-expenses-multi-table-contractors',
+  EXPENSES: 'construction-expenses-multi-table-expenses',
+  WORKS: 'construction-expenses-multi-table-works'
 };
 
 /**
@@ -64,12 +47,7 @@ function createErrorResponse(statusCode, message, error = null) {
     timestamp: new Date().toISOString()
   };
   
-  if (error && isLocal) {
-    body.debug = {
-      stack: error.stack,
-      details: error.message
-    };
-  }
+  // No debug info in production
   
   return createResponse(statusCode, body);
 }
@@ -210,12 +188,10 @@ function getCurrentTimestamp() {
 }
 
 /**
- * Log debug information (only in local development)
+ * Log debug information
  */
 function debugLog(message, data = null) {
-  if (isLocal) {
-    console.log(`[DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
-  }
+  console.log(`[DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
 /**
@@ -315,7 +291,6 @@ async function updateProjectSpentAmount(userId, projectId, amountChange) {
 module.exports = {
   dynamodb,
   TABLE_NAMES,
-  isLocal,
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
