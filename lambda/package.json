@@ -1,0 +1,7 @@
+{
+  "name": "lambda-function",
+  "version": "1.0.0",
+  "dependencies": {
+    "aws-sdk": "^2.1498.0"
+  }
+}
