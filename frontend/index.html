@@ -3705,7 +3705,7 @@
                 const selectedWork = works.find(work => work.workId === selectedWorkId);
                 if (selectedWork) {
                     formData.workId = selectedWorkId;
-                    formData.workName = selectedWork.name;
+                    formData.workName = selectedWork.WorkName || selectedWork.name || 'ללא שם';
                 }
             }
 
@@ -3873,8 +3873,31 @@
                 works.forEach(work => {
                     const option = document.createElement('option');
                     option.value = work.workId;
-                    option.textContent = `${work.name} - ${work.project}`;
-                    option.setAttribute('data-contractor', work.contractor);
+                    
+                    // Use the correct field names based on API response structure
+                    const workName = work.WorkName || work.name || 'ללא שם';
+                    
+                    // Resolve project and contractor names from IDs if needed
+                    let projectName = work.projectName || work.project;
+                    let contractorName = work.contractorName || work.contractor;
+                    
+                    // If enhanced names are missing, resolve from IDs
+                    if (!projectName && work.projectId) {
+                        const project = projects.find(p => p.projectId === work.projectId);
+                        projectName = project ? project.name : `Project ${work.projectId}`;
+                    } else if (!projectName) {
+                        projectName = 'לא זוהה';
+                    }
+                    
+                    if (!contractorName && work.contractorId) {
+                        const contractor = contractors.find(c => c.contractorId === work.contractorId);
+                        contractorName = contractor ? contractor.name : `Contractor ${work.contractorId}`;
+                    } else if (!contractorName) {
+                        contractorName = 'לא זוהה';
+                    }
+                    
+                    option.textContent = `${workName} - ${projectName}`;
+                    option.setAttribute('data-contractor', contractorName);
                     select.appendChild(option);
                 });
             }
