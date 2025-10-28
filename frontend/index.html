@@ -2800,9 +2800,17 @@
             
             // Group expenses by project (if any expenses exist)
             originalMockData.forEach(expense => {
-                if (!projectsWithExpenses[expense.project]) {
-                    projectsWithExpenses[expense.project] = {
-                        name: expense.project,
+                // Resolve project and contractor names from IDs
+                const projectName = expense.project || (expense.projectId ? 
+                    (projects.find(p => p.projectId === expense.projectId)?.name || `Project ${expense.projectId}`) : 
+                    'Unknown Project');
+                const contractorName = expense.contractor || (expense.contractorId ? 
+                    (contractors.find(c => c.contractorId === expense.contractorId)?.name || `Contractor ${expense.contractorId}`) : 
+                    'Unknown Contractor');
+                
+                if (!projectsWithExpenses[projectName]) {
+                    projectsWithExpenses[projectName] = {
+                        name: projectName,
                         totalAmount: 0,
                         expenseCount: 0,
                         expenses: [],
@@ -2812,11 +2820,11 @@
                     };
                 }
                 
-                const project = projectsWithExpenses[expense.project];
-                project.totalAmount += expense.amount;
+                const project = projectsWithExpenses[projectName];
+                project.totalAmount += parseFloat(expense.amount) || 0;
                 project.expenseCount++;
                 project.expenses.push(expense);
-                project.contractors.add(expense.contractor);
+                project.contractors.add(contractorName);
                 project.statuses.add(expense.status);
                 
                 // Update date range
@@ -3662,9 +3670,17 @@
                 }
             }
 
+            // DEBUG: Check dropdown values before creating formData
+            const projectDropdown = document.getElementById('newProjectName');
+            const contractorDropdown = document.getElementById('newContractorName');
+            console.log('🔍 DEBUG: Project dropdown value:', projectDropdown.value);
+            console.log('🔍 DEBUG: Contractor dropdown value:', contractorDropdown.value);
+            console.log('🔍 DEBUG: Project dropdown options:', Array.from(projectDropdown.options).map(o => ({value: o.value, text: o.textContent})));
+            console.log('🔍 DEBUG: Contractor dropdown options:', Array.from(contractorDropdown.options).map(o => ({value: o.value, text: o.textContent})));
+            
             const formData = {
-                projectId: document.getElementById('newProjectName').value,
-                contractorId: document.getElementById('newContractorName').value,
+                projectId: projectDropdown.value,
+                contractorId: contractorDropdown.value,
                 invoiceNum: document.getElementById('newInvoiceNumber').value,
                 amount: parseFloat(document.getElementById('newExpenseAmount').value),
                 paymentTerms: document.getElementById('newPaymentTerms').value,
@@ -3679,6 +3695,9 @@
                     type: 'image/png'
                 } : null
             };
+
+            // DEBUG: Log the complete form data
+            console.log('🔍 DEBUG: Complete formData being sent:', JSON.stringify(formData, null, 2));
 
             // Add work information if selected
             const selectedWorkId = document.getElementById('newWorkName').value;
@@ -3773,6 +3792,9 @@
         function populateNewExpenseProjectFilter() {
             const select = document.getElementById('newProjectName');
             
+            // DEBUG: Log projects data when populating dropdown
+            console.log('🔍 DEBUG: populateNewExpenseProjectFilter called with projects:', projects, 'length:', projects?.length);
+            
             // Safety check: ensure projects is an array
             if (!Array.isArray(projects)) {
                 console.warn('🚨 projects is not an array in populateNewExpenseProjectFilter, resetting');
@@ -3807,6 +3829,9 @@
 
         function populateNewExpenseContractorFilter() {
             const select = document.getElementById('newContractorName');
+            
+            // DEBUG: Log contractors data when populating dropdown
+            console.log('🔍 DEBUG: populateNewExpenseContractorFilter called with contractors:', contractors, 'length:', contractors?.length);
             
             // Safety checks: ensure arrays exist
             if (!Array.isArray(originalMockData)) {
@@ -4200,9 +4225,10 @@
             }
 
             // Get all expenses for this contractor
-            const contractorExpenses = originalMockData.filter(expense => 
-                expense.contractor === contractor.name
-            );
+            const contractorExpenses = originalMockData.filter(expense => {
+                // Support both old format (expense.contractor) and new format (expense.contractorId)
+                return expense.contractor === contractor.name || expense.contractorId === contractorId;
+            });
             
             const totalPaid = contractorExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
             const paidExpenses = contractorExpenses.filter(expense => expense.status === 'paid');
@@ -4247,7 +4273,7 @@
                     html += `
                         <div class="expense-item">
                             <div class="expense-header">
-                                <div class="expense-project">${expense.project}</div>
+                                <div class="expense-project">${expense.project || (expense.projectId ? (projects.find(p => p.projectId === expense.projectId)?.name || `Project ${expense.projectId}`) : 'Unknown Project')}</div>
                                 <div class="expense-amount">${formatCurrency(expense.amount)}</div>
                             </div>
                             <div class="expense-details">
@@ -4372,9 +4398,24 @@
                 const workCost = work.TotalWorkCost || work.cost || 0;
                 const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
                 
-                // Use the enhanced project and contractor names from the API
-                const projectName = work.projectName || 'לא זוהה';
-                const contractorName = work.contractorName || 'לא זוהה';
+                // Use enhanced names from API, or resolve from IDs as fallback
+                let projectName = work.projectName;
+                let contractorName = work.contractorName;
+                
+                // If enhanced names are missing, resolve from IDs
+                if (!projectName && work.projectId) {
+                    const project = projects.find(p => p.projectId === work.projectId);
+                    projectName = project ? project.name : 'לא זוהה';
+                } else if (!projectName) {
+                    projectName = 'לא זוהה';
+                }
+                
+                if (!contractorName && work.contractorId) {
+                    const contractor = contractors.find(c => c.contractorId === work.contractorId);
+                    contractorName = contractor ? contractor.name : 'לא זוהה';
+                } else if (!contractorName) {
+                    contractorName = 'לא זוהה';
+                }
                 
                 html += `
                     <div class="work-card" onclick="showWorkDetails('${work.workId}')">
@@ -4495,10 +4536,18 @@
             const paidExpenses = workExpenses.filter(expense => expense.status === 'paid');
             const pendingExpenses = workExpenses.filter(expense => expense.status !== 'paid');
 
+            // Resolve project and contractor names from IDs if needed
+            const projectName = work.project || (work.projectId ? 
+                (projects.find(p => p.projectId === work.projectId)?.name || `Project ${work.projectId}`) : 
+                'Unknown Project');
+            const contractorName = work.contractor || (work.contractorId ? 
+                (contractors.find(c => c.contractorId === work.contractorId)?.name || `Contractor ${work.contractorId}`) : 
+                'Unknown Contractor');
+
             // Update modal title
             document.getElementById('workModalTitle').textContent = work.name;
             document.getElementById('workModalSubtitle').textContent = 
-                `פרויקט: ${work.project} • קבלן: ${work.contractor}`;
+                `פרויקט: ${projectName} • קבלן: ${contractorName}`;
 
             // Generate modal body content
             let html = `
