@@ -1,132 +1,181 @@
-// lambda/addContractor.js
-// Add a new contractor with multi-table architecture
+// lambda/addExpense.js
+// Add a new expense with multi-table architecture
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
-  validateContractor,
-  generateContractorId,
+  validateExpense,
+  generateExpenseId,
   getCurrentTimestamp,
   dynamodb,
+  isLocal,
+  validateProjectExists,
+  validateContractorExists,
+  updateProjectSpentAmount,
+  debugLog,
   TABLE_NAMES,
   dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  console.log('addContractor event received:', JSON.stringify(event, null, 2));
+  debugLog('addExpense event received', event);
 
   try {
-    console.log('Getting user ID...');
-    // Get user ID from event context
-    const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
-
-    console.log('Parsing request body...');
-    // Parse request body
-    let contractorData;
+    // Get user ID from event context or use default for single user app
+    let userId;
     try {
-      contractorData = JSON.parse(event.body || '{}');
-      console.log('JSON parsing successful');
+      userId = getUserIdFromEvent(event);
+    } catch (error) {
+      // For single user app, use a default user ID
+      userId = 'default-user';
+    }
+    debugLog('User ID', userId);
+
+    // Parse request body
+    let expenseData;
+    try {
+      expenseData = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      console.log('JSON parsing failed:', parseError);
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    console.log('Contractor data received:', contractorData);
-    console.log('About to start validation...');
+    debugLog('Expense data received', expenseData);
 
-    // Validate contractor data
-    console.log('Starting validation...');
+    // Validate expense data
     try {
-      validateContractor(contractorData);
-      console.log('Validation passed');
+      validateExpense(expenseData);
     } catch (validationError) {
-      console.log('Validation failed:', validationError.message);
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
-    // Check for duplicate contractor name - using scan for now
-    console.log('Starting duplicate check...');
+    // Generate expense ID and timestamps
+    const expenseId = generateExpenseId();
+    const timestamp = getCurrentTimestamp();
+
+    // Validate foreign key relationships
+    try {
+      await validateProjectExists(userId, expenseData.projectId);
+      await validateContractorExists(userId, expenseData.contractorId);
+    } catch (fkError) {
+      return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
+    }
+
+    // Create expense object with multi-table structure
+    const expense = {
+      userId,
+      expenseId,
+      projectId: expenseData.projectId.trim(),
+      contractorId: expenseData.contractorId.trim(),
+      invoiceNum: expenseData.invoiceNum.trim(),
+      amount: parseFloat(expenseData.amount),
+      paymentMethod: expenseData.paymentMethod.trim(),
+      date: expenseData.date,
+      description: expenseData.description ? expenseData.description.trim() : '',
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    // Add optional file attachments with size validation
+    if (expenseData.receiptImage) {
+      const imageData = expenseData.receiptImage.data;
+      const imageSizeKB = Math.round(imageData.length * 0.75 / 1024); // Rough base64 to bytes conversion
+      
+      if (imageSizeKB > 300) { // Leave room for other data in 400KB limit
+        return createErrorResponse(400, `Receipt image too large (${imageSizeKB}KB). Please use an image smaller than 300KB.`);
+      }
+      
+      expense.receiptImage = {
+        name: expenseData.receiptImage.name,
+        data: imageData,
+        type: expenseData.receiptImage.type,
+        size: expenseData.receiptImage.size
+      };
+    }
+
+    // Add contractor signature if provided
+    if (expenseData.contractorSignature) {
+      const signatureData = expenseData.contractorSignature.data;
+      const signatureSizeKB = Math.round(signatureData.length * 0.75 / 1024); // Rough base64 to bytes conversion
+      
+      if (signatureSizeKB > 100) { // Signatures should be smaller
+        return createErrorResponse(400, `Signature too large (${signatureSizeKB}KB). Please use a smaller signature.`);
+      }
+      
+      expense.contractorSignature = {
+        name: expenseData.contractorSignature.name,
+        data: signatureData,
+        type: expenseData.contractorSignature.type,
+        size: expenseData.contractorSignature.size
+      };
+    }
+
+    // Additional business logic validation
+    if (expense.amount > 100000000) { // Increased limit to 100M for large construction projects
+      return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
+    }
+
+    // Check for duplicate invoice number using GSI
     const duplicateCheckParams = {
-      TableName: TABLE_NAMES.CONTRACTORS,
-      FilterExpression: 'userId = :userId AND #name = :name',
-      ExpressionAttributeNames: {
-        '#name': 'name'
-      },
+      TableName: TABLE_NAMES.EXPENSES,
+      IndexName: 'invoice-index',
+      KeyConditionExpression: 'userId = :userId AND invoiceNum = :invoiceNum',
       ExpressionAttributeValues: {
         ':userId': userId,
-        ':name': contractorData.name.trim()
+        ':invoiceNum': expense.invoiceNum
       }
     };
 
     try {
-      const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
-      console.log('Duplicate check completed:', duplicateCheck.Items.length, 'items found');
+      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Contractor with name "${contractorData.name}" already exists`);
+        return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
       }
     } catch (error) {
       console.error('Duplicate check failed:', error);
       // Continue but log the error
     }
 
-    // Generate contractor ID and timestamps
-    const contractorId = generateContractorId();
-    const timestamp = getCurrentTimestamp();
-
-    // Create contractor object with multi-table structure
-    const contractor = {
-      userId,
-      contractorId,
-      name: contractorData.name.trim(),
-      phone: contractorData.phone ? contractorData.phone.trim() : '',
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    console.log('Creating contractor:', contractor);
-
-    // Save to DynamoDB Contractors table
-    console.log('Preparing to save to DynamoDB...');
+    // Save to DynamoDB Expenses table
     const putParams = {
-      TableName: TABLE_NAMES.CONTRACTORS,
-      Item: contractor,
-      ConditionExpression: 'attribute_not_exists(contractorId)' // Prevent overwrites
+      TableName: TABLE_NAMES.EXPENSES,
+      Item: expense,
+      ConditionExpression: 'attribute_not_exists(expenseId)' // Prevent overwrites
     };
 
+    await dynamoOperation('put', putParams);
+
+    // Update project's SpentAmount
     try {
-      await dynamoOperation('put', putParams);
-      console.log('Contractor saved successfully:', { contractorId });
-    } catch (saveError) {
-      console.error('Error saving contractor:', saveError);
-      return createErrorResponse(500, 'Failed to save contractor to database');
+      await updateProjectSpentAmount(userId, expense.projectId, expense.amount);
+    } catch (updateError) {
+      console.error('Failed to update project SpentAmount:', updateError);
+      // Don't fail the expense creation for this
     }
 
-    console.log('About to create response...');
-    const response = createResponse(201, {
+    console.log('Expense saved successfully:', { expenseId });
+
+    return createResponse(201, {
       success: true,
-      message: 'Contractor added successfully',
+      message: 'Expense added successfully',
       data: {
-        contractor,
-        contractorId
+        expense,
+        expenseId
       },
       timestamp
     });
-    console.log('Response created:', JSON.stringify(response, null, 2));
-    return response;
 
   } catch (error) {
-    console.error('Error in addContractor:', error);
+    console.error('Error in addExpense:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
-      return createErrorResponse(409, 'Contractor with this ID already exists');
+      return createErrorResponse(409, 'Expense with this ID already exists');
     }
 
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');
     }
 
-    return createErrorResponse(500, 'Failed to add contractor', error);
+    return createErrorResponse(500, 'Failed to add expense', error);
   }
 };
