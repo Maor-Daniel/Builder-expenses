@@ -91,8 +91,8 @@ exports.handler = async (event) => {
     };
 
     // Additional business logic validation
-    if (updateFields.amount > 1000000) {
-      return createErrorResponse(400, 'Amount exceeds maximum limit (1,000,000)');
+    if (updateFields.amount > 100000000) { // Increased limit to 100M for large construction projects
+      return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
     }
 
     // Check for duplicate invoice number if invoice number is being changed
