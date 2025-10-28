@@ -8,7 +8,8 @@ const {
   getCurrentTimestamp,
   dynamodb,
   debugLog,
-  TABLE_NAMES.WORKSS
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -44,7 +45,7 @@ exports.handler = async (event) => {
 
     let existingWork;
     try {
-      const getResult = await dynamodb.get( getParams);
+      const getResult = await dynamoOperation('get', getParams);
       existingWork = getResult.Item;
       
       if (!existingWork || !existingWork.workId) {
@@ -97,7 +98,7 @@ exports.handler = async (event) => {
               expenseId: expense.expenseId
             },
             UpdateExpression: 'REMOVE workId, workName',
-            ConditionExpression: 'attribute_exists(expenseId)'
+            ConditionExpression: 'attribute_exists(workId)'
           };
           return dynamoOperation('update', updateParams);
         });
@@ -116,11 +117,11 @@ exports.handler = async (event) => {
         userId,
         workId
       },
-      ConditionExpression: 'attribute_exists(expenseId)',
+      ConditionExpression: 'attribute_exists(workId)',
       ReturnValues: 'ALL_OLD'
     };
 
-    const deleteResult = await dynamodb.delete( deleteParams);
+    const deleteResult = await dynamoOperation('delete', deleteParams);
     const deletedWork = deleteResult.Attributes;
 
     debugLog('Work deleted successfully', { workId });
