@@ -3663,8 +3663,8 @@
             }
 
             const formData = {
-                project: document.getElementById('newProjectName').value,
-                contractor: document.getElementById('newContractorName').value,
+                projectId: document.getElementById('newProjectName').value,
+                contractorId: document.getElementById('newContractorName').value,
                 invoiceNum: document.getElementById('newInvoiceNumber').value,
                 amount: parseFloat(document.getElementById('newExpenseAmount').value),
                 paymentTerms: document.getElementById('newPaymentTerms').value,
@@ -3691,7 +3691,7 @@
             }
 
             // Validate required fields
-            const requiredFields = ['project', 'contractor', 'invoiceNum', 'amount', 'paymentTerms', 'paymentMethod', 'date'];
+            const requiredFields = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentTerms', 'paymentMethod', 'date'];
             const missingFields = requiredFields.filter(field => !formData[field]);
             
             if (missingFields.length > 0) {
@@ -3786,7 +3786,7 @@
             if (projects && projects.length > 0) {
                 projects.forEach(project => {
                     const option = document.createElement('option');
-                    option.value = project.name;
+                    option.value = project.projectId;
                     option.textContent = project.name;
                     select.appendChild(option);
                 });
@@ -3818,24 +3818,18 @@
                 contractors = [];
             }
             
-            // Get contractors from expenses
-            const contractorNamesFromExpenses = [...new Set(originalMockData.map(expense => expense.contractor))];
-            
-            // Get contractors from contractors array
-            const contractorNamesFromList = contractors.map(contractor => contractor.name);
-            
-            // Combine and deduplicate
-            const allContractors = [...new Set([...contractorNamesFromExpenses, ...contractorNamesFromList])];
-            
             // Clear existing options except the first one
             select.innerHTML = '<option value="">בחר קבלן/ספק</option>';
             
-            allContractors.forEach(contractor => {
-                const option = document.createElement('option');
-                option.value = contractor;
-                option.textContent = contractor;
-                select.appendChild(option);
-            });
+            // Add contractors from contractors array (use contractorId as value)
+            if (contractors && contractors.length > 0) {
+                contractors.forEach(contractor => {
+                    const option = document.createElement('option');
+                    option.value = contractor.contractorId;
+                    option.textContent = contractor.name;
+                    select.appendChild(option);
+                });
+            }
         }
 
         function populateNewExpenseWorkFilter() {
@@ -4375,23 +4369,22 @@
                 // Calculate how much was paid from related expenses
                 const workExpenses = originalMockData.filter(expense => expense.workId === work.workId);
                 const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
-                const progressPercentage = work.cost > 0 ? Math.min((totalPaid / work.cost) * 100, 100) : 0;
+                const workCost = work.TotalWorkCost || work.cost || 0;
+                const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
                 
-                // Resolve project and contractor names from IDs
-                const project = projects.find(p => p.projectId === work.projectId);
-                const contractor = contractors.find(c => c.contractorId === work.contractorId);
-                const projectName = project ? project.name : 'לא זוהה';
-                const contractorName = contractor ? contractor.name : 'לא זוהה';
+                // Use the enhanced project and contractor names from the API
+                const projectName = work.projectName || 'לא זוהה';
+                const contractorName = work.contractorName || 'לא זוהה';
                 
                 html += `
                     <div class="work-card" onclick="showWorkDetails('${work.workId}')">
                         <div class="work-header">
                             <div>
-                                <div class="work-name">${work.name}</div>
+                                <div class="work-name">${work.WorkName || work.name || 'ללא שם'}</div>
                                 <div class="work-project">פרויקט: ${projectName}</div>
                                 <div class="work-contractor">קבלן: ${contractorName}</div>
                             </div>
-                            <div class="work-cost">${formatCurrency(work.cost)}</div>
+                            <div class="work-cost">${formatCurrency(workCost)}</div>
                             <button class="delete-button" style="position: absolute; top: 10px; left: 10px; z-index: 10;" onclick="event.stopPropagation(); deleteWork('${work.workId}')" title="מחק עבודה">🗑</button>
                         </div>
                         
