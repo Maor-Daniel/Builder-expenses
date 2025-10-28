@@ -2444,9 +2444,13 @@
             
             try {
                 console.log(`API Call: ${method} ${url}`);
+                console.log('Request data:', data);
+                console.log('Request options:', options);
                 const response = await fetch(url, options);
                 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`HTTP error! status: ${response.status}, response:`, errorText);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
@@ -4373,13 +4377,19 @@
                 const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
                 const progressPercentage = work.cost > 0 ? Math.min((totalPaid / work.cost) * 100, 100) : 0;
                 
+                // Resolve project and contractor names from IDs
+                const project = projects.find(p => p.projectId === work.projectId);
+                const contractor = contractors.find(c => c.contractorId === work.contractorId);
+                const projectName = project ? project.name : 'לא זוהה';
+                const contractorName = contractor ? contractor.name : 'לא זוהה';
+                
                 html += `
                     <div class="work-card" onclick="showWorkDetails('${work.workId}')">
                         <div class="work-header">
                             <div>
                                 <div class="work-name">${work.name}</div>
-                                <div class="work-project">פרויקט: ${work.project}</div>
-                                <div class="work-contractor">קבלן: ${work.contractor}</div>
+                                <div class="work-project">פרויקט: ${projectName}</div>
+                                <div class="work-contractor">קבלן: ${contractorName}</div>
                             </div>
                             <div class="work-cost">${formatCurrency(work.cost)}</div>
                             <button class="delete-button" style="position: absolute; top: 10px; left: 10px; z-index: 10;" onclick="event.stopPropagation(); deleteWork('${work.workId}')" title="מחק עבודה">🗑</button>

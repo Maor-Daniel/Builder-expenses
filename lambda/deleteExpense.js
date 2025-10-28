@@ -8,7 +8,8 @@ const {
   getCurrentTimestamp,
   dynamodb,
   debugLog,
-  TABLE_NAMES.EXPENSESS
+  TABLE_NAMES,
+  dynamoOperation
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
@@ -44,7 +45,7 @@ exports.handler = async (event) => {
 
     let existingExpense;
     try {
-      const getResult = await dynamodb.get( getParams);
+      const getResult = await dynamoOperation('get', getParams);
       existingExpense = getResult.Item;
       
       if (!existingExpense) {
@@ -94,7 +95,7 @@ exports.handler = async (event) => {
         ReturnValues: 'ALL_NEW'
       };
 
-      const updateResult = await dynamodb.update(updateParams).promise();
+      const updateResult = await dynamoOperation('update', updateParams);
       
       debugLog('Expense soft deleted successfully', { expenseId });
 
@@ -121,7 +122,7 @@ exports.handler = async (event) => {
         ReturnValues: 'ALL_OLD'
       };
 
-      const deleteResult = await dynamodb.delete( deleteParams);
+      const deleteResult = await dynamoOperation('delete', deleteParams);
       const deletedExpense = deleteResult.Attributes;
 
       debugLog('Expense hard deleted successfully', { expenseId });
