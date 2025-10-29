@@ -2107,7 +2107,7 @@
                                 <select id="newExpenseStatus" class="form-select">
                                     <option value="pending">ממתין</option>
                                     <option value="approved">מאושר</option>
-                                    <option value="paid">שולם</option>
+                                    <option value="paid" selected>שולם</option>
                                 </select>
                             </div>
                         </div>
@@ -2840,8 +2840,8 @@
             
             // First, show projects that have expenses
             Object.values(projectsWithExpenses).forEach(project => {
-                const pendingCount = project.expenses.filter(e => e.status === 'pending').length;
-                const paidCount = project.expenses.filter(e => e.status === 'paid').length;
+                const waitingAmount = calculateWaitingAmount(project.name);
+                const paidAmount = calculatePaidAmount(project.name);
                 
                 gridHtml += `
                     <div class="project-card">
@@ -2867,11 +2867,11 @@
                         
                         <div class="project-stats-grid" onclick="showProjectDetails('${project.name}')" style="cursor: pointer;">
                             <div class="stat-item">
-                                <div class="stat-number" style="color: #e53e3e;">${pendingCount}</div>
+                                <div class="stat-number" style="color: #e53e3e;">${formatCurrency(waitingAmount)}</div>
                                 <div class="stat-label">ממתין</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-number" style="color: #38a169;">${paidCount}</div>
+                                <div class="stat-number" style="color: #38a169;">${formatCurrency(paidAmount)}</div>
                                 <div class="stat-label">שולם</div>
                             </div>
                         </div>
@@ -2943,10 +2943,21 @@
                 originalMockData = [];
             }
             
-            // Get project data
-            const projectExpenses = originalMockData.filter(expense => expense.project === projectName);
-            const totalAmount = projectExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-            const contractors = [...new Set(projectExpenses.map(e => e.contractor))];
+            // Get project data - need to resolve project and contractor IDs to names
+            const projectExpenses = originalMockData.filter(expense => {
+                // Support both old format (expense.project) and new format (expense.projectId)
+                const expenseProjectName = expense.project || (expense.projectId ? 
+                    (projects.find(p => p.projectId === expense.projectId)?.name || expense.projectId) : 
+                    'Unknown Project');
+                return expenseProjectName === projectName;
+            });
+            const totalAmount = projectExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
+            const projectContractors = [...new Set(projectExpenses.map(e => {
+                // Support both old format (expense.contractor) and new format (expense.contractorId)
+                return e.contractor || (e.contractorId ? 
+                    (contractors.find(c => c.contractorId === e.contractorId)?.name || e.contractorId) : 
+                    'Unknown Contractor');
+            }))];
             
             let detailsHtml = `
                 <button class="back-button" onclick="backToProjectsGrid()">חזרה לרשימת פרויקטים</button>
@@ -2954,7 +2965,7 @@
                 <div class="project-header">
                     <div>
                         <h2 style="color: #2d3748; margin-bottom: 5px;">${projectName}</h2>
-                        <p style="color: #718096;">${projectExpenses.length} הוצאות • ${contractors.length} קבלנים</p>
+                        <p style="color: #718096;">${projectExpenses.length} הוצאות • ${projectContractors.length} קבלנים</p>
                     </div>
                     <div class="project-amount-large" style="margin: 0;">${formatCurrency(totalAmount)}</div>
                 </div>
@@ -2963,12 +2974,12 @@
                 
                 <div class="project-stats-grid" style="margin-bottom: 25px;">
                     <div class="stat-item">
-                        <div class="stat-number">${projectExpenses.filter(e => e.status === 'pending').length}</div>
-                        <div class="stat-label">הוצאות ממתינות</div>
+                        <div class="stat-number">${formatCurrency(calculateWaitingAmount(projectName))}</div>
+                        <div class="stat-label">ממתין תשלום</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number">${projectExpenses.filter(e => e.status === 'paid').length}</div>
-                        <div class="stat-label">הוצאות ששולמו</div>
+                        <div class="stat-number">${formatCurrency(calculatePaidAmount(projectName))}</div>
+                        <div class="stat-label">שולם</div>
                     </div>
                 </div>
                 
@@ -2976,14 +2987,20 @@
                 <div style="margin-bottom: 25px;">
             `;
             
-            // Safety check: ensure contractors array is valid
-            if (!Array.isArray(contractors)) {
-                console.warn('🚨 contractors is not an array in showProjectDetails, resetting');
-                contractors = [];
+            // Safety check: ensure projectContractors array is valid
+            if (!Array.isArray(projectContractors)) {
+                console.warn('🚨 projectContractors is not an array in showProjectDetails, resetting');
+                projectContractors = [];
             }
             
-            contractors.forEach(contractor => {
-                const contractorExpenses = projectExpenses.filter(e => e.contractor === contractor);
+            projectContractors.forEach(contractor => {
+                const contractorExpenses = projectExpenses.filter(e => {
+                    // Support both old format (e.contractor) and new format (e.contractorId)
+                    const expenseContractorName = e.contractor || (e.contractorId ? 
+                        (contractors.find(c => c.contractorId === e.contractorId)?.name || e.contractorId) : 
+                        'Unknown Contractor');
+                    return expenseContractorName === contractor;
+                });
                 const contractorTotal = contractorExpenses.reduce((sum, e) => sum + e.amount, 0);
                 
                 detailsHtml += `
@@ -3010,7 +3027,7 @@
                     <div class="expense-card">
                         <div class="expense-header">
                             <div style="display: flex; align-items: center; gap: 15px;">
-                                <div class="project-name" style="font-size: 1.1rem;">${expense.contractor}</div>
+                                <div class="project-name" style="font-size: 1.1rem;">${expense.contractor || (expense.contractorId ? (contractors.find(c => c.contractorId === expense.contractorId)?.name || expense.contractorId) : 'Unknown Contractor')}</div>
                                 <span class="status-badge status-${expense.status}">${expense.status === 'pending' ? 'ממתין' : 'שולם'}</span>
                             </div>
                             <div class="amount">${formatCurrency(expense.amount)}</div>
@@ -4210,8 +4227,12 @@
             
             contractors.forEach(contractor => {
                 // Calculate payment statistics
-                const contractorExpenses = originalMockData.filter(expense => expense.contractor === contractor.name);
-                const totalPaid = contractorExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+                const contractorExpenses = originalMockData.filter(expense => {
+                    // Support both old format (expense.contractor) and new format (expense.contractorId)
+                    return expense.contractor === contractor.name || expense.contractorId === contractor.contractorId;
+                });
+                
+                const totalPaid = contractorExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
                 const paymentCount = contractorExpenses.length;
                 
                 html += `
@@ -4388,6 +4409,69 @@
             }
         }
 
+        function calculateWaitingAmount(projectName) {
+            // Calculate waiting amount = (Total work amounts for project) - (Paid expenses associated with those works)
+            
+            // Get all works for this project
+            const projectWorks = works.filter(work => {
+                // Support both old format (work.project) and new format (work.projectId)
+                const workProjectName = work.project || (work.projectId ? 
+                    (projects.find(p => p.projectId === work.projectId)?.name || work.projectId) : 
+                    'Unknown Project');
+                return workProjectName === projectName;
+            });
+            
+            // Calculate total work amounts
+            const totalWorkAmount = projectWorks.reduce((sum, work) => {
+                const workCost = parseFloat(work.TotalWorkCost || work.cost || 0);
+                return sum + workCost;
+            }, 0);
+            
+            // Get all paid expenses associated with these works
+            const paidExpensesAmount = originalMockData
+                .filter(expense => {
+                    // Check if this expense is associated with any work in this project
+                    const expenseWorkId = expense.workId;
+                    if (!expenseWorkId) return false;
+                    
+                    // Check if this work belongs to our project
+                    const associatedWork = projectWorks.find(work => work.workId === expenseWorkId);
+                    return associatedWork && expense.status === 'paid';
+                })
+                .reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+            
+            // Return the waiting amount (unpaid work costs)
+            return Math.max(0, totalWorkAmount - paidExpensesAmount);
+        }
+
+        function calculatePaidAmount(projectName) {
+            // Calculate paid amount = Sum of paid expenses that are associated with works for this project
+            
+            // Get all works for this project
+            const projectWorks = works.filter(work => {
+                // Support both old format (work.project) and new format (work.projectId)
+                const workProjectName = work.project || (work.projectId ? 
+                    (projects.find(p => p.projectId === work.projectId)?.name || work.projectId) : 
+                    'Unknown Project');
+                return workProjectName === projectName;
+            });
+            
+            // Get all paid expenses associated with these works
+            const paidExpensesAmount = originalMockData
+                .filter(expense => {
+                    // Check if this expense is associated with any work in this project
+                    const expenseWorkId = expense.workId;
+                    if (!expenseWorkId) return false;
+                    
+                    // Check if this work belongs to our project
+                    const associatedWork = projectWorks.find(work => work.workId === expenseWorkId);
+                    return associatedWork && expense.status === 'paid';
+                })
+                .reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+            
+            return paidExpensesAmount;
+        }
+
         function hideContractorDetails() {
             document.getElementById('contractorDetails').style.display = 'none';
             document.getElementById('contractorsGrid').style.display = 'grid';
@@ -4554,8 +4638,9 @@
             // Get all expenses for this work
             const workExpenses = originalMockData.filter(expense => expense.workId === workId);
             const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
-            const remainingBudget = work.cost - totalPaid;
-            const progressPercentage = work.cost > 0 ? Math.min((totalPaid / work.cost) * 100, 100) : 0;
+            const workCost = parseFloat(work.TotalWorkCost || work.cost || 0);
+            const remainingBudget = workCost - totalPaid;
+            const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
             const paidExpenses = workExpenses.filter(expense => expense.status === 'paid');
             const pendingExpenses = workExpenses.filter(expense => expense.status !== 'paid');
 
@@ -4568,7 +4653,7 @@
                 'Unknown Contractor');
 
             // Update modal title
-            document.getElementById('workModalTitle').textContent = work.name;
+            document.getElementById('workModalTitle').textContent = work.WorkName || work.name || 'ללא שם';
             document.getElementById('workModalSubtitle').textContent = 
                 `פרויקט: ${projectName} • קבלן: ${contractorName}`;
 
@@ -4576,7 +4661,7 @@
             let html = `
                 <div class="work-summary-stats">
                     <div class="work-stat-card">
-                        <div class="work-stat-number">${formatCurrency(work.cost)}</div>
+                        <div class="work-stat-number">${formatCurrency(workCost)}</div>
                         <div class="work-stat-label">תקציב מוסכם</div>
                     </div>
                     <div class="work-stat-card">
