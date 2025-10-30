@@ -2102,14 +2102,6 @@
                                 <input type="date" id="newExpenseDate" class="form-input" required>
                             </div>
                             
-                            <div class="form-group">
-                                <label class="form-label" for="newExpenseStatus">סטטוס</label>
-                                <select id="newExpenseStatus" class="form-select">
-                                    <option value="pending">ממתין</option>
-                                    <option value="approved">מאושר</option>
-                                    <option value="paid" selected>שולם</option>
-                                </select>
-                            </div>
                         </div>
                         
                         <!-- File Upload Section -->
@@ -3028,7 +3020,7 @@
                         <div class="expense-header">
                             <div style="display: flex; align-items: center; gap: 15px;">
                                 <div class="project-name" style="font-size: 1.1rem;">${expense.contractor || (expense.contractorId ? (contractors.find(c => c.contractorId === expense.contractorId)?.name || expense.contractorId) : 'Unknown Contractor')}</div>
-                                <span class="status-badge status-${expense.status}">${expense.status === 'pending' ? 'ממתין' : 'שולם'}</span>
+                                <span class="status-badge status-${expense.status}">${getStatusText(expense.status)}</span>
                             </div>
                             <div class="amount">${formatCurrency(expense.amount)}</div>
                         </div>
@@ -3703,7 +3695,7 @@
                 paymentTerms: document.getElementById('newPaymentTerms').value,
                 paymentMethod: document.getElementById('newPaymentMethod').value,
                 date: document.getElementById('newExpenseDate').value,
-                status: document.getElementById('newExpenseStatus').value || 'pending',
+                status: 'paid', // All expenses are always paid
                 description: document.getElementById('newExpenseDescription').value || '',
                 receiptImage: receiptImage,
                 contractorSignature: savedSignature ? {
@@ -4275,8 +4267,8 @@
             });
             
             const totalPaid = contractorExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-            const paidExpenses = contractorExpenses.filter(expense => expense.status === 'paid');
-            const pendingExpenses = contractorExpenses.filter(expense => expense.status !== 'paid');
+            const paidExpenses = contractorExpenses; // All expenses are considered paid
+            const pendingExpenses = []; // No pending expenses since all are paid
 
             // Update modal title
             document.getElementById('contractorModalTitle').textContent = contractor.name;
@@ -4390,13 +4382,8 @@
         }
 
         function getStatusText(status) {
-            switch (status) {
-                case 'paid': return 'שולם';
-                case 'pending': return 'ממתין';
-                case 'approved': return 'מאושר';
-                case 'rejected': return 'נדחה';
-                default: return status || 'לא ידוע';
-            }
+            // All expenses are always paid
+            return 'שולם';
         }
 
         function getPaymentMethodText(method) {
@@ -4427,7 +4414,7 @@
                 return sum + workCost;
             }, 0);
             
-            // Get all paid expenses associated with these works
+            // Get all expenses associated with these works (all expenses are considered paid)
             const paidExpensesAmount = originalMockData
                 .filter(expense => {
                     // Check if this expense is associated with any work in this project
@@ -4436,7 +4423,7 @@
                     
                     // Check if this work belongs to our project
                     const associatedWork = projectWorks.find(work => work.workId === expenseWorkId);
-                    return associatedWork && expense.status === 'paid';
+                    return associatedWork; // All expenses are paid, no need to check status
                 })
                 .reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
             
@@ -4445,31 +4432,21 @@
         }
 
         function calculatePaidAmount(projectName) {
-            // Calculate paid amount = Sum of paid expenses that are associated with works for this project
+            // Calculate total amount of ALL expenses for this project (all expenses are considered paid)
             
-            // Get all works for this project
-            const projectWorks = works.filter(work => {
-                // Support both old format (work.project) and new format (work.projectId)
-                const workProjectName = work.project || (work.projectId ? 
-                    (projects.find(p => p.projectId === work.projectId)?.name || work.projectId) : 
+            // Get all expenses for this project
+            const projectExpenses = originalMockData.filter(expense => {
+                // Support both old format (expense.project) and new format (expense.projectId)
+                const expenseProjectName = expense.project || (expense.projectId ? 
+                    (projects.find(p => p.projectId === expense.projectId)?.name || expense.projectId) : 
                     'Unknown Project');
-                return workProjectName === projectName;
+                return expenseProjectName === projectName;
             });
             
-            // Get all paid expenses associated with these works
-            const paidExpensesAmount = originalMockData
-                .filter(expense => {
-                    // Check if this expense is associated with any work in this project
-                    const expenseWorkId = expense.workId;
-                    if (!expenseWorkId) return false;
-                    
-                    // Check if this work belongs to our project
-                    const associatedWork = projectWorks.find(work => work.workId === expenseWorkId);
-                    return associatedWork && expense.status === 'paid';
-                })
-                .reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+            // Sum all expenses (all are considered paid)
+            const totalAmount = projectExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
             
-            return paidExpensesAmount;
+            return totalAmount;
         }
 
         function hideContractorDetails() {
@@ -4641,8 +4618,8 @@
             const workCost = parseFloat(work.TotalWorkCost || work.cost || 0);
             const remainingBudget = workCost - totalPaid;
             const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
-            const paidExpenses = workExpenses.filter(expense => expense.status === 'paid');
-            const pendingExpenses = workExpenses.filter(expense => expense.status !== 'paid');
+            const paidExpenses = workExpenses; // All expenses are considered paid
+            const pendingExpenses = []; // No pending expenses since all are paid
 
             // Resolve project and contractor names from IDs if needed
             const projectName = work.project || (work.projectId ? 
@@ -4981,7 +4958,7 @@
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">סטטוס:</span>
-                                <span class="status-badge status-${expense.status}">${expense.status === 'pending' ? 'ממתין' : 'שולם'}</span>
+                                <span class="status-badge status-${expense.status}">${getStatusText(expense.status)}</span>
                             </div>
                         </div>
                         ${expense.description ? `<p style="margin-top: 10px; color: #666;"><strong>תיאור:</strong> ${expense.description}</p>` : ''}
