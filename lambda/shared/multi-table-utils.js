@@ -54,23 +54,31 @@ function createErrorResponse(statusCode, message, error = null) {
 
 /**
  * Get user ID from event context
+ * Supports both test mode and Cognito authentication
  */
 function getUserIdFromEvent(event) {
-  // For now, always use test user ID (authentication disabled)
-  return 'test-user-123';
+  // Check if Cognito authentication is enabled via environment variable
+  const authEnabled = process.env.COGNITO_AUTH_ENABLED === 'true';
   
-  // TODO: Re-enable authentication later
-  // In local development, use test user ID
-  // if (isLocal) {
-  //   return 'test-user-123';
-  // }
-  // 
-  // // In production, get from Cognito authorizer
-  // if (event.requestContext?.authorizer?.claims?.sub) {
-  //   return event.requestContext.authorizer.claims.sub;
-  // }
-  // 
-  // throw new Error('User ID not found in event context');
+  if (!authEnabled) {
+    // Test mode: use hardcoded test user ID
+    console.log('Using test mode authentication');
+    return 'test-user-123';
+  }
+  
+  // Production mode: extract user ID from Cognito JWT token
+  console.log('Using Cognito authentication');
+  
+  if (event.requestContext?.authorizer?.claims?.sub) {
+    const userId = event.requestContext.authorizer.claims.sub;
+    const userEmail = event.requestContext.authorizer.claims.email;
+    console.log(`Authenticated user: ${userId} (${userEmail})`);
+    return userId;
+  }
+  
+  // If no valid token found, throw authentication error
+  console.error('No valid Cognito token found in event context');
+  throw new Error('User ID not found in event context - authentication required');
 }
 
 /**

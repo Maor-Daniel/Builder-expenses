@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מערכת מעקב הוצאות בניה</title>
+    
+    <!-- AWS Cognito SDK -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1498.0.min.js"></script>
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1982,10 +1986,95 @@
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 10px;
         }
+        
+        /* Authentication Styles */
+        #authContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        
+        .auth-modal {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .auth-modal h2 {
+            margin-bottom: 30px;
+            color: #2d3748;
+        }
+        
+        .auth-button {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+        }
+        
+        .user-bar {
+            background: #f7fafc;
+            padding: 10px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .logout-btn:hover {
+            background: #c53030;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Authentication Container -->
+    <div id="authContainer" style="display: none;">
+        <div class="auth-modal">
+            <h2>התחברות למערכת</h2>
+            <p style="margin-bottom: 20px; color: #718096;">נדרשת הזדהות כדי להשתמש במערכת</p>
+            <button onclick="signIn()" class="auth-button">התחבר</button>
+        </div>
+    </div>
+
+    <!-- User Info Bar -->
+    <div id="userInfo" style="display: none;">
+        <div class="user-bar">
+            <span id="userName">שלום, משתמש</span>
+            <button onclick="signOut()" class="logout-btn">התנתק</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainContent">
         <div class="header">
             <img src="Yankale_logo.jpg" alt="Yankale Logo" class="company-logo">
             <h1>מערכת מעקב הוצאות בניה</h1>
@@ -2410,23 +2499,127 @@
     </div>
 
     <script>
-        // AWS Config for production - Multi-Table Architecture
+        // AWS Config for production - Multi-Table Architecture with New Authentication
         const AWS_CONFIG = {
             region: 'us-east-1',
-            userPoolId: 'us-east-1_OBAlNkRnG',
-            userPoolClientId: '7pj7f63p2vq6inffdhnq9mqvrf',
-            apiEndpoint: 'https://drn8tyjw93.execute-api.us-east-1.amazonaws.com/prod'
+            userPoolId: 'us-east-1_GvpeCqtAc',
+            userPoolClientId: '1konm59fgcjf1tf4rhk16bobi1',
+            apiEndpoint: 'https://drn8tyjw93.execute-api.us-east-1.amazonaws.com/prod',
+            cognitoDomain: 'construction-expenses-auth.auth.us-east-1.amazoncognito.com'
         };
+
+        // Cognito Configuration
+        const poolData = {
+            UserPoolId: AWS_CONFIG.userPoolId,
+            ClientId: AWS_CONFIG.userPoolClientId
+        };
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+        
+        // Authentication state
+        let currentAuthToken = null;
+        
+        // Authentication Functions
+        function checkAuthState() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+            
+            if (authCode) {
+                // Handle OAuth redirect
+                handleAuthCallback(authCode);
+                return;
+            }
+            
+            const currentUser = userPool.getCurrentUser();
+            if (currentUser != null) {
+                currentUser.getSession((err, session) => {
+                    if (err || !session.isValid()) {
+                        showAuthModal();
+                        return;
+                    }
+                    // User is authenticated
+                    currentAuthToken = session.getIdToken().getJwtToken();
+                    showMainApp();
+                    updateUserInfo(currentUser);
+                });
+            } else {
+                showAuthModal();
+            }
+        }
+        
+        function handleAuthCallback(code) {
+            // For now, just clear the URL and redirect to Cognito for token exchange
+            const redirectUri = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, redirectUri);
+            
+            // The hosted UI should handle the token exchange
+            // Let's check if we have a session now
+            setTimeout(() => {
+                checkAuthState();
+            }, 1000);
+        }
+        
+        function signIn() {
+            const redirectUri = window.location.origin + window.location.pathname;
+            const authUrl = `https://${AWS_CONFIG.cognitoDomain}/login?client_id=${AWS_CONFIG.userPoolClientId}&response_type=code&scope=openid+email+profile&redirect_uri=${encodeURIComponent(redirectUri)}`;
+            window.location.href = authUrl;
+        }
+        
+        function signOut() {
+            const currentUser = userPool.getCurrentUser();
+            if (currentUser) {
+                currentUser.signOut();
+            }
+            currentAuthToken = null;
+            
+            const redirectUri = window.location.origin + window.location.pathname;
+            const signOutUrl = `https://${AWS_CONFIG.cognitoDomain}/logout?client_id=${AWS_CONFIG.userPoolClientId}&logout_uri=${encodeURIComponent(redirectUri)}`;
+            window.location.href = signOutUrl;
+        }
+        
+        function showAuthModal() {
+            document.getElementById('authContainer').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'none';
+        }
+        
+        function showMainApp() {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'block';
+        }
+        
+        function updateUserInfo(user) {
+            user.getUserAttributes((err, attributes) => {
+                if (!err && attributes) {
+                    const nameAttr = attributes.find(attr => attr.Name === 'name');
+                    const emailAttr = attributes.find(attr => attr.Name === 'email');
+                    const displayName = nameAttr ? nameAttr.Value : (emailAttr ? emailAttr.Value : 'משתמש');
+                    document.getElementById('userName').textContent = `שלום, ${displayName}`;
+                }
+            });
+        }
+        
+        // Initialize authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthState();
+        });
         
         // API Helper Functions
         async function apiCall(endpoint, method = 'GET', data = null) {
             const url = `${AWS_CONFIG.apiEndpoint}${endpoint}`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+            
+            // Add authentication header if available
+            if (currentAuthToken) {
+                headers['Authorization'] = `Bearer ${currentAuthToken}`;
+            }
+            
             const options = {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
+                headers,
                 mode: 'cors'
             };
             
