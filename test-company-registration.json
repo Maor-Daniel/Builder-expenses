@@ -1,0 +1,4 @@
+{
+  "httpMethod": "POST",
+  "body": "{\"company\":{\"name\":\"Test Construction Company\",\"industry\":\"Construction & Infrastructure\",\"description\":\"Leading construction company\"},\"admin\":{\"name\":\"Dan Cohen\",\"email\":\"dan.test@example.com\",\"password\":\"TestPassword123!\",\"confirmPassword\":\"TestPassword123!\",\"phone\":\"+972-50-1234567\"}}"
+}

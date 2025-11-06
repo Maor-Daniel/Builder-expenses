@@ -1,0 +1,176 @@
+# infrastructure/paddle-tables.yaml
+# CloudFormation template for Paddle-related DynamoDB tables
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DynamoDB tables for Paddle integration with Construction Expenses SAAS'
+
+Resources:
+  # Paddle Subscriptions Table
+  PaddleSubscriptionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: construction-expenses-paddle-subscriptions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: subscriptionId
+          AttributeType: S
+        - AttributeName: paddleCustomerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: companyId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SubscriptionIdIndex
+          KeySchema:
+            - AttributeName: subscriptionId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: PaddleCustomerIndex
+          KeySchema:
+            - AttributeName: paddleCustomerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: production
+        - Key: Application
+          Value: construction-expenses
+        - Key: Component
+          Value: paddle-integration
+
+  # Paddle Payments Table
+  PaddlePaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: construction-expenses-paddle-payments
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: paymentId
+          AttributeType: S
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: paymentId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CompanyPaymentsIndex
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: production
+        - Key: Application
+          Value: construction-expenses
+        - Key: Component
+          Value: paddle-integration
+
+  # Paddle Customers Table (cache of Paddle customer data)
+  PaddleCustomersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: construction-expenses-paddle-customers
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: paddleCustomerId
+          AttributeType: S
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: paddleCustomerId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CompanyIndex
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: production
+        - Key: Application
+          Value: construction-expenses
+        - Key: Component
+          Value: paddle-integration
+
+  # Paddle Webhooks Table (audit trail)
+  PaddleWebhooksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: construction-expenses-paddle-webhooks
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: webhookId
+          AttributeType: S
+        - AttributeName: processedAt
+          AttributeType: S
+        - AttributeName: alertName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: webhookId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProcessedAtIndex
+          KeySchema:
+            - AttributeName: alertName
+              KeyType: HASH
+            - AttributeName: processedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Environment
+          Value: production
+        - Key: Application
+          Value: construction-expenses
+        - Key: Component
+          Value: paddle-integration
+
+Outputs:
+  PaddleSubscriptionsTableName:
+    Description: Name of the Paddle subscriptions table
+    Value: !Ref PaddleSubscriptionsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PaddleSubscriptionsTable"
+
+  PaddlePaymentsTableName:
+    Description: Name of the Paddle payments table
+    Value: !Ref PaddlePaymentsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PaddlePaymentsTable"
+
+  PaddleCustomersTableName:
+    Description: Name of the Paddle customers table
+    Value: !Ref PaddleCustomersTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PaddleCustomersTable"
+
+  PaddleWebhooksTableName:
+    Description: Name of the Paddle webhooks table
+    Value: !Ref PaddleWebhooksTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PaddleWebhooksTable"
