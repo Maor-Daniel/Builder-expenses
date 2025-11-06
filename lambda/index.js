@@ -1,181 +1,101 @@
-// lambda/addExpense.js
-// Add a new expense with multi-table architecture
+// lambda/getProjects.js
+// Get all projects with SpentAmount data
 
 const {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
-  validateExpense,
-  generateExpenseId,
   getCurrentTimestamp,
   dynamodb,
   isLocal,
-  validateProjectExists,
-  validateContractorExists,
-  updateProjectSpentAmount,
-  debugLog,
-  TABLE_NAMES,
-  dynamoOperation
+  TABLE_NAMES
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('addExpense event received', event);
+  console.log('getProjects event received:', JSON.stringify(event, null, 2));
 
   try {
-    // Get user ID from event context or use default for single user app
-    let userId;
-    try {
-      userId = getUserIdFromEvent(event);
-    } catch (error) {
-      // For single user app, use a default user ID
-      userId = 'default-user';
-    }
-    debugLog('User ID', userId);
+    // Get user ID from event context
+    const userId = getUserIdFromEvent(event);
+    console.log('User ID:', userId);
 
-    // Parse request body
-    let expenseData;
-    try {
-      expenseData = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      return createErrorResponse(400, 'Invalid JSON in request body');
-    }
+    // Parse query parameters for filtering
+    const queryParams = event.queryStringParameters || {};
+    const { status, sortBy } = queryParams;
+    
+    console.log('Query parameters:', queryParams);
 
-    debugLog('Expense data received', expenseData);
-
-    // Validate expense data
-    try {
-      validateExpense(expenseData);
-    } catch (validationError) {
-      return createErrorResponse(400, `Validation error: ${validationError.message}`);
-    }
-
-    // Generate expense ID and timestamps
-    const expenseId = generateExpenseId();
-    const timestamp = getCurrentTimestamp();
-
-    // Validate foreign key relationships
-    try {
-      await validateProjectExists(userId, expenseData.projectId);
-      await validateContractorExists(userId, expenseData.contractorId);
-    } catch (fkError) {
-      return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
-    }
-
-    // Create expense object with multi-table structure
-    const expense = {
-      userId,
-      expenseId,
-      projectId: expenseData.projectId.trim(),
-      contractorId: expenseData.contractorId.trim(),
-      invoiceNum: expenseData.invoiceNum.trim(),
-      amount: parseFloat(expenseData.amount),
-      paymentMethod: expenseData.paymentMethod.trim(),
-      date: expenseData.date,
-      description: expenseData.description ? expenseData.description.trim() : '',
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-
-    // Add optional file attachments with size validation
-    if (expenseData.receiptImage) {
-      const imageData = expenseData.receiptImage.data;
-      const imageSizeKB = Math.round(imageData.length * 0.75 / 1024); // Rough base64 to bytes conversion
-      
-      if (imageSizeKB > 300) { // Leave room for other data in 400KB limit
-        return createErrorResponse(400, `Receipt image too large (${imageSizeKB}KB). Please use an image smaller than 300KB.`);
-      }
-      
-      expense.receiptImage = {
-        name: expenseData.receiptImage.name,
-        data: imageData,
-        type: expenseData.receiptImage.type,
-        size: expenseData.receiptImage.size
-      };
-    }
-
-    // Add contractor signature if provided
-    if (expenseData.contractorSignature) {
-      const signatureData = expenseData.contractorSignature.data;
-      const signatureSizeKB = Math.round(signatureData.length * 0.75 / 1024); // Rough base64 to bytes conversion
-      
-      if (signatureSizeKB > 100) { // Signatures should be smaller
-        return createErrorResponse(400, `Signature too large (${signatureSizeKB}KB). Please use a smaller signature.`);
-      }
-      
-      expense.contractorSignature = {
-        name: expenseData.contractorSignature.name,
-        data: signatureData,
-        type: expenseData.contractorSignature.type,
-        size: expenseData.contractorSignature.size
-      };
-    }
-
-    // Additional business logic validation
-    if (expense.amount > 100000000) { // Increased limit to 100M for large construction projects
-      return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
-    }
-
-    // Check for duplicate invoice number using GSI
-    const duplicateCheckParams = {
-      TableName: TABLE_NAMES.EXPENSES,
-      IndexName: 'invoice-index',
-      KeyConditionExpression: 'userId = :userId AND invoiceNum = :invoiceNum',
+    // Build DynamoDB query parameters
+    let params = {
+      TableName: TABLE_NAMES.PROJECTS,
+      KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: {
-        ':userId': userId,
-        ':invoiceNum': expense.invoiceNum
+        ':userId': userId
       }
     };
 
-    try {
-      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
-      if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
-      }
-    } catch (error) {
-      console.error('Duplicate check failed:', error);
-      // Continue but log the error
+    // Add status filter if provided
+    if (status) {
+      params.FilterExpression = '#status = :status';
+      params.ExpressionAttributeNames = { '#status': 'status' };
+      params.ExpressionAttributeValues[':status'] = status;
     }
 
-    // Save to DynamoDB Expenses table
-    const putParams = {
-      TableName: TABLE_NAMES.EXPENSES,
-      Item: expense,
-      ConditionExpression: 'attribute_not_exists(expenseId)' // Prevent overwrites
+    console.log('DynamoDB query params:', params);
+
+    const result = await dynamodb.query(params).promise();
+    let projects = result.Items || [];
+
+    console.log(`Found ${projects.length} projects`);
+
+    // Sort projects based on sortBy parameter
+    if (sortBy === 'name') {
+      projects.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'date') {
+      projects.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)); // Newest first
+    } else if (sortBy === 'spent') {
+      projects.sort((a, b) => (b.SpentAmount || 0) - (a.SpentAmount || 0)); // Highest spending first
+    } else {
+      // Default sort by creation date (newest first)
+      projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    // Calculate summary statistics
+    const summary = {
+      totalCount: projects.length,
+      totalSpentAmount: projects.reduce((sum, project) => sum + (project.SpentAmount || 0), 0),
+      averageSpentAmount: projects.length > 0 ? 
+        projects.reduce((sum, project) => sum + (project.SpentAmount || 0), 0) / projects.length : 0,
+      statusCounts: projects.reduce((counts, project) => {
+        const status = project.status || 'unknown';
+        counts[status] = (counts[status] || 0) + 1;
+        return counts;
+      }, {})
     };
 
-    await dynamoOperation('put', putParams);
+    console.log('Projects retrieved successfully');
 
-    // Update project's SpentAmount
-    try {
-      await updateProjectSpentAmount(userId, expense.projectId, expense.amount);
-    } catch (updateError) {
-      console.error('Failed to update project SpentAmount:', updateError);
-      // Don't fail the expense creation for this
-    }
-
-    console.log('Expense saved successfully:', { expenseId });
-
-    return createResponse(201, {
+    return createResponse(200, {
       success: true,
-      message: 'Expense added successfully',
+      message: `Retrieved ${projects.length} projects`,
       data: {
-        expense,
-        expenseId
+        projects,
+        summary,
+        filters: {
+          status: status || null,
+          sortBy: sortBy || 'createdAt'
+        }
       },
-      timestamp
+      timestamp: getCurrentTimestamp()
     });
 
   } catch (error) {
-    console.error('Error in addExpense:', error);
-
-    if (error.code === 'ConditionalCheckFailedException') {
-      return createErrorResponse(409, 'Expense with this ID already exists');
-    }
+    console.error('Error in getProjects:', error);
 
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');
     }
 
-    return createErrorResponse(500, 'Failed to add expense', error);
+    return createErrorResponse(500, 'Failed to retrieve projects', error);
   }
 };

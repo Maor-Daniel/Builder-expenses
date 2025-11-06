@@ -2007,8 +2007,10 @@
             border-radius: 12px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
         .auth-modal h2 {
@@ -2058,11 +2060,155 @@
 </head>
 <body>
     <!-- Authentication Container -->
-    <div id="authContainer" style="display: none;">
+    <div id="authContainer" style="display: flex;">
         <div class="auth-modal">
-            <h2>התחברות למערכת</h2>
-            <p style="margin-bottom: 20px; color: #718096;">נדרשת הזדהות כדי להשתמש במערכת</p>
-            <button onclick="signIn()" class="auth-button">התחבר</button>
+            <h2>מערכת מעקב הוצאות בניה</h2>
+            
+            <!-- Auth Tabs -->
+            <div class="auth-tabs" style="display: flex; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+                <button onclick="showLoginTab()" class="auth-tab-button active" id="loginTab" style="flex: 1; padding: 12px; background: #000; color: #fff; border: none; cursor: pointer; font-size: 16px; font-weight: bold;">התחברות</button>
+                <button onclick="showRegisterCompanyTab()" class="auth-tab-button" id="registerCompanyTab" style="flex: 1; padding: 12px; background: #f7fafc; color: #4a5568; border: none; cursor: pointer; font-size: 16px; font-weight: bold;">הרשמת חברה</button>
+                <button onclick="showInvitationTab()" class="auth-tab-button" id="invitationTab" style="flex: 1; padding: 12px; background: #f7fafc; color: #4a5568; border: none; cursor: pointer; font-size: 16px; font-weight: bold;">הרשמה בהזמנה</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm">
+                <div style="margin-bottom: 15px;">
+                    <input type="email" id="loginEmail" placeholder="כתובת אימייל" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="password" id="loginPassword" placeholder="סיסמה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <button onclick="signIn()" class="auth-button" id="loginButton">התחבר</button>
+                <div id="authMessage" style="margin-top: 15px; color: #e53e3e; font-size: 14px;"></div>
+            </div>
+            
+            <!-- Registration Form -->
+            <div id="registerForm" style="display: none;">
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="registerName" placeholder="שם מלא" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="email" id="registerEmail" placeholder="כתובת אימייל" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="password" id="registerPassword" placeholder="סיסמה (לפחות 8 תווים)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="password" id="registerConfirmPassword" placeholder="אישור סיסמה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="tel" id="registerPhone" placeholder="מספר טלפון (אופציונלי)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;">
+                </div>
+                <button onclick="signUp()" class="auth-button" id="registerButton">הירשם</button>
+                <div id="registerMessage" style="margin-top: 15px; color: #e53e3e; font-size: 14px;"></div>
+            </div>
+            
+            <!-- Email Verification Form -->
+            <div id="verificationForm" style="display: none;">
+                <p style="margin-bottom: 15px; color: #718096; text-align: center;">נשלח קוד אימות לאימייל שלך</p>
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="verificationCode" placeholder="קוד אימות" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr; text-align: center;" required>
+                </div>
+                <button onclick="confirmSignUp()" class="auth-button" id="verifyButton">אמת קוד</button>
+                <button onclick="resendConfirmationCode()" style="background: #f7fafc; color: #4a5568; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 10px; width: 100%;">שלח קוד מחדש</button>
+                <div id="verificationMessage" style="margin-top: 15px; color: #e53e3e; font-size: 14px;"></div>
+            </div>
+            
+            <!-- Company Registration Form -->
+            <div id="registerCompanyForm" style="display: none;">
+                <h3 style="margin-bottom: 20px; text-align: center; color: #2d3748;">הרשמת חברה חדשה</h3>
+                
+                <!-- Company Details -->
+                <div style="background: #f7fafc; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #4a5568;">פרטי החברה</h4>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="companyName" placeholder="שם החברה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="companyIndustry" placeholder="תחום עסקים (אופציונלי)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <textarea id="companyDescription" placeholder="תיאור החברה (אופציונלי)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; min-height: 80px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Admin User Details -->
+                <div style="background: #e6fffa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #4a5568;">פרטי המנהל הראשי</h4>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="adminName" placeholder="שם מלא של המנהל" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="email" id="adminEmail" placeholder="כתובת אימייל של המנהל" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="password" id="adminPassword" placeholder="סיסמה (לפחות 8 תווים)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="password" id="adminConfirmPassword" placeholder="אישור סיסמה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="tel" id="adminPhone" placeholder="מספר טלפון (אופציונלי)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;">
+                    </div>
+                </div>
+                
+                <button onclick="registerCompany()" class="auth-button" id="registerCompanyButton">צור חברה</button>
+                <div id="companyRegisterMessage" style="margin-top: 15px; color: #e53e3e; font-size: 14px;"></div>
+            </div>
+            
+            <!-- Invitation Registration Form -->
+            <div id="invitationForm" style="display: none;">
+                <h3 style="margin-bottom: 20px; text-align: center; color: #2d3748;">הרשמה בהזמנה</h3>
+                
+                <div style="background: #fef5e7; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #f6ad55;">
+                    <p style="margin-bottom: 10px; color: #7b341e;">📧 יש לך הזמנה להצטרף לחברה?</p>
+                    <p style="font-size: 14px; color: #744210;">הכנס את קוד ההזמנה שקיבלת באימייל כדי להירשם</p>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="invitationToken" placeholder="קוד הזמנה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr; text-align: center;" required>
+                </div>
+                
+                <div id="invitationDetails" style="display: none; background: #f0fff4; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #68d391;">
+                    <h4 style="margin-bottom: 10px; color: #2f855a;">פרטי ההזמנה</h4>
+                    <p id="invitationCompany" style="margin-bottom: 5px;"></p>
+                    <p id="invitationRole" style="margin-bottom: 15px; font-size: 14px; color: #38a169;"></p>
+                </div>
+                
+                <div id="invitationUserForm" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="invitationName" placeholder="שם מלא" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="password" id="invitationPassword" placeholder="צור סיסמה (לפחות 8 תווים)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="password" id="invitationConfirmPassword" placeholder="אישור סיסמה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <input type="tel" id="invitationPhone" placeholder="מספר טלפון (אופציונלי)" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;">
+                    </div>
+                    
+                    <button onclick="acceptInvitation()" class="auth-button" id="acceptInvitationButton">השלם הרשמה</button>
+                </div>
+                
+                <button onclick="validateInvitation()" class="auth-button" id="validateInvitationButton">בדוק הזמנה</button>
+                
+                <div id="invitationMessage" style="margin-top: 15px; color: #e53e3e; font-size: 14px;"></div>
+            </div>
+            
+            <!-- New Password Form (for temporary passwords) -->
+            <div id="newPasswordForm" style="display: none;">
+                <p style="margin-bottom: 15px; color: #718096;">נדרש לעדכן סיסמה</p>
+                <div style="margin-bottom: 15px;">
+                    <input type="password" id="newPassword" placeholder="סיסמה חדשה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="password" id="confirmPassword" placeholder="אישור סיסמה" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 16px; direction: ltr;" required>
+                </div>
+                <button onclick="setNewPassword()" class="auth-button" id="newPasswordButton">עדכן סיסמה</button>
+            </div>
         </div>
     </div>
 
@@ -2504,7 +2650,7 @@
             region: 'us-east-1',
             userPoolId: 'us-east-1_GvpeCqtAc',
             userPoolClientId: '1konm59fgcjf1tf4rhk16bobi1',
-            apiEndpoint: 'https://drn8tyjw93.execute-api.us-east-1.amazonaws.com/prod',
+            apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod',
             cognitoDomain: 'construction-expenses-auth.auth.us-east-1.amazoncognito.com'
         };
 
@@ -2520,48 +2666,121 @@
         
         // Authentication Functions
         function checkAuthState() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-            
-            if (authCode) {
-                // Handle OAuth redirect
-                handleAuthCallback(authCode);
-                return;
-            }
-            
-            const currentUser = userPool.getCurrentUser();
-            if (currentUser != null) {
-                currentUser.getSession((err, session) => {
-                    if (err || !session.isValid()) {
-                        showAuthModal();
-                        return;
-                    }
-                    // User is authenticated
-                    currentAuthToken = session.getIdToken().getJwtToken();
-                    showMainApp();
-                    updateUserInfo(currentUser);
-                });
-            } else {
+            console.log('Checking authentication state...');
+            try {
+                const currentUser = userPool.getCurrentUser();
+                console.log('Current user:', currentUser);
+                if (currentUser != null) {
+                    currentUser.getSession((err, session) => {
+                        console.log('Session error:', err);
+                        console.log('Session:', session);
+                        if (err || !session.isValid()) {
+                            console.log('Session invalid, showing auth modal');
+                            showAuthModal();
+                            return;
+                        }
+                        // User is authenticated
+                        console.log('User authenticated, showing main app');
+                        currentAuthToken = session.getIdToken().getJwtToken();
+                        showMainApp();
+                        updateUserInfo(currentUser);
+                    });
+                } else {
+                    console.log('No current user, showing auth modal');
+                    showAuthModal();
+                }
+            } catch (error) {
+                console.error('Error in checkAuthState:', error);
                 showAuthModal();
             }
         }
         
-        function handleAuthCallback(code) {
-            // For now, just clear the URL and redirect to Cognito for token exchange
-            const redirectUri = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, redirectUri);
+        function signIn() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginButton = document.getElementById('loginButton');
+            const authMessage = document.getElementById('authMessage');
             
-            // The hosted UI should handle the token exchange
-            // Let's check if we have a session now
-            setTimeout(() => {
-                checkAuthState();
-            }, 1000);
+            if (!email || !password) {
+                authMessage.textContent = 'נא להזין אימייל וסיסמה';
+                return;
+            }
+            
+            // Disable button and show loading
+            loginButton.textContent = 'מתחבר...';
+            loginButton.disabled = true;
+            authMessage.textContent = '';
+            
+            const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+                Username: email,
+                Password: password,
+            });
+            
+            const userData = {
+                Username: email,
+                Pool: userPool,
+            };
+            
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+            
+            cognitoUser.authenticateUser(authenticationDetails, {
+                onSuccess: function (result) {
+                    currentAuthToken = result.getIdToken().getJwtToken();
+                    showMainApp();
+                    updateUserInfo(cognitoUser);
+                },
+                onFailure: function (err) {
+                    console.error('Authentication failed:', err);
+                    authMessage.textContent = 'שגיאה בהתחברות: ' + (err.message || 'שם משתמש או סיסמה שגויים');
+                    loginButton.textContent = 'התחבר';
+                    loginButton.disabled = false;
+                },
+                newPasswordRequired: function (userAttributes, requiredAttributes) {
+                    // User needs to set new password
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('newPasswordForm').style.display = 'block';
+                    window.currentCognitoUser = cognitoUser;
+                }
+            });
         }
         
-        function signIn() {
-            const redirectUri = window.location.origin + window.location.pathname;
-            const authUrl = `https://${AWS_CONFIG.cognitoDomain}/login?client_id=${AWS_CONFIG.userPoolClientId}&response_type=code&scope=openid+email+profile&redirect_uri=${encodeURIComponent(redirectUri)}`;
-            window.location.href = authUrl;
+        function setNewPassword() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const newPasswordButton = document.getElementById('newPasswordButton');
+            const authMessage = document.getElementById('authMessage');
+            
+            if (!newPassword || !confirmPassword) {
+                authMessage.textContent = 'נא להזין סיסמה חדשה ואישורה';
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                authMessage.textContent = 'הסיסמאות אינן זהות';
+                return;
+            }
+            
+            if (newPassword.length < 8) {
+                authMessage.textContent = 'הסיסמה חייבת להכיל לפחות 8 תווים';
+                return;
+            }
+            
+            newPasswordButton.textContent = 'מעדכן...';
+            newPasswordButton.disabled = true;
+            
+            window.currentCognitoUser.completeNewPasswordChallenge(newPassword, {}, {
+                onSuccess: function (result) {
+                    currentAuthToken = result.getIdToken().getJwtToken();
+                    showMainApp();
+                    updateUserInfo(window.currentCognitoUser);
+                },
+                onFailure: function (err) {
+                    console.error('Password update failed:', err);
+                    authMessage.textContent = 'שגיאה בעדכון סיסמה: ' + err.message;
+                    newPasswordButton.textContent = 'עדכן סיסמה';
+                    newPasswordButton.disabled = false;
+                }
+            });
         }
         
         function signOut() {
@@ -2571,21 +2790,326 @@
             }
             currentAuthToken = null;
             
-            const redirectUri = window.location.origin + window.location.pathname;
-            const signOutUrl = `https://${AWS_CONFIG.cognitoDomain}/logout?client_id=${AWS_CONFIG.userPoolClientId}&logout_uri=${encodeURIComponent(redirectUri)}`;
-            window.location.href = signOutUrl;
+            // Reset all forms
+            resetAuthForms();
+            showAuthModal();
+        }
+        
+        // Tab switching functions
+        function showLoginTab() {
+            hideAllForms();
+            document.getElementById('loginForm').style.display = 'block';
+            
+            setActiveTab('loginTab');
+            clearMessages();
+        }
+        
+        function showRegisterCompanyTab() {
+            hideAllForms();
+            document.getElementById('registerCompanyForm').style.display = 'block';
+            
+            setActiveTab('registerCompanyTab');
+            clearMessages();
+        }
+        
+        function showInvitationTab() {
+            hideAllForms();
+            document.getElementById('invitationForm').style.display = 'block';
+            
+            setActiveTab('invitationTab');
+            clearMessages();
+            
+            // Check for invitation token in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const invitationToken = urlParams.get('invitation');
+            if (invitationToken) {
+                document.getElementById('invitationToken').value = invitationToken;
+                validateInvitation();
+            }
+        }
+        
+        function hideAllForms() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('verificationForm').style.display = 'none';
+            document.getElementById('newPasswordForm').style.display = 'none';
+            document.getElementById('registerCompanyForm').style.display = 'none';
+            document.getElementById('invitationForm').style.display = 'none';
+        }
+        
+        function setActiveTab(activeTabId) {
+            const tabs = ['loginTab', 'registerCompanyTab', 'invitationTab'];
+            
+            tabs.forEach(tabId => {
+                const tab = document.getElementById(tabId);
+                if (tab) {
+                    if (tabId === activeTabId) {
+                        tab.classList.add('active');
+                        tab.style.background = '#000';
+                        tab.style.color = '#fff';
+                    } else {
+                        tab.classList.remove('active');
+                        tab.style.background = '#f7fafc';
+                        tab.style.color = '#4a5568';
+                    }
+                }
+            });
+        }
+        
+        // Registration functions
+        let pendingUser = null;
+        
+        function signUp() {
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const phone = document.getElementById('registerPhone').value;
+            const registerButton = document.getElementById('registerButton');
+            const registerMessage = document.getElementById('registerMessage');
+            
+            // Validation
+            if (!name || !email || !password || !confirmPassword) {
+                registerMessage.textContent = 'נא למלא את כל השדות הנדרשים';
+                registerMessage.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                registerMessage.textContent = 'הסיסמאות אינן תואמות';
+                registerMessage.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (password.length < 8) {
+                registerMessage.textContent = 'הסיסמה חייבת להכיל לפחות 8 תווים';
+                registerMessage.style.color = '#e53e3e';
+                return;
+            }
+            
+            registerButton.textContent = 'נרשם...';
+            registerButton.disabled = true;
+            registerMessage.textContent = '';
+            
+            const attributeList = [
+                new AmazonCognitoIdentity.CognitoUserAttribute({
+                    Name: 'email',
+                    Value: email
+                }),
+                new AmazonCognitoIdentity.CognitoUserAttribute({
+                    Name: 'name',
+                    Value: name
+                })
+            ];
+            
+            if (phone) {
+                attributeList.push(new AmazonCognitoIdentity.CognitoUserAttribute({
+                    Name: 'phone_number',
+                    Value: phone
+                }));
+            }
+            
+            userPool.signUp(email, password, attributeList, null, function(err, result) {
+                registerButton.textContent = 'הירשם';
+                registerButton.disabled = false;
+                
+                if (err) {
+                    console.error('Registration error:', err);
+                    let errorMessage = 'שגיאה בהרשמה';
+                    
+                    if (err.code === 'UsernameExistsException') {
+                        errorMessage = 'משתמש עם אימייל זה כבר קיים';
+                    } else if (err.code === 'InvalidPasswordException') {
+                        errorMessage = 'הסיסמה חייבת להכיל לפחות 8 תווים, אות גדולה, מספר וסימן מיוחד';
+                    } else if (err.code === 'InvalidParameterException') {
+                        errorMessage = 'פרטים לא תקינים - בדוק את הפורמט של האימייל';
+                    } else if (err.message) {
+                        errorMessage = err.message;
+                    }
+                    
+                    registerMessage.textContent = errorMessage;
+                    registerMessage.style.color = '#e53e3e';
+                    return;
+                }
+                
+                pendingUser = result.user;
+                console.log('User registered successfully:', result.user.getUsername());
+                
+                // Show verification form
+                document.getElementById('registerForm').style.display = 'none';
+                document.getElementById('verificationForm').style.display = 'block';
+                
+                registerMessage.textContent = 'ההרשמה הושלמה! נשלח קוד אימות לאימייל שלך';
+                registerMessage.style.color = '#38a169';
+            });
+        }
+        
+        function confirmSignUp() {
+            const verificationCode = document.getElementById('verificationCode').value;
+            const verifyButton = document.getElementById('verifyButton');
+            const verificationMessage = document.getElementById('verificationMessage');
+            
+            if (!verificationCode) {
+                verificationMessage.textContent = 'נא להזין קוד אימות';
+                verificationMessage.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (!pendingUser) {
+                verificationMessage.textContent = 'שגיאה: לא נמצא משתמש להרשמה';
+                verificationMessage.style.color = '#e53e3e';
+                return;
+            }
+            
+            verifyButton.textContent = 'מאמת...';
+            verifyButton.disabled = true;
+            
+            pendingUser.confirmRegistration(verificationCode, true, function(err, result) {
+                verifyButton.textContent = 'אמת קוד';
+                verifyButton.disabled = false;
+                
+                if (err) {
+                    console.error('Verification error:', err);
+                    let errorMessage = 'קוד אימות שגוי';
+                    
+                    if (err.code === 'CodeMismatchException') {
+                        errorMessage = 'קוד אימות שגוי';
+                    } else if (err.code === 'ExpiredCodeException') {
+                        errorMessage = 'קוד האימות פג תוקף - בקש קוד חדש';
+                    } else if (err.message) {
+                        errorMessage = err.message;
+                    }
+                    
+                    verificationMessage.textContent = errorMessage;
+                    verificationMessage.style.color = '#e53e3e';
+                    return;
+                }
+                
+                console.log('Email confirmed successfully');
+                verificationMessage.textContent = 'האימייל אומת בהצלחה! כעת תוכל להתחבר';
+                verificationMessage.style.color = '#38a169';
+                
+                // Auto-switch to login tab after successful verification
+                setTimeout(() => {
+                    showLoginTab();
+                    document.getElementById('loginEmail').value = pendingUser.getUsername();
+                    pendingUser = null;
+                }, 2000);
+            });
+        }
+        
+        function resendConfirmationCode() {
+            if (!pendingUser) {
+                document.getElementById('verificationMessage').textContent = 'שגיאה: לא נמצא משתמש להרשמה';
+                return;
+            }
+            
+            pendingUser.resendConfirmationCode(function(err, result) {
+                const verificationMessage = document.getElementById('verificationMessage');
+                
+                if (err) {
+                    console.error('Resend error:', err);
+                    verificationMessage.textContent = 'שגיאה בשליחת קוד מחדש';
+                    verificationMessage.style.color = '#e53e3e';
+                    return;
+                }
+                
+                verificationMessage.textContent = 'קוד אימות חדש נשלח לאימייל שלך';
+                verificationMessage.style.color = '#38a169';
+            });
+        }
+        
+        // Helper functions
+        function resetAuthForms() {
+            // Reset login form
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginButton').textContent = 'התחבר';
+            document.getElementById('loginButton').disabled = false;
+            
+            // Reset registration form
+            document.getElementById('registerName').value = '';
+            document.getElementById('registerEmail').value = '';
+            document.getElementById('registerPassword').value = '';
+            document.getElementById('registerConfirmPassword').value = '';
+            document.getElementById('registerPhone').value = '';
+            document.getElementById('registerButton').textContent = 'הירשם';
+            document.getElementById('registerButton').disabled = false;
+            
+            // Reset verification form
+            document.getElementById('verificationCode').value = '';
+            document.getElementById('verifyButton').textContent = 'אמת קוד';
+            document.getElementById('verifyButton').disabled = false;
+            
+            // Reset new password form
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('newPasswordButton').textContent = 'עדכן סיסמה';
+            document.getElementById('newPasswordButton').disabled = false;
+            
+            // Clear messages
+            clearMessages();
+            
+            // Show login tab by default
+            showLoginTab();
+        }
+        
+        function clearMessages() {
+            document.getElementById('authMessage').textContent = '';
+            document.getElementById('registerMessage').textContent = '';
+            document.getElementById('verificationMessage').textContent = '';
         }
         
         function showAuthModal() {
+            console.log('Showing auth modal');
             document.getElementById('authContainer').style.display = 'flex';
             document.getElementById('mainContent').style.display = 'none';
-            document.getElementById('userInfo').style.display = 'none';
+            const userInfo = document.getElementById('userInfo');
+            if (userInfo) userInfo.style.display = 'none';
         }
         
-        function showMainApp() {
+        async function showMainApp() {
+            console.log('Showing main app');
             document.getElementById('authContainer').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('userInfo').style.display = 'block';
+            const userInfo = document.getElementById('userInfo');
+            if (userInfo) userInfo.style.display = 'block';
+            
+            try {
+                // Show loading indicator
+                const expensesList = document.getElementById('expensesList');
+                if (expensesList) {
+                    expensesList.innerHTML = '<div class="loading">טוען נתונים...</div>';
+                }
+                
+                // Load data after authentication is complete
+                console.log('Loading company data...');
+                await loadFromStorage();
+                
+                // Render UI with loaded data
+                populateProjectFilter();
+                populateNewExpenseProjectFilter();
+                populateNewExpenseContractorFilter();
+                populateNewExpenseWorkFilter();
+                renderExpenses();
+                renderProjectsGrid();
+                
+                // Initialize contractors if we're on that tab
+                if (contractors.length === 0) {
+                    initializeContractors();
+                }
+                
+                console.log('App initialized successfully with company data');
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                // Try to render with whatever data we have
+                populateProjectFilter();
+                populateNewExpenseProjectFilter();
+                populateNewExpenseContractorFilter();
+                populateNewExpenseWorkFilter();
+                renderExpenses();
+                renderProjectsGrid();
+            }
         }
         
         function updateUserInfo(user) {
@@ -2599,6 +3123,214 @@
             });
         }
         
+        // Company Registration Functions
+        async function registerCompany() {
+            const companyName = document.getElementById('companyName').value;
+            const companyIndustry = document.getElementById('companyIndustry').value;
+            const companyDescription = document.getElementById('companyDescription').value;
+            const adminName = document.getElementById('adminName').value;
+            const adminEmail = document.getElementById('adminEmail').value;
+            const adminPassword = document.getElementById('adminPassword').value;
+            const adminConfirmPassword = document.getElementById('adminConfirmPassword').value;
+            const adminPhone = document.getElementById('adminPhone').value;
+            
+            const registerButton = document.getElementById('registerCompanyButton');
+            const messageElement = document.getElementById('companyRegisterMessage');
+            
+            // Validation
+            if (!companyName || !adminName || !adminEmail || !adminPassword) {
+                messageElement.textContent = 'נא למלא את כל השדות הנדרשים';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (adminPassword !== adminConfirmPassword) {
+                messageElement.textContent = 'הסיסמאות אינן תואמות';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (adminPassword.length < 8) {
+                messageElement.textContent = 'הסיסמה חייבת להכיל לפחות 8 תווים';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(adminEmail)) {
+                messageElement.textContent = 'כתובת האימייל אינה תקינה';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            registerButton.textContent = 'יוצר חברה...';
+            registerButton.disabled = true;
+            messageElement.textContent = '';
+            
+            try {
+                const response = await apiCall('registerCompany', 'POST', {
+                    company: {
+                        name: companyName,
+                        industry: companyIndustry,
+                        description: companyDescription
+                    },
+                    admin: {
+                        name: adminName,
+                        email: adminEmail,
+                        password: adminPassword,
+                        confirmPassword: adminConfirmPassword,
+                        phone: adminPhone
+                    }
+                });
+                
+                if (response.success) {
+                    messageElement.textContent = 'החברה נוצרה בהצלחה! כעת ניתן להתחבר';
+                    messageElement.style.color = '#38a169';
+                    
+                    // Clear form
+                    document.getElementById('companyName').value = '';
+                    document.getElementById('companyIndustry').value = '';
+                    document.getElementById('companyDescription').value = '';
+                    document.getElementById('adminName').value = '';
+                    document.getElementById('adminEmail').value = '';
+                    document.getElementById('adminPassword').value = '';
+                    document.getElementById('adminConfirmPassword').value = '';
+                    document.getElementById('adminPhone').value = '';
+                    
+                    // Switch to login tab after a delay
+                    setTimeout(() => {
+                        showLoginTab();
+                    }, 2000);
+                } else {
+                    messageElement.textContent = response.message || 'שגיאה ביצירת החברה';
+                    messageElement.style.color = '#e53e3e';
+                }
+            } catch (error) {
+                console.error('Company registration error:', error);
+                messageElement.textContent = 'שגיאת תקשורת - נסה שוב מאוחר יותר';
+                messageElement.style.color = '#e53e3e';
+            } finally {
+                registerButton.textContent = 'צור חברה';
+                registerButton.disabled = false;
+            }
+        }
+        
+        // Invitation Functions
+        async function validateInvitation() {
+            const token = document.getElementById('invitationToken').value;
+            const validateButton = document.getElementById('validateInvitationButton');
+            const messageElement = document.getElementById('invitationMessage');
+            
+            if (!token) {
+                messageElement.textContent = 'נא להכניס קוד הזמנה';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            validateButton.textContent = 'בודק...';
+            validateButton.disabled = true;
+            messageElement.textContent = '';
+            
+            try {
+                const response = await apiCall('validateInvitation', 'POST', { token });
+                
+                if (response.success) {
+                    // Show invitation details
+                    document.getElementById('invitationDetails').style.display = 'block';
+                    document.getElementById('invitationCompany').textContent = `חברה: ${response.data.companyName}`;
+                    document.getElementById('invitationRole').textContent = `תפקיד: ${response.data.role === 'admin' ? 'מנהל' : 'משתמש'}`;
+                    
+                    // Show user form
+                    document.getElementById('invitationUserForm').style.display = 'block';
+                    document.getElementById('validateInvitationButton').style.display = 'none';
+                    
+                    messageElement.textContent = 'ההזמנה תקינה! נא למלא את פרטיך להשלמת ההרשמה';
+                    messageElement.style.color = '#38a169';
+                } else {
+                    messageElement.textContent = response.message || 'קוד הזמנה לא תקין';
+                    messageElement.style.color = '#e53e3e';
+                }
+            } catch (error) {
+                console.error('Invitation validation error:', error);
+                messageElement.textContent = 'שגיאה בבדיקת ההזמנה';
+                messageElement.style.color = '#e53e3e';
+            } finally {
+                validateButton.textContent = 'בדוק הזמנה';
+                validateButton.disabled = false;
+            }
+        }
+        
+        async function acceptInvitation() {
+            const token = document.getElementById('invitationToken').value;
+            const name = document.getElementById('invitationName').value;
+            const password = document.getElementById('invitationPassword').value;
+            const confirmPassword = document.getElementById('invitationConfirmPassword').value;
+            const phone = document.getElementById('invitationPhone').value;
+            
+            const acceptButton = document.getElementById('acceptInvitationButton');
+            const messageElement = document.getElementById('invitationMessage');
+            
+            // Validation
+            if (!name || !password) {
+                messageElement.textContent = 'נא למלא שם וסיסמה';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                messageElement.textContent = 'הסיסמאות אינן תואמות';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            if (password.length < 8) {
+                messageElement.textContent = 'הסיסמה חייבת להכיל לפחות 8 תווים';
+                messageElement.style.color = '#e53e3e';
+                return;
+            }
+            
+            acceptButton.textContent = 'משלים הרשמה...';
+            acceptButton.disabled = true;
+            messageElement.textContent = '';
+            
+            try {
+                const response = await apiCall('acceptInvitation', 'POST', {
+                    token,
+                    name,
+                    password,
+                    confirmPassword,
+                    phone
+                });
+                
+                if (response.success) {
+                    messageElement.textContent = 'ההרשמה הושלמה בהצלחה! כעת ניתן להתחבר';
+                    messageElement.style.color = '#38a169';
+                    
+                    // Clear form
+                    document.getElementById('invitationName').value = '';
+                    document.getElementById('invitationPassword').value = '';
+                    document.getElementById('invitationConfirmPassword').value = '';
+                    document.getElementById('invitationPhone').value = '';
+                    
+                    // Switch to login tab after a delay
+                    setTimeout(() => {
+                        showLoginTab();
+                    }, 2000);
+                } else {
+                    messageElement.textContent = response.message || 'שגיאה בהשלמת ההרשמה';
+                    messageElement.style.color = '#e53e3e';
+                }
+            } catch (error) {
+                console.error('Accept invitation error:', error);
+                messageElement.textContent = 'שגיאת תקשורת - נסה שוב מאוחר יותר';
+                messageElement.style.color = '#e53e3e';
+            } finally {
+                acceptButton.textContent = 'השלם הרשמה';
+                acceptButton.disabled = false;
+            }
+        }
+
         // Initialize authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthState();
@@ -2615,6 +3347,9 @@
             // Add authentication header if available
             if (currentAuthToken) {
                 headers['Authorization'] = `Bearer ${currentAuthToken}`;
+                console.log('Adding auth token to request:', currentAuthToken.substring(0, 20) + '...');
+            } else {
+                console.log('WARNING: No currentAuthToken available!');
             }
             
             const options = {
@@ -2821,7 +3556,21 @@
             showMessage('גיבוי נתונים הורד בהצלחה!', 'success');
         }
         
+        // Clear old localStorage data for company users
+        function clearOldData() {
+            if (currentAuthToken) {
+                console.log('Company authentication detected - clearing old localStorage data');
+                localStorage.removeItem('construction_expenses');
+                localStorage.removeItem('construction_projects');
+                localStorage.removeItem('construction_contractors');
+                localStorage.removeItem('construction_works');
+            }
+        }
+        
         async function loadFromStorage() {
+            // Clear old single-user data when using company authentication
+            clearOldData();
+            
             try {
                 // Load all data from API
                 await Promise.all([
@@ -2838,7 +3587,20 @@
                 console.log('Works:', works.length);
                 
             } catch (error) {
-                console.warn('Failed to load from API, using localStorage fallback:', error);
+                console.warn('Failed to load from API:', error);
+                
+                // For company users, don't fall back to localStorage (data isolation)
+                if (currentAuthToken) {
+                    console.log('Company user detected - initializing with empty data instead of localStorage fallback');
+                    originalMockData = [];
+                    mockData = [];
+                    projects = [];
+                    contractors = [];
+                    works = [];
+                    return;
+                }
+                
+                console.log('Using localStorage fallback for non-company user:');
                 
                 // Fallback to localStorage
                 try {
@@ -3579,8 +4341,7 @@
         let works = [];
         let selectedWork = null;
         
-        // Load data from localStorage on page load
-        loadFromStorage();
+        // Data will be loaded after authentication via showMainApp()
 
         // Helper function to compress and read image file
         function compressImage(file, maxSizeKB = 300, quality = 0.8) {
@@ -5314,66 +6075,33 @@
         }
 
 
-        // Load expenses when page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Show loading indicator
-                const expensesList = document.getElementById('expensesList');
-                if (expensesList) {
-                    expensesList.innerHTML = '<div class="loading">טוען נתונים...</div>';
-                }
-                
-                // Setup tab navigation event listeners
-                const tabButtons = document.querySelectorAll('.tab-button');
-                tabButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const tabName = button.dataset.tab;
-                        if (typeof switchTab === 'function') {
-                            switchTab(tabName);
-                        } else {
-                            console.error('switchTab function not found');
-                        }
-                    });
+        // Setup UI event listeners on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup tab navigation event listeners
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.dataset.tab;
+                    if (typeof switchTab === 'function') {
+                        switchTab(tabName);
+                    } else {
+                        console.error('switchTab function not found');
+                    }
                 });
-                
-                // Setup add-expense-button event listeners
-                const addExpenseButtons = document.querySelectorAll('.add-expense-button');
-                addExpenseButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const tabName = button.dataset.tab;
-                        if (typeof switchTab === 'function') {
-                            switchTab(tabName);
-                        }
-                    });
+            });
+            
+            // Setup add-expense-button event listeners
+            const addExpenseButtons = document.querySelectorAll('.add-expense-button');
+            addExpenseButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.dataset.tab;
+                    if (typeof switchTab === 'function') {
+                        switchTab(tabName);
+                    }
                 });
-                
-                // Load data from API
-                await loadFromStorage();
-                
-                // Render UI with loaded data
-                populateProjectFilter();
-                populateNewExpenseProjectFilter();
-                populateNewExpenseContractorFilter();
-                populateNewExpenseWorkFilter();
-                renderExpenses();
-                renderProjectsGrid();
-                
-                // Initialize contractors if we're on that tab
-                if (contractors.length === 0) {
-                    initializeContractors();
-                }
-                
-                console.log('App initialized successfully with API data');
-            } catch (error) {
-                console.error('Failed to initialize app:', error);
-                // Try to render with whatever data we have
-                populateProjectFilter();
-                populateNewExpenseProjectFilter();
-                populateNewExpenseContractorFilter();
-                populateNewExpenseWorkFilter();
-                renderExpenses();
-                renderProjectsGrid();
-            }
+            });
+            
+            console.log('UI event listeners initialized');
         });
     </script>
 </body>
