@@ -8,6 +8,9 @@
     <!-- AWS Cognito SDK -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1498.0.min.js"></script>
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    
+    <!-- Paddle SDK -->
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
     <style>
         * {
             margin: 0;
@@ -2652,6 +2655,14 @@
             userPoolClientId: '1konm59fgcjf1tf4rhk16bobi1',
             apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod',
             cognitoDomain: 'construction-expenses-auth.auth.us-east-1.amazoncognito.com'
+        };
+
+        // Paddle Config for subscription management
+        const PADDLE_CONFIG = {
+            environment: 'sandbox', // Change to 'production' when ready
+            clientToken: 'your_paddle_client_token', // Replace with actual token
+            vendorId: 'your_paddle_vendor_id', // Replace with actual vendor ID
+            checkoutDomain: 'https://sandbox-checkout.paddle.com' // or production domain
         };
 
         // Cognito Configuration

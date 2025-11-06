@@ -1,0 +1,27 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:BatchGetItem",
+                "dynamodb:BatchWriteItem"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-companies",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-users",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-invitations",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-projects",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-contractors",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-expenses",
+                "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-works"
+            ]
+        }
+    ]
+}
