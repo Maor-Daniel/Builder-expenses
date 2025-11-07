@@ -240,7 +240,7 @@ async function createSubscription(event, companyId, userId) {
   try {
     // Generate Paddle checkout link
     const checkoutData = await createPaddleCustomer({
-      productId: plan.priceId,
+      priceId: plan.priceId,
       email: email,
       country: country,
       companyName: companyName,
@@ -250,7 +250,8 @@ async function createSubscription(event, companyId, userId) {
     return createResponse(200, {
       success: true,
       message: 'Checkout link generated successfully',
-      checkoutUrl: checkoutData.url,
+      checkoutUrl: checkoutData.checkout_url,
+      transactionId: checkoutData.transaction_id,
       planName: planName,
       billingCycle: billingCycle
     });
@@ -292,8 +293,8 @@ async function upgradeSubscription(event, companyId, userRole) {
     }
 
     // Update subscription in Paddle
-    const newPlanId = SUBSCRIPTION_PLANS[newPlan].priceId;
-    await updateSubscriptionPlan(company.Item.subscriptionId, newPlanId);
+    const newPriceId = SUBSCRIPTION_PLANS[newPlan].priceId;
+    await updateSubscriptionPlan(company.Item.subscriptionId, newPriceId);
 
     // Update local records (webhook will also update this)
     await dynamoOperation('update', {

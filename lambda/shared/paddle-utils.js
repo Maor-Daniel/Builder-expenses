@@ -7,9 +7,7 @@ const crypto = require('crypto');
 // Paddle configuration
 const PADDLE_CONFIG = {
   environment: process.env.PADDLE_ENVIRONMENT || 'sandbox', // sandbox or production
-  vendorId: process.env.PADDLE_VENDOR_ID,
   apiKey: process.env.PADDLE_API_KEY,
-  publicKey: process.env.PADDLE_PUBLIC_KEY,
   webhookSecret: process.env.PADDLE_WEBHOOK_SECRET
 };
 
@@ -72,22 +70,46 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
 });
 
 /**
- * Verify Paddle webhook signature
+ * Verify Paddle webhook signature using HMAC SHA256
+ * Based on Paddle Billing API documentation
  */
-function verifyPaddleWebhook(body, signature) {
-  if (!PADDLE_CONFIG.publicKey || !signature) {
+function verifyPaddleWebhook(body, paddleSignature) {
+  if (!PADDLE_CONFIG.webhookSecret || !paddleSignature) {
     console.error('Missing webhook verification data');
     return false;
   }
   
   try {
-    // Paddle uses PHP serialize format - need to verify signature
+    // Parse the Paddle-Signature header: "ts=timestamp;h1=signature"
+    const sigParts = paddleSignature.split(';');
+    let timestamp = null;
+    let signature = null;
+    
+    for (const part of sigParts) {
+      const [key, value] = part.split('=');
+      if (key === 'ts') timestamp = value;
+      if (key === 'h1') signature = value;
+    }
+    
+    if (!timestamp || !signature) {
+      console.error('Invalid signature format');
+      return false;
+    }
+    
+    // Create the signed payload: timestamp + ':' + body
+    const signedPayload = `${timestamp}:${body}`;
+    
+    // Calculate expected signature using HMAC SHA256
     const expectedSignature = crypto
-      .createHash('sha1')
-      .update(PADDLE_CONFIG.publicKey + body)
+      .createHmac('sha256', PADDLE_CONFIG.webhookSecret)
+      .update(signedPayload)
       .digest('hex');
-      
-    return signature === expectedSignature;
+    
+    // Use timing-safe comparison to prevent timing attacks
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
   } catch (error) {
     console.error('Webhook verification error:', error);
     return false;
@@ -95,50 +117,46 @@ function verifyPaddleWebhook(body, signature) {
 }
 
 /**
- * Make API call to Paddle
+ * Make API call to modern Paddle Billing API
  */
-async function paddleApiCall(endpoint, method = 'POST', data = {}) {
+async function paddleApiCall(endpoint, method = 'GET', data = null) {
   const https = require('https');
-  const querystring = require('querystring');
   
-  // Add vendor credentials to request
-  const requestData = {
-    vendor_id: PADDLE_CONFIG.vendorId,
-    vendor_auth_code: PADDLE_CONFIG.apiKey,
-    ...data
-  };
-  
-  const postData = querystring.stringify(requestData);
   const baseUrl = PADDLE_CONFIG.environment === 'production' 
-    ? 'vendors.paddle.com' 
-    : 'vendors-sandbox.paddle.com';
+    ? 'api.paddle.com' 
+    : 'sandbox-api.paddle.com';
   
   const options = {
     hostname: baseUrl,
     port: 443,
-    path: `/api/2.0/${endpoint}`,
+    path: `/v1/${endpoint}`,
     method: method,
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Content-Length': Buffer.byteLength(postData)
+      'Authorization': `Bearer ${PADDLE_CONFIG.apiKey}`,
+      'Content-Type': 'application/json'
     }
   };
   
+  const postData = data ? JSON.stringify(data) : null;
+  if (postData) {
+    options.headers['Content-Length'] = Buffer.byteLength(postData);
+  }
+  
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
-      let data = '';
+      let responseData = '';
       
       res.on('data', (chunk) => {
-        data += chunk;
+        responseData += chunk;
       });
       
       res.on('end', () => {
         try {
-          const response = JSON.parse(data);
-          if (response.success) {
-            resolve(response.response);
+          const response = JSON.parse(responseData);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(response);
           } else {
-            reject(new Error(response.error?.message || 'Paddle API error'));
+            reject(new Error(response.error?.message || `API error: ${res.statusCode}`));
           }
         } catch (error) {
           reject(error);
@@ -150,31 +168,56 @@ async function paddleApiCall(endpoint, method = 'POST', data = {}) {
       reject(error);
     });
     
-    req.write(postData);
+    if (postData) {
+      req.write(postData);
+    }
     req.end();
   });
 }
 
 /**
- * Create Paddle customer
+ * Create Paddle customer and generate checkout
  */
 async function createPaddleCustomer(customerData) {
   try {
-    const response = await paddleApiCall('product/generate_pay_link', 'POST', {
-      product_id: customerData.productId,
-      customer_email: customerData.email,
-      customer_country: customerData.country || 'US',
-      custom_message: `Welcome to Construction Expenses - ${customerData.companyName}`,
-      return_url: `${process.env.FRONTEND_URL}/subscription/success`,
-      passthrough: JSON.stringify({
+    // First create customer if needed
+    let customer;
+    try {
+      customer = await paddleApiCall('customers', 'POST', {
+        name: customerData.companyName,
+        email: customerData.email,
+        custom_data: {
+          companyId: customerData.companyId
+        }
+      });
+    } catch (error) {
+      // Customer might already exist, that's okay
+      console.log('Customer creation note:', error.message);
+    }
+
+    // Create transaction/checkout
+    const transactionData = {
+      items: [{
+        price_id: customerData.priceId,
+        quantity: 1
+      }],
+      customer: customer ? { id: customer.data.id } : { email: customerData.email },
+      custom_data: {
         companyId: customerData.companyId,
         action: 'subscribe'
-      })
-    });
-    
-    return response;
+      },
+      checkout: {
+        url: `${process.env.FRONTEND_URL}/subscription/success`
+      }
+    };
+
+    const transaction = await paddleApiCall('transactions', 'POST', transactionData);
+    return {
+      checkout_url: transaction.data.checkout?.url,
+      transaction_id: transaction.data.id
+    };
   } catch (error) {
-    console.error('Error creating Paddle customer:', error);
+    console.error('Error creating Paddle customer/checkout:', error);
     throw error;
   }
 }
@@ -184,11 +227,8 @@ async function createPaddleCustomer(customerData) {
  */
 async function getSubscriptionDetails(subscriptionId) {
   try {
-    const response = await paddleApiCall('subscription/users', 'POST', {
-      subscription_id: subscriptionId
-    });
-    
-    return response;
+    const response = await paddleApiCall(`subscriptions/${subscriptionId}`, 'GET');
+    return response.data;
   } catch (error) {
     console.error('Error getting subscription details:', error);
     throw error;
@@ -200,11 +240,10 @@ async function getSubscriptionDetails(subscriptionId) {
  */
 async function cancelSubscription(subscriptionId) {
   try {
-    const response = await paddleApiCall('subscription/users_cancel', 'POST', {
-      subscription_id: subscriptionId
+    const response = await paddleApiCall(`subscriptions/${subscriptionId}/cancel`, 'POST', {
+      effective_from: 'next_billing_period'
     });
-    
-    return response;
+    return response.data;
   } catch (error) {
     console.error('Error canceling subscription:', error);
     throw error;
@@ -214,15 +253,16 @@ async function cancelSubscription(subscriptionId) {
 /**
  * Update subscription plan
  */
-async function updateSubscriptionPlan(subscriptionId, newPlanId) {
+async function updateSubscriptionPlan(subscriptionId, newPriceId) {
   try {
-    const response = await paddleApiCall('subscription/users/update', 'POST', {
-      subscription_id: subscriptionId,
-      plan_id: newPlanId,
-      prorate: true
+    const response = await paddleApiCall(`subscriptions/${subscriptionId}`, 'PATCH', {
+      items: [{
+        price_id: newPriceId,
+        quantity: 1
+      }],
+      proration_billing_mode: 'prorated_immediately'
     });
-    
-    return response;
+    return response.data;
   } catch (error) {
     console.error('Error updating subscription:', error);
     throw error;

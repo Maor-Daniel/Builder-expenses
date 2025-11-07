@@ -22,10 +22,10 @@ This guide will help you integrate Paddle for subscription management and replac
 After account approval, get these from your Paddle dashboard:
 
 ```bash
-# From Paddle Dashboard > Developer Tools > Authentication
-PADDLE_VENDOR_ID=your_vendor_id_here
+# From Paddle Dashboard > Developer Tools > API Keys
 PADDLE_API_KEY=your_api_key_here
-PADDLE_PUBLIC_KEY=your_public_key_here
+
+# From Paddle Dashboard > Developer Tools > Notifications > Webhook Destinations
 PADDLE_WEBHOOK_SECRET=your_webhook_secret_here
 ```
 
@@ -50,11 +50,11 @@ In your Paddle dashboard, create these subscription plans:
 - **Description**: For large construction firms
 - **Features**: Unlimited users, unlimited projects, custom integrations
 
-After creating each plan, note the **Price ID** for each:
+After creating each plan, note the **Price ID** for each (these start with `pri_`):
 ```bash
-PADDLE_STARTER_PRICE_ID=pri_starter_id_here
-PADDLE_PRO_PRICE_ID=pri_pro_id_here  
-PADDLE_ENTERPRISE_PRICE_ID=pri_enterprise_id_here
+PADDLE_STARTER_PRICE_ID=pri_01234567890abcdef
+PADDLE_PRO_PRICE_ID=pri_01234567890abcdef  
+PADDLE_ENTERPRISE_PRICE_ID=pri_01234567890abcdef
 ```
 
 ## 🗄️ Step 2: Setup DynamoDB Tables
@@ -170,21 +170,23 @@ See the detailed API Gateway configuration in `api-gateway-config.md`
 
 ### 5.1 Set Webhook URL
 In your Paddle dashboard:
-1. Go to Developer Tools > Webhooks
-2. Add webhook URL: `https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/webhook/paddle`
+1. Go to Developer Tools > Notifications
+2. Create a new webhook destination with URL: `https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod/webhook/paddle`
 3. Select these events:
-   - Subscription Created
-   - Subscription Updated  
-   - Subscription Cancelled
-   - Payment Succeeded
-   - Payment Failed
+   - subscription.created
+   - subscription.updated  
+   - subscription.canceled
+   - transaction.completed
+   - transaction.payment_failed
+   - adjustment.created
 
 ### 5.2 Test Webhook
 ```bash
 # Test webhook endpoint
-curl -X POST "https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/webhook/paddle" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "alert_name=subscription_created&alert_id=123&vendor_id=your_vendor_id"
+curl -X POST "https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod/webhook/paddle" \
+  -H "Content-Type: application/json" \
+  -H "Paddle-Signature: ts=1234567890;h1=test" \
+  -d '{"event_type": "test", "notification_id": "ntf_test"}'
 ```
 
 ## 🎨 Step 6: Update Frontend
@@ -196,14 +198,14 @@ Update `/frontend/index.html`:
 // Update PADDLE_CONFIG with your actual credentials
 const PADDLE_CONFIG = {
     environment: 'sandbox', // Change to 'production' when ready
-    clientToken: 'your_actual_paddle_client_token',
-    vendorId: 'your_actual_paddle_vendor_id',
-    checkoutDomain: 'https://sandbox-checkout.paddle.com'
+    clientToken: 'your_actual_paddle_client_token'
 };
 
 // Initialize Paddle
-Paddle.Environment.set(PADDLE_CONFIG.environment);
-Paddle.Setup({ vendor: PADDLE_CONFIG.vendorId });
+Paddle.Setup({
+    environment: PADDLE_CONFIG.environment,
+    token: PADDLE_CONFIG.clientToken
+});
 ```
 
 ### 6.2 Add Subscription UI

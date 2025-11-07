@@ -39,7 +39,7 @@ exports.handler = async (event) => {
     }
 
     // Verify webhook signature
-    const signature = event.headers['p-signature'] || event.headers['P-Signature'];
+    const signature = event.headers['paddle-signature'] || event.headers['Paddle-Signature'];
     if (!verifyPaddleWebhook(webhookBody, signature)) {
       console.error('Invalid webhook signature');
       return createErrorResponse(401, 'Invalid webhook signature');
@@ -48,68 +48,48 @@ exports.handler = async (event) => {
     // Parse webhook data
     let webhookData;
     try {
-      // Paddle sends data as form-encoded, parse it
-      const params = new URLSearchParams(webhookBody);
-      webhookData = {
-        alert_name: params.get('alert_name'),
-        alert_id: params.get('alert_id'),
-        subscription_id: params.get('subscription_id'),
-        customer_id: params.get('customer_id'),
-        email: params.get('email'),
-        status: params.get('status'),
-        passthrough: params.get('passthrough') ? JSON.parse(params.get('passthrough')) : {},
-        // Payment specific fields
-        order_id: params.get('order_id'),
-        payment_method: params.get('payment_method'),
-        currency: params.get('currency'),
-        gross: params.get('gross'),
-        net: params.get('net'),
-        // Subscription specific fields
-        subscription_plan_id: params.get('subscription_plan_id'),
-        next_bill_date: params.get('next_bill_date'),
-        update_url: params.get('update_url'),
-        cancel_url: params.get('cancel_url')
-      };
+      // Modern Paddle sends JSON data
+      webhookData = JSON.parse(webhookBody);
     } catch (parseError) {
       console.error('Failed to parse webhook data:', parseError);
       return createErrorResponse(400, 'Invalid webhook data format');
     }
 
     console.log('Processed webhook data:', {
-      alert_name: webhookData.alert_name,
-      subscription_id: webhookData.subscription_id,
-      customer_id: webhookData.customer_id,
-      companyId: webhookData.passthrough?.companyId
+      event_type: webhookData.event_type,
+      notification_id: webhookData.notification_id,
+      subscription_id: webhookData.data?.subscription?.id,
+      customer_id: webhookData.data?.subscription?.customer_id || webhookData.data?.transaction?.customer_id
     });
 
-    // Route webhook based on alert type
-    switch (webhookData.alert_name) {
-      case 'subscription_created':
+    // Route webhook based on modern event types
+    switch (webhookData.event_type) {
+      case 'subscription.created':
         await handleSubscriptionCreated(webhookData);
         break;
 
-      case 'subscription_updated':
+      case 'subscription.updated':
         await handleSubscriptionUpdated(webhookData);
         break;
 
-      case 'subscription_cancelled':
+      case 'subscription.canceled':
         await handleSubscriptionCancelled(webhookData);
         break;
 
-      case 'subscription_payment_succeeded':
+      case 'transaction.completed':
         await handlePaymentSucceeded(webhookData);
         break;
 
-      case 'subscription_payment_failed':
+      case 'transaction.payment_failed':
         await handlePaymentFailed(webhookData);
         break;
 
-      case 'subscription_payment_refunded':
+      case 'adjustment.created':
         await handlePaymentRefunded(webhookData);
         break;
 
       default:
-        console.log('Unhandled webhook event:', webhookData.alert_name);
+        console.log('Unhandled webhook event:', webhookData.event_type);
     }
 
     // Store webhook for audit trail
@@ -118,7 +98,7 @@ exports.handler = async (event) => {
     return createResponse(200, { 
       success: true, 
       message: 'Webhook processed successfully',
-      alert_name: webhookData.alert_name
+      event_type: webhookData.event_type
     });
 
   } catch (error) {
@@ -131,26 +111,27 @@ exports.handler = async (event) => {
  * Handle subscription created
  */
 async function handleSubscriptionCreated(webhookData) {
-  console.log('Processing subscription created:', webhookData.subscription_id);
+  const subscription = webhookData.data;
+  console.log('Processing subscription created:', subscription.id);
 
-  const companyId = webhookData.passthrough?.companyId;
+  const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
-    throw new Error('Missing companyId in webhook passthrough data');
+    throw new Error('Missing companyId in webhook custom_data');
   }
 
-  // Determine plan based on subscription_plan_id
-  const planName = determinePlanFromPaddleId(webhookData.subscription_plan_id);
+  // Determine plan based on price_id from first item
+  const priceId = subscription.items?.[0]?.price?.id;
+  const planName = determinePlanFromPriceId(priceId);
 
   // Store subscription
   await storeSubscription({
     companyId,
-    subscriptionId: webhookData.subscription_id,
-    paddleCustomerId: webhookData.customer_id,
+    subscriptionId: subscription.id,
+    paddleCustomerId: subscription.customer_id,
     currentPlan: planName,
-    status: 'active',
-    nextBillingDate: webhookData.next_bill_date,
-    updateUrl: webhookData.update_url,
-    cancelUrl: webhookData.cancel_url
+    status: subscription.status,
+    nextBillingDate: subscription.next_billed_at,
+    scheduledChangeId: subscription.scheduled_change?.id || null
   });
 
   // Update company record
@@ -159,11 +140,11 @@ async function handleSubscriptionCreated(webhookData) {
     Key: { companyId },
     UpdateExpression: 'SET paddleCustomerId = :customerId, subscriptionId = :subId, subscriptionStatus = :status, currentPlan = :plan, nextBillingDate = :billDate, updatedAt = :updatedAt',
     ExpressionAttributeValues: {
-      ':customerId': webhookData.customer_id,
-      ':subId': webhookData.subscription_id,
-      ':status': 'active',
+      ':customerId': subscription.customer_id,
+      ':subId': subscription.id,
+      ':status': subscription.status,
       ':plan': planName,
-      ':billDate': webhookData.next_bill_date,
+      ':billDate': subscription.next_billed_at,
       ':updatedAt': new Date().toISOString()
     }
   });
@@ -333,10 +314,10 @@ async function handlePaymentRefunded(webhookData) {
 }
 
 /**
- * Determine plan name from Paddle plan ID
+ * Determine plan name from Paddle price ID
  */
-function determinePlanFromPaddleId(planId) {
-  // Map Paddle plan IDs to our internal plan names
+function determinePlanFromPriceId(priceId) {
+  // Map Paddle price IDs to our internal plan names
   // These would be configured in your Paddle dashboard
   const planMapping = {
     [process.env.PADDLE_STARTER_PRICE_ID]: 'STARTER',
@@ -344,7 +325,7 @@ function determinePlanFromPaddleId(planId) {
     [process.env.PADDLE_ENTERPRISE_PRICE_ID]: 'ENTERPRISE'
   };
 
-  return planMapping[planId] || 'STARTER';
+  return planMapping[priceId] || 'STARTER';
 }
 
 /**
@@ -354,14 +335,15 @@ async function storeWebhookEvent(webhookData) {
   const params = {
     TableName: PADDLE_TABLE_NAMES.WEBHOOKS,
     Item: {
-      webhookId: `${webhookData.alert_name}_${webhookData.alert_id}_${Date.now()}`,
-      alertName: webhookData.alert_name,
-      alertId: webhookData.alert_id,
-      subscriptionId: webhookData.subscription_id,
-      customerId: webhookData.customer_id,
-      companyId: webhookData.passthrough?.companyId,
+      webhookId: `${webhookData.event_type}_${webhookData.notification_id}_${Date.now()}`,
+      eventType: webhookData.event_type,
+      notificationId: webhookData.notification_id,
+      subscriptionId: webhookData.data?.subscription?.id || webhookData.data?.transaction?.subscription_id,
+      customerId: webhookData.data?.subscription?.customer_id || webhookData.data?.transaction?.customer_id,
+      companyId: webhookData.data?.subscription?.custom_data?.companyId || webhookData.data?.transaction?.custom_data?.companyId,
       data: webhookData,
-      processedAt: new Date().toISOString()
+      processedAt: new Date().toISOString(),
+      ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60) // 90 days TTL
     }
   };
 
