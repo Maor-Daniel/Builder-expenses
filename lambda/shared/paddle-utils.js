@@ -1,7 +1,6 @@
 // lambda/shared/paddle-utils.js
 // Paddle integration utilities for construction expenses SAAS
 
-const AWS = require('aws-sdk');
 const crypto = require('crypto');
 
 // Paddle configuration
@@ -64,10 +63,8 @@ const PADDLE_TABLE_NAMES = {
   WEBHOOKS: 'construction-expenses-paddle-webhooks'
 };
 
-// DynamoDB client
-const dynamodb = new AWS.DynamoDB.DocumentClient({
-  region: process.env.AWS_REGION || 'us-east-1'
-});
+// Import dynamoOperation from company-utils
+const { dynamoOperation, COMPANY_TABLE_NAMES } = require('./company-utils');
 
 /**
  * Verify Paddle webhook signature using HMAC SHA256
@@ -326,7 +323,7 @@ async function getCompanySubscription(companyId) {
     Key: { companyId }
   };
   
-  const result = await dynamodb.get(params).promise();
+  const result = await dynamoOperation('get', params);
   return result.Item;
 }
 
@@ -352,12 +349,13 @@ async function storeSubscription(subscriptionData) {
       currentPlan: subscriptionData.currentPlan,
       subscriptionStatus: subscriptionData.status,
       nextBillingDate: subscriptionData.nextBillingDate,
+      scheduledChangeId: subscriptionData.scheduledChangeId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
   };
   
-  await dynamodb.put(params).promise();
+  await dynamoOperation('put', params);
 }
 
 /**
@@ -373,12 +371,13 @@ async function storePayment(paymentData) {
       amount: paymentData.amount,
       currency: paymentData.currency,
       status: paymentData.status,
+      paymentMethod: paymentData.paymentMethod,
       paidAt: paymentData.paidAt,
       createdAt: new Date().toISOString()
     }
   };
   
-  await dynamodb.put(params).promise();
+  await dynamoOperation('put', params);
 }
 
 /**
