@@ -2660,8 +2660,143 @@
         // Paddle Config for subscription management
         const PADDLE_CONFIG = {
             environment: 'sandbox', // Change to 'production' when ready
-            clientToken: 'your_paddle_client_token' // Replace with actual token
+            // Get client-side token from Paddle Dashboard > Developer tools > Authentication
+            // Sandbox tokens start with 'test_', live tokens start with 'live_'
+            clientToken: 'test_your_paddle_client_token_here', // Replace with actual client-side token
+            apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod'
         };
+
+        // Paddle initialization
+        let paddleInitialized = false;
+        
+        function initializePaddle() {
+            console.log('Initializing Paddle...');
+            
+            if (typeof Paddle === 'undefined') {
+                console.error('Paddle SDK not loaded');
+                return false;
+            }
+            
+            // Check if we have a real client token (not placeholder)
+            if (!PADDLE_CONFIG.clientToken || PADDLE_CONFIG.clientToken.includes('your_paddle_client_token')) {
+                console.warn('Paddle client token not configured. Please set real token from Paddle Dashboard.');
+                return false;
+            }
+            
+            try {
+                Paddle.Initialize({
+                    token: PADDLE_CONFIG.clientToken,
+                    // Optional: Set checkout settings
+                    checkout: {
+                        settings: {
+                            displayMode: 'overlay',
+                            theme: 'light',
+                            locale: 'he'
+                        }
+                    }
+                });
+                
+                paddleInitialized = true;
+                console.log('✅ Paddle initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('❌ Paddle initialization failed:', error);
+                return false;
+            }
+        }
+
+        // Subscription Management Functions
+        async function getSubscriptionPlans() {
+            try {
+                console.log('Fetching subscription plans...');
+                const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/plans`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Subscription plans loaded:', data);
+                return data;
+            } catch (error) {
+                console.error('❌ Error fetching subscription plans:', error);
+                return null;
+            }
+        }
+
+        async function createSubscription(planId, userEmail, companyName) {
+            if (!paddleInitialized) {
+                console.error('Paddle not initialized. Cannot create subscription.');
+                return;
+            }
+            
+            try {
+                console.log('Creating subscription for plan:', planId);
+                
+                // Call backend to create checkout session
+                const checkoutData = {
+                    planName: planId,
+                    billingCycle: 'monthly',
+                    email: userEmail,
+                    companyName: companyName
+                };
+                
+                const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentAuthToken}`
+                    },
+                    body: JSON.stringify(checkoutData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('✅ Checkout session created:', result);
+                
+                // Open Paddle checkout
+                if (result.checkoutUrl) {
+                    window.open(result.checkoutUrl, '_blank');
+                } else {
+                    console.error('No checkout URL received');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error creating subscription:', error);
+                alert('שגיאה ביצירת מנוי. נסה שוב.');
+            }
+        }
+
+        async function getSubscriptionStatus() {
+            try {
+                console.log('Fetching subscription status...');
+                const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentAuthToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Subscription status:', data);
+                return data;
+            } catch (error) {
+                console.error('❌ Error fetching subscription status:', error);
+                return null;
+            }
+        }
+
+        function showSubscriptionModal() {
+            // This will be implemented later - for now just log
+            console.log('📋 Subscription modal requested');
+            alert('מסך ניהול מנויים יתווסף בקרוב');
+        }
 
         // Cognito Configuration
         const poolData = {
@@ -3109,6 +3244,16 @@
                 }
                 
                 console.log('App initialized successfully with company data');
+                
+                // Test subscription functionality (optional - only if Paddle is initialized)
+                if (paddleInitialized) {
+                    console.log('🎯 Testing subscription functionality...');
+                    setTimeout(async () => {
+                        await getSubscriptionPlans();
+                        await getSubscriptionStatus();
+                    }, 1000); // Delay to avoid overwhelming the API
+                }
+                
             } catch (error) {
                 console.error('Failed to initialize app:', error);
                 // Try to render with whatever data we have
@@ -3340,8 +3485,14 @@
             }
         }
 
-        // Initialize authentication on page load
+        // Initialize authentication and Paddle on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, initializing systems...');
+            
+            // Initialize Paddle (will warn if token not configured)
+            initializePaddle();
+            
+            // Initialize authentication
             checkAuthState();
         });
         
