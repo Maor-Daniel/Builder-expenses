@@ -2046,6 +2046,18 @@
             align-items: center;
         }
         
+        .user-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
         .logout-btn {
             background: #e53e3e;
             color: white;
@@ -2058,6 +2070,251 @@
         
         .logout-btn:hover {
             background: #c53030;
+        }
+        
+        .subscription-btn {
+            background: #3182ce;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .subscription-btn:hover {
+            background: #2c5282;
+        }
+        
+        .settings-btn {
+            background: #38a169;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .settings-btn:hover {
+            background: #2f855a;
+        }
+        
+        /* Settings page styling */
+        .settings-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        
+        .settings-nav-btn {
+            background: transparent;
+            color: #718096;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .settings-nav-btn:hover {
+            background: #f7fafc;
+            color: #2d3748;
+        }
+        
+        .settings-nav-btn.active {
+            background: #3182ce;
+            color: white;
+            border-bottom-color: #2c5282;
+        }
+        
+        .settings-section {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .settings-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .settings-card h3 {
+            margin: 0 0 25px 0;
+            color: #2d3748;
+            font-size: 1.4rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        .user-management-actions {
+            margin-bottom: 25px;
+        }
+        
+        .users-list {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            transition: background-color 0.2s;
+        }
+        
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        
+        .user-item:hover {
+            background: #f7fafc;
+        }
+        
+        .user-info {
+            flex-grow: 1;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .user-email {
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        .user-role {
+            font-size: 12px;
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin: 0 15px;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .user-action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .user-action-btn.edit {
+            background: #3182ce;
+            color: white;
+        }
+        
+        .user-action-btn.edit:hover {
+            background: #2c5282;
+        }
+        
+        .user-action-btn.remove {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .user-action-btn.remove:hover {
+            background: #c53030;
+        }
+        
+        .subscription-info {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .subscription-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .subscription-plan {
+            font-weight: bold;
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+        
+        .subscription-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .subscription-badge.active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .subscription-badge.expired {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .subscription-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #2d3748;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #3182ce;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .settings-btn {
+            background: #4a5568;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        
+        .settings-btn:hover {
+            background: #2d3748;
         }
     </style>
 </head>
@@ -2218,8 +2475,14 @@
     <!-- User Info Bar -->
     <div id="userInfo" style="display: none;">
         <div class="user-bar">
-            <span id="userName">שלום, משתמש</span>
-            <button onclick="signOut()" class="logout-btn">התנתק</button>
+            <div class="user-bar-left">
+                <span id="userName">שלום, משתמש</span>
+                <button onclick="showSettings()" class="settings-btn">הגדרות</button>
+            </div>
+            <div class="user-bar-right">
+                <button onclick="showSubscriptionModal()" class="subscription-btn">מנויים</button>
+                <button onclick="signOut()" class="logout-btn">התנתק</button>
+            </div>
         </div>
     </div>
 
@@ -2447,6 +2710,99 @@
                 </div>
             </div>
 
+            <!-- Settings Tab -->
+            <div id="settingsTab" class="tab-content">
+                <div class="demo-section">
+                    <div class="demo-title">הגדרות מערכת</div>
+                    <p>ניהול הגדרות חברה, משתמשים ומנויים:</p>
+                    
+                    <div class="settings-navigation">
+                        <button class="settings-nav-btn active" onclick="showSettingsSection('company', event)">פרטי החברה</button>
+                        <button class="settings-nav-btn" onclick="showSettingsSection('user', event)">ניהול משתמשים</button>
+                        <button class="settings-nav-btn" onclick="showSettingsSection('subscription', event)">מנוי ותשלום</button>
+                        <button class="settings-nav-btn" onclick="showSettingsSection('preferences', event)">העדפות</button>
+                    </div>
+                    
+                    <!-- Company Settings Section -->
+                    <div id="companySettings" class="settings-section">
+                        <div class="settings-card">
+                            <h3>פרטי החברה</h3>
+                            <form id="companyForm" onsubmit="saveCompanySettings(event)">
+                                <div class="form-group">
+                                    <label class="form-label">שם החברה</label>
+                                    <input type="text" id="companyName" class="form-input" placeholder="הכנס שם החברה">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">כתובת</label>
+                                    <input type="text" id="companyAddress" class="form-input" placeholder="הכנס כתובת החברה">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טלפון</label>
+                                    <input type="tel" id="companyPhone" class="form-input" placeholder="הכנס מספר טלפון">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">אימייל</label>
+                                    <input type="email" id="companyEmail" class="form-input" placeholder="הכנס כתובת אימייל">
+                                </div>
+                                <button type="submit" class="add-project-button">שמור שינויים</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- User Management Section -->
+                    <div id="userSettings" class="settings-section" style="display: none;">
+                        <div class="settings-card">
+                            <h3>ניהול משתמשים</h3>
+                            <div class="user-management-actions">
+                                <button class="add-work-button" onclick="showInviteUserModal()">הזמן משתמש חדש</button>
+                            </div>
+                            <div id="usersList" class="users-list">
+                                <!-- Users will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Subscription Settings Section -->
+                    <div id="subscriptionSettings" class="settings-section" style="display: none;">
+                        <div class="settings-card">
+                            <h3>מנוי ותשלום</h3>
+                            <div id="currentSubscription" class="subscription-info">
+                                <!-- Subscription info will be populated here -->
+                            </div>
+                            <div class="subscription-actions">
+                                <button class="add-project-button" onclick="showSubscriptionModal()">שדרג מנוי</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preferences Section -->
+                    <div id="preferencesSettings" class="settings-section" style="display: none;">
+                        <div class="settings-card">
+                            <h3>העדפות מערכת</h3>
+                            <form id="preferencesForm" onsubmit="savePreferences(event)">
+                                <div class="form-group">
+                                    <label class="form-label">שפה</label>
+                                    <select id="systemLanguage" class="form-select">
+                                        <option value="he">עברית</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">תיבת דואר להתרעות</label>
+                                    <input type="email" id="notificationEmail" class="form-input" placeholder="הכנס כתובת אימייל">
+                                </div>
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="emailNotifications"> התרעות דוא"ל
+                                    </label>
+                                </div>
+                                <button type="submit" class="add-project-button">שמור העדפות</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -2662,7 +3018,7 @@
             environment: 'sandbox', // Change to 'production' when ready
             // Get client-side token from Paddle Dashboard > Developer tools > Authentication
             // Sandbox tokens start with 'test_', live tokens start with 'live_'
-            clientToken: 'test_your_paddle_client_token_here', // Replace with actual client-side token
+            clientToken: 'test_b6b2a7e9bafb9f94568717ad76b', // Real Paddle client-side token
             apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod'
         };
 
@@ -2792,10 +3148,116 @@
             }
         }
 
-        function showSubscriptionModal() {
-            // This will be implemented later - for now just log
+        async function showSubscriptionModal() {
             console.log('📋 Subscription modal requested');
-            alert('מסך ניהול מנויים יתווסף בקרוב');
+            
+            try {
+                // Get available plans
+                const plansData = await getSubscriptionPlans();
+                if (!plansData || !plansData.plans) {
+                    alert('שגיאה בטעינת תוכניות המנוי');
+                    return;
+                }
+                
+                // Create a simple subscription selection interface
+                let plansHTML = '<h3>בחר תוכנית מנוי:</h3><div style="margin: 20px 0;">';
+                
+                plansData.plans.forEach(plan => {
+                    const popular = plan.popular ? ' (מומלץ)' : '';
+                    plansHTML += `
+                        <div style="border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; ${plan.popular ? 'border-color: #3182ce; background-color: #ebf8ff;' : ''}">
+                            <h4>${plan.name}${popular}</h4>
+                            <p>מחיר חודשי: $${plan.monthlyPrice}</p>
+                            <p>מחיר שנתי: $${plan.yearlyPrice} (חיסכון!)</p>
+                            <p>מגבלות: ${plan.limits.maxUsers === -1 ? 'ללא הגבלה' : plan.limits.maxUsers} משתמשים, ${plan.limits.maxProjects === -1 ? 'ללא הגבלה' : plan.limits.maxProjects} פרויקטים</p>
+                            <button onclick="selectSubscriptionPlan('${plan.id}')" style="background: #3182ce; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                                בחר תוכנית זו
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                plansHTML += '</div><button onclick="closeSubscriptionModal()" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">סגור</button>';
+                
+                // Show modal
+                const modalHTML = `
+                    <div id="subscriptionModal" style="
+                        position: fixed; 
+                        top: 0; left: 0; 
+                        width: 100%; height: 100%; 
+                        background: rgba(0,0,0,0.5); 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center;
+                        z-index: 1000;
+                    ">
+                        <div style="
+                            background: white; 
+                            padding: 30px; 
+                            border-radius: 10px; 
+                            max-width: 600px; 
+                            max-height: 80vh; 
+                            overflow-y: auto;
+                            direction: rtl;
+                        ">
+                            ${plansHTML}
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+            } catch (error) {
+                console.error('Error showing subscription modal:', error);
+                alert('שגיאה בטעינת תוכניות המנוי');
+            }
+        }
+
+        function closeSubscriptionModal() {
+            const modal = document.getElementById('subscriptionModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function selectSubscriptionPlan(planId) {
+            console.log('Selected plan:', planId);
+            
+            if (!paddleInitialized) {
+                alert('Paddle לא אותחל. נא לטעון מחדש את הדף.');
+                return;
+            }
+            
+            try {
+                // Get current user info
+                const currentUser = userPool.getCurrentUser();
+                if (!currentUser) {
+                    alert('שגיאה: משתמש לא מזוהה');
+                    return;
+                }
+                
+                currentUser.getUserAttributes((err, attributes) => {
+                    if (err) {
+                        console.error('Error getting user attributes:', err);
+                        alert('שגיאה בקבלת פרטי המשתמש');
+                        return;
+                    }
+                    
+                    const emailAttr = attributes.find(attr => attr.Name === 'email');
+                    const nameAttr = attributes.find(attr => attr.Name === 'name');
+                    
+                    const userEmail = emailAttr ? emailAttr.Value : 'test@example.com';
+                    const userName = nameAttr ? nameAttr.Value : 'Test Company';
+                    
+                    // Close modal and create subscription
+                    closeSubscriptionModal();
+                    createSubscription(planId, userEmail, userName);
+                });
+                
+            } catch (error) {
+                console.error('Error selecting subscription plan:', error);
+                alert('שגיאה בבחירת תוכנית המנוי');
+            }
         }
 
         // Cognito Configuration
@@ -2937,6 +3399,111 @@
             // Reset all forms
             resetAuthForms();
             showAuthModal();
+        }
+        
+        // Settings functions
+        function showSettings() {
+            console.log('🔍 showSettings called');
+            console.log('🔍 About to call switchTab with settings');
+            switchTab('settings');
+        }
+        
+        function showSettingsSection(sectionName, event = null) {
+            // Hide all settings sections
+            document.querySelectorAll('.settings-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Remove active class from all nav buttons
+            document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionName + 'Settings').style.display = 'block';
+            
+            // Add active class to selected nav button
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find and activate the corresponding nav button when called programmatically
+                const navBtn = document.querySelector(`[onclick*="showSettingsSection('${sectionName}')"`);
+                if (navBtn) {
+                    navBtn.classList.add('active');
+                }
+            }
+        }
+        
+        function loadCompanySettings() {
+            // TODO: Load company settings from API
+            console.log('Loading company settings...');
+        }
+        
+        function saveCompanySettings(event) {
+            event.preventDefault();
+            // TODO: Save company settings to API
+            console.log('Saving company settings...');
+            showMessage('companyMessage', 'הגדרות החברה נשמרו בהצלחה', 'success');
+        }
+        
+        function loadUsersList() {
+            // TODO: Load users list from API
+            console.log('Loading users list...');
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = `
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-name">מנהל המערכת</div>
+                        <div class="user-email">admin@company.com</div>
+                    </div>
+                    <div class="user-role">מנהל</div>
+                    <div class="user-actions">
+                        <button class="user-action-btn edit" onclick="editUser('admin')">ערוך</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showInviteUserModal() {
+            // TODO: Show invite user modal
+            console.log('Showing invite user modal...');
+            showMessage('userMessage', 'פיתוח הוספת משתמש בתהליך', 'info');
+        }
+        
+        function inviteUser() {
+            // TODO: Send invitation
+            console.log('Sending user invitation...');
+        }
+        
+        function editUser(userId) {
+            // TODO: Edit user functionality
+            console.log('Editing user:', userId);
+        }
+        
+        function removeUser(userId) {
+            // TODO: Remove user functionality
+            console.log('Removing user:', userId);
+        }
+        
+        function loadSubscriptionInfo() {
+            // TODO: Load subscription info from API
+            console.log('Loading subscription info...');
+            const subscriptionInfo = document.getElementById('currentSubscription');
+            subscriptionInfo.innerHTML = `
+                <div class="subscription-status">
+                    <div class="subscription-plan">תוכנית בסיסית</div>
+                    <div class="subscription-badge active">פעילה</div>
+                </div>
+                <p>תוכנית בסיסית - עד 50 פרויקטים</p>
+                <p>תאריך חידוש: 01/01/2025</p>
+            `;
+        }
+        
+        function savePreferences(event) {
+            event.preventDefault();
+            // TODO: Save preferences to API
+            console.log('Saving preferences...');
+            showMessage('preferencesMessage', 'ההעדפות נשמרו בהצלחה', 'success');
         }
         
         // Tab switching functions
@@ -3577,7 +4144,7 @@
                 const result = await apiCall('/projects');
                 console.log('Projects API result:', result);
                 console.log('result.data?.projects type:', typeof result.data?.projects, 'isArray:', Array.isArray(result.data?.projects));
-                projects = result.data?.projects || result.data || result.items || [];
+                projects = result.projects || result.data?.projects || result.data || result.items || [];
                 console.log('Projects after assignment:', projects, 'type:', typeof projects, 'isArray:', Array.isArray(projects));
                 return projects;
             } catch (error) {
@@ -3599,7 +4166,7 @@
                 console.log('Loading contractors from API...');
                 const result = await apiCall('/contractors');
                 console.log('Contractors API result:', result);
-                contractors = result.data?.contractors || result.data || result.items || [];
+                contractors = result.contractors || result.data?.contractors || result.data || result.items || [];
                 console.log('Contractors after assignment:', contractors, 'isArray:', Array.isArray(contractors));
                 return contractors;
             } catch (error) {
@@ -3814,6 +4381,8 @@
         }
 
         function switchTab(tabName, event = null) {
+            console.log('🔍 switchTab called with:', tabName);
+            
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -3825,7 +4394,14 @@
             });
             
             // Show selected tab content
-            document.getElementById(tabName + 'Tab').classList.add('active');
+            const targetTab = document.getElementById(tabName + 'Tab');
+            console.log('🔍 Target tab element:', targetTab);
+            if (targetTab) {
+                targetTab.classList.add('active');
+                console.log('🔍 Added active class to:', tabName + 'Tab');
+            } else {
+                console.error('❌ Tab element not found:', tabName + 'Tab');
+            }
             
             // Add active class to selected tab button
             if (event && event.target) {
@@ -3847,6 +4423,7 @@
                 }
                 renderContractorsGrid();
             } else if (tabName === 'works') {
+                console.log('🔍 DEBUG: Switching to works tab, calling renderWorksGrid()');
                 renderWorksGrid();
             } else if (tabName === 'addExpense') {
                 // Initialize signature canvas when switching to add expense tab
@@ -3858,6 +4435,12 @@
                     // Set default date to today
                     document.getElementById('newExpenseDate').value = new Date().toISOString().split('T')[0];
                 }, 100);
+            } else if (tabName === 'settings') {
+                // Load settings data when switching to settings tab
+                loadCompanySettings();
+                loadUsersList();
+                loadSubscriptionInfo();
+                showSettingsSection('company');
             }
         }
 
@@ -5589,11 +6172,14 @@
             }
             
             let html = '';
-            works.forEach(work => {
+            console.log('🔍 DEBUG: renderWorksGrid - works data:', works);
+            works.forEach((work, index) => {
+                console.log(`🔍 DEBUG: Processing work ${index}:`, work);
+                console.log(`🔍 DEBUG: work.WorkName="${work.WorkName}", work.workName="${work.workName}", work.TotalWorkCost="${work.TotalWorkCost}", work.totalWorkCost="${work.totalWorkCost}", work.projectName="${work.projectName}", work.contractorName="${work.contractorName}"`);
                 // Calculate how much was paid from related expenses
                 const workExpenses = originalMockData.filter(expense => expense.workId === work.workId);
                 const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
-                const workCost = work.TotalWorkCost || work.cost || 0;
+                const workCost = work.TotalWorkCost || work.totalWorkCost || work.cost || 0;
                 const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
                 
                 // Use enhanced names from API, or resolve from IDs as fallback
@@ -5602,14 +6188,18 @@
                 
                 // If enhanced names are missing, resolve from IDs
                 if (!projectName && work.projectId) {
+                    console.log(`🔍 DEBUG: Looking for project with ID ${work.projectId} in`, projects);
                     const project = projects.find(p => p.projectId === work.projectId);
+                    console.log(`🔍 DEBUG: Found project:`, project);
                     projectName = project ? project.name : 'לא זוהה';
                 } else if (!projectName) {
                     projectName = 'לא זוהה';
                 }
                 
                 if (!contractorName && work.contractorId) {
+                    console.log(`🔍 DEBUG: Looking for contractor with ID ${work.contractorId} in`, contractors);
                     const contractor = contractors.find(c => c.contractorId === work.contractorId);
+                    console.log(`🔍 DEBUG: Found contractor:`, contractor);
                     contractorName = contractor ? contractor.name : 'לא זוהה';
                 } else if (!contractorName) {
                     contractorName = 'לא זוהה';
@@ -5619,7 +6209,7 @@
                     <div class="work-card" onclick="showWorkDetails('${work.workId}')">
                         <div class="work-header">
                             <div>
-                                <div class="work-name">${work.WorkName || work.name || 'ללא שם'}</div>
+                                <div class="work-name">${work.WorkName || work.workName || work.name || 'ללא שם'}</div>
                                 <div class="work-project">פרויקט: ${projectName}</div>
                                 <div class="work-contractor">קבלן: ${contractorName}</div>
                             </div>
@@ -5665,8 +6255,14 @@
                 console.log('Loading works from API...');
                 const result = await apiCall('/works');
                 console.log('Works API result:', result);
-                works = result.data?.works || result.items || [];
+                works = result.works || result.data?.works || result.data || result.items || [];
                 console.log('Works after assignment:', works, 'isArray:', Array.isArray(works));
+                
+                // Refresh works display when works are loaded
+                if (document.getElementById('worksTab').classList.contains('active')) {
+                    renderWorksGrid();
+                }
+                
                 return works;
             } catch (error) {
                 console.warn('Failed to load works from API:', error);
@@ -5720,7 +6316,9 @@
         }
 
         function showWorkDetails(workId) {
+            console.log('🔍 DEBUG: showWorkDetails called with workId:', workId);
             const work = works.find(w => w.workId === workId);
+            console.log('🔍 DEBUG: Found work for modal:', work);
             if (!work) {
                 console.warn('Work not found:', workId);
                 return;
@@ -5729,7 +6327,7 @@
             // Get all expenses for this work
             const workExpenses = originalMockData.filter(expense => expense.workId === workId);
             const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
-            const workCost = parseFloat(work.TotalWorkCost || work.cost || 0);
+            const workCost = parseFloat(work.TotalWorkCost || work.totalWorkCost || work.cost || 0);
             const remainingBudget = workCost - totalPaid;
             const progressPercentage = workCost > 0 ? Math.min((totalPaid / workCost) * 100, 100) : 0;
             const paidExpenses = workExpenses; // All expenses are considered paid
@@ -5744,7 +6342,7 @@
                 'Unknown Contractor');
 
             // Update modal title
-            document.getElementById('workModalTitle').textContent = work.WorkName || work.name || 'ללא שם';
+            document.getElementById('workModalTitle').textContent = work.WorkName || work.workName || work.name || 'ללא שם';
             document.getElementById('workModalSubtitle').textContent = 
                 `פרויקט: ${projectName} • קבלן: ${contractorName}`;
 
