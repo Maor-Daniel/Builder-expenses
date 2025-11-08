@@ -156,24 +156,28 @@ async function handleSubscriptionCreated(webhookData) {
  * Handle subscription updated
  */
 async function handleSubscriptionUpdated(webhookData) {
-  console.log('Processing subscription updated:', webhookData.subscription_id);
+  const subscription = webhookData.data;
+  console.log('Processing subscription updated:', subscription.id);
 
-  const companyId = webhookData.passthrough?.companyId;
+  const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
-    throw new Error('Missing companyId in webhook passthrough data');
+    throw new Error('Missing companyId in webhook custom_data');
   }
 
-  const planName = determinePlanFromPaddleId(webhookData.subscription_plan_id);
+  // Determine plan based on price_id from first item
+  const priceId = subscription.items?.[0]?.price?.id;
+  const planName = determinePlanFromPriceId(priceId);
 
   // Update subscription record
   await dynamoOperation('update', {
     TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
     Key: { companyId },
-    UpdateExpression: 'SET currentPlan = :plan, subscriptionStatus = :status, nextBillingDate = :billDate, updatedAt = :updatedAt',
+    UpdateExpression: 'SET currentPlan = :plan, subscriptionStatus = :status, nextBillingDate = :billDate, scheduledChangeId = :changeId, updatedAt = :updatedAt',
     ExpressionAttributeValues: {
       ':plan': planName,
-      ':status': webhookData.status || 'active',
-      ':billDate': webhookData.next_bill_date,
+      ':status': subscription.status,
+      ':billDate': subscription.next_billed_at,
+      ':changeId': subscription.scheduled_change?.id || null,
       ':updatedAt': new Date().toISOString()
     }
   });
@@ -185,8 +189,8 @@ async function handleSubscriptionUpdated(webhookData) {
     UpdateExpression: 'SET currentPlan = :plan, subscriptionStatus = :status, nextBillingDate = :billDate, updatedAt = :updatedAt',
     ExpressionAttributeValues: {
       ':plan': planName,
-      ':status': webhookData.status || 'active',
-      ':billDate': webhookData.next_bill_date,
+      ':status': subscription.status,
+      ':billDate': subscription.next_billed_at,
       ':updatedAt': new Date().toISOString()
     }
   });
@@ -198,11 +202,12 @@ async function handleSubscriptionUpdated(webhookData) {
  * Handle subscription cancelled
  */
 async function handleSubscriptionCancelled(webhookData) {
-  console.log('Processing subscription cancelled:', webhookData.subscription_id);
+  const subscription = webhookData.data;
+  console.log('Processing subscription cancelled:', subscription.id);
 
-  const companyId = webhookData.passthrough?.companyId;
+  const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
-    throw new Error('Missing companyId in webhook passthrough data');
+    throw new Error('Missing companyId in webhook custom_data');
   }
 
   // Update subscription status
@@ -235,43 +240,45 @@ async function handleSubscriptionCancelled(webhookData) {
  * Handle payment succeeded
  */
 async function handlePaymentSucceeded(webhookData) {
-  console.log('Processing payment succeeded:', webhookData.order_id);
+  const transaction = webhookData.data;
+  console.log('Processing payment succeeded:', transaction.id);
 
-  const companyId = webhookData.passthrough?.companyId;
+  const companyId = transaction.custom_data?.companyId;
 
   // Store payment record
   await storePayment({
-    paymentId: webhookData.order_id,
+    paymentId: transaction.id,
     companyId: companyId,
-    subscriptionId: webhookData.subscription_id,
-    amount: parseFloat(webhookData.gross),
-    currency: webhookData.currency,
+    subscriptionId: transaction.subscription_id,
+    amount: parseFloat(transaction.details.totals.total),
+    currency: transaction.currency_code,
     status: 'succeeded',
-    paymentMethod: webhookData.payment_method,
-    paidAt: new Date().toISOString()
+    paymentMethod: transaction.payments?.[0]?.method_details?.type || 'unknown',
+    paidAt: transaction.billed_at || new Date().toISOString()
   });
 
-  console.log('Payment recorded successfully:', webhookData.order_id);
+  console.log('Payment recorded successfully:', transaction.id);
 }
 
 /**
  * Handle payment failed
  */
 async function handlePaymentFailed(webhookData) {
-  console.log('Processing payment failed:', webhookData.order_id);
+  const transaction = webhookData.data;
+  console.log('Processing payment failed:', transaction.id);
 
-  const companyId = webhookData.passthrough?.companyId;
+  const companyId = transaction.custom_data?.companyId;
 
   // Store failed payment record
   await storePayment({
-    paymentId: webhookData.order_id,
+    paymentId: transaction.id,
     companyId: companyId,
-    subscriptionId: webhookData.subscription_id,
-    amount: parseFloat(webhookData.gross || 0),
-    currency: webhookData.currency,
+    subscriptionId: transaction.subscription_id,
+    amount: parseFloat(transaction.details?.totals?.total || 0),
+    currency: transaction.currency_code,
     status: 'failed',
-    paymentMethod: webhookData.payment_method,
-    paidAt: new Date().toISOString()
+    paymentMethod: transaction.payments?.[0]?.method_details?.type || 'unknown',
+    paidAt: transaction.billed_at || new Date().toISOString()
   });
 
   // Update subscription status if needed
@@ -287,7 +294,7 @@ async function handlePaymentFailed(webhookData) {
     });
   }
 
-  console.log('Payment failure recorded:', webhookData.order_id);
+  console.log('Payment failure recorded:', transaction.id);
 }
 
 /**

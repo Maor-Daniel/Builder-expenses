@@ -1,36 +1,44 @@
 // lambda/getProjects.js
-// Get all projects with SpentAmount data
+// Get all company projects with role-based filtering and permissions
 
 const {
   createResponse,
   createErrorResponse,
-  getUserIdFromEvent,
+  getCompanyUserFromEvent,
   getCurrentTimestamp,
-  dynamodb,
-  isLocal,
-  TABLE_NAMES
-} = require('./shared/multi-table-utils');
+  dynamoOperation,
+  COMPANY_TABLE_NAMES,
+  PERMISSIONS,
+  hasPermission,
+  applyDataFiltering,
+  withCompanyAuth,
+  debugLog
+} = require('./shared/company-utils');
 
-exports.handler = async (event) => {
-  console.log('getProjects event received:', JSON.stringify(event, null, 2));
+// Main handler with permission-based filtering
+async function getProjectsHandler(event) {
+  debugLog('getProjects request received', { 
+    httpMethod: event.httpMethod,
+    queryParameters: event.queryStringParameters 
+  });
 
   try {
-    // Get user ID from event context
-    const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
+    // Get company and user context
+    const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+    debugLog('User context', { companyId, userId, userRole });
 
     // Parse query parameters for filtering
     const queryParams = event.queryStringParameters || {};
     const { status, sortBy } = queryParams;
     
-    console.log('Query parameters:', queryParams);
+    debugLog('Query parameters', queryParams);
 
-    // Build DynamoDB query parameters
+    // Build company-scoped DynamoDB query parameters
     let params = {
-      TableName: TABLE_NAMES.PROJECTS,
-      KeyConditionExpression: 'userId = :userId',
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      KeyConditionExpression: 'companyId = :companyId',
       ExpressionAttributeValues: {
-        ':userId': userId
+        ':companyId': companyId
       }
     };
 
@@ -41,12 +49,31 @@ exports.handler = async (event) => {
       params.ExpressionAttributeValues[':status'] = status;
     }
 
-    console.log('DynamoDB query params:', params);
+    debugLog('DynamoDB query params', params);
 
-    const result = await dynamodb.query(params).promise();
+    const result = await dynamoOperation('query', params);
     let projects = result.Items || [];
 
-    console.log(`Found ${projects.length} projects`);
+    debugLog(`Found ${projects.length} projects before filtering`);
+
+    // Apply role-based data filtering
+    if (!hasPermission(userRole, PERMISSIONS.VIEW_ALL_DATA)) {
+      // Filter to only show projects created by or assigned to the user
+      projects = projects.filter(project => {
+        if (project.createdBy === userId) {
+          return true;
+        }
+        
+        // Check if assigned to user
+        if (project.assignedTo && Array.isArray(project.assignedTo) && project.assignedTo.includes(userId)) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      debugLog(`After permission filtering: ${projects.length} projects`);
+    }
 
     // Sort projects based on sortBy parameter
     if (sortBy === 'name') {
@@ -70,14 +97,27 @@ exports.handler = async (event) => {
         const status = project.status || 'unknown';
         counts[status] = (counts[status] || 0) + 1;
         return counts;
-      }, {})
+      }, {}),
+      // Add permission-aware metadata
+      userPermissions: {
+        canViewAll: hasPermission(userRole, PERMISSIONS.VIEW_ALL_DATA),
+        canCreateProjects: hasPermission(userRole, PERMISSIONS.CREATE_PROJECTS),
+        canEditAll: hasPermission(userRole, PERMISSIONS.EDIT_ALL_PROJECTS),
+        canEditOwn: hasPermission(userRole, PERMISSIONS.EDIT_OWN_PROJECTS),
+        canDelete: hasPermission(userRole, PERMISSIONS.DELETE_PROJECTS)
+      }
     };
 
-    console.log('Projects retrieved successfully');
+    debugLog('Projects retrieved successfully', { 
+      companyId, 
+      totalCount: projects.length,
+      userRole,
+      hasViewAllPermission: hasPermission(userRole, PERMISSIONS.VIEW_ALL_DATA)
+    });
 
     return createResponse(200, {
       success: true,
-      message: `Retrieved ${projects.length} projects`,
+      message: `Retrieved ${projects.length} projects for ${userRole} user`,
       data: {
         projects,
         summary,
@@ -92,10 +132,17 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('Error in getProjects:', error);
 
-    if (error.message.includes('User ID not found')) {
-      return createErrorResponse(401, 'Unauthorized: Invalid user context');
+    if (error.message.includes('Company authentication required')) {
+      return createErrorResponse(401, 'Authentication required');
+    }
+
+    if (error.message.includes('missing company')) {
+      return createErrorResponse(401, 'Invalid company context');
     }
 
     return createErrorResponse(500, 'Failed to retrieve projects', error);
   }
-};
+}
+
+// Export handler wrapped with company authentication middleware
+exports.handler = withCompanyAuth(getProjectsHandler);
