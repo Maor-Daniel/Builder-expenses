@@ -2940,13 +2940,25 @@
                     
                     <!-- User Management Section -->
                     <div id="userSettings" class="settings-section" style="display: none;">
+                        <!-- Active Users Card -->
                         <div class="settings-card">
-                            <h3>ניהול משתמשים</h3>
+                            <h3>משתמשים פעילים</h3>
                             <div class="user-management-actions">
-                                <button class="add-work-button" onclick="showInviteUserModal()">הזמן משתמש חדש</button>
+                                <button class="add-work-button" onclick="showInviteUserModal()">
+                                    <span>👤</span> הזמן משתמש חדש
+                                </button>
                             </div>
+                            <div id="usersStats" class="users-stats" style="margin: 15px 0; padding: 10px; background: #f7fafc; border-radius: 5px; font-size: 14px;"></div>
                             <div id="usersList" class="users-list">
                                 <!-- Users will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Pending Invitations Card -->
+                        <div class="settings-card" style="margin-top: 20px;">
+                            <h3>הזמנות ממתינות</h3>
+                            <div id="pendingInvitationsList" class="invitations-list">
+                                <!-- Pending invitations will be populated here -->
                             </div>
                         </div>
                     </div>
@@ -3150,6 +3162,55 @@
                 <div class="form-actions">
                     <button type="submit" class="form-submit">שלח הזמנה</button>
                     <button type="button" class="form-cancel" onclick="closeInviteUserModal()">ביטול</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="contractor-form-modal">
+        <div class="contractor-form-container">
+            <div class="form-header">
+                <div class="form-title">עריכת משתמש</div>
+                <button class="close-form" onclick="closeEditUserModal()">×</button>
+            </div>
+
+            <div id="editUserMessage"></div>
+
+            <form id="editUserForm" onsubmit="submitEditUser(event)">
+                <div class="form-group">
+                    <label class="form-label">שם המשתמש</label>
+                    <input type="text" id="editUserName" class="form-input" readonly style="background-color: #f5f5f5;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">כתובת אימייל</label>
+                    <input type="email" id="editUserEmail" class="form-input" readonly style="background-color: #f5f5f5; direction: ltr; text-align: left;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editUserRole">תפקיד *</label>
+                    <select id="editUserRole" class="form-input">
+                        <option value="VIEWER">צופה (קריאה בלבד)</option>
+                        <option value="EDITOR">עורך (יצירה ועריכה)</option>
+                        <option value="MANAGER">מנהל פרויקטים (ניהול מלא)</option>
+                        <option value="ADMIN">מנהל מערכת (גישה מלאה)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editUserStatus">סטטוס</label>
+                    <select id="editUserStatus" class="form-input">
+                        <option value="active">פעיל</option>
+                        <option value="inactive">לא פעיל</option>
+                    </select>
+                </div>
+
+                <input type="hidden" id="editUserId">
+
+                <div class="form-actions">
+                    <button type="submit" class="form-submit">שמור שינויים</button>
+                    <button type="button" class="form-cancel" onclick="closeEditUserModal()">ביטול</button>
                 </div>
             </form>
         </div>
@@ -3997,22 +4058,162 @@
             showMessage('companyMessage', 'הגדרות החברה נשמרו בהצלחה', 'success');
         }
         
-        function loadUsersList() {
-            // TODO: Load users list from API
+        async function loadUsersList() {
             console.log('Loading users list...');
             const usersList = document.getElementById('usersList');
-            usersList.innerHTML = `
-                <div class="user-item">
-                    <div class="user-info">
-                        <div class="user-name">מנהל המערכת</div>
-                        <div class="user-email">admin@company.com</div>
-                    </div>
-                    <div class="user-role">מנהל</div>
-                    <div class="user-actions">
-                        <button class="user-action-btn edit" onclick="editUser('admin')">ערוך</button>
-                    </div>
-                </div>
-            `;
+            const usersStats = document.getElementById('usersStats');
+            const pendingInvitationsList = document.getElementById('pendingInvitationsList');
+
+            usersList.innerHTML = '<div class="loading">טוען רשימת משתמשים...</div>';
+            usersStats.innerHTML = '';
+
+            try {
+                // Load active users
+                const usersResponse = await apiCall('/listUsers', 'GET');
+
+                if (usersResponse.success && usersResponse.users) {
+                    const users = usersResponse.users;
+                    const stats = usersResponse.stats;
+
+                    // Display stats
+                    if (stats) {
+                        usersStats.innerHTML = `
+                            <strong>סטטיסטיקה:</strong>
+                            סה"כ ${stats.totalUsers} משתמשים |
+                            ${stats.activeUsers} פעילים |
+                            ${stats.byRole.admin} מנהלים |
+                            ${stats.byRole.manager} מנהלי פרויקטים |
+                            ${stats.byRole.editor} עורכים |
+                            ${stats.byRole.viewer} צופים
+                        `;
+                    }
+
+                    if (users.length === 0) {
+                        usersList.innerHTML = '<div class="no-data">אין משתמשים במערכת</div>';
+                    } else {
+                        usersList.innerHTML = users.map(user => {
+                            const roleNames = {
+                                'ADMIN': 'מנהל מערכת',
+                                'MANAGER': 'מנהל פרויקטים',
+                                'EDITOR': 'עורך',
+                                'VIEWER': 'צופה'
+                            };
+
+                            const roleName = roleNames[user.role] || user.role;
+                            const statusBadge = user.status === 'active' ?
+                                '<span style="color: #48bb78;">● פעיל</span>' :
+                                '<span style="color: #f56565;">● לא פעיל</span>';
+
+                            const lastLogin = user.lastLogin ?
+                                new Date(user.lastLogin).toLocaleDateString('he-IL') :
+                                'מעולם לא';
+
+                            return `
+                                <div class="user-item" style="border: 1px solid #e2e8f0; padding: 15px; margin: 10px 0; border-radius: 5px; background: white;">
+                                    <div class="user-info" style="flex: 1;">
+                                        <div class="user-name" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">
+                                            ${user.name || user.email}
+                                        </div>
+                                        <div class="user-email" style="color: #718096; font-size: 14px; direction: ltr; text-align: right;">
+                                            ${user.email}
+                                        </div>
+                                        <div style="margin-top: 5px; font-size: 13px; color: #4a5568;">
+                                            ${statusBadge} | כניסה אחרונה: ${lastLogin}
+                                        </div>
+                                    </div>
+                                    <div class="user-role" style="margin: 10px 15px; padding: 5px 15px; background: #edf2f7; border-radius: 15px; font-size: 14px; font-weight: bold;">
+                                        ${roleName}
+                                    </div>
+                                    <div class="user-actions" style="display: flex; gap: 10px;">
+                                        ${currentUserPermissions && currentUserPermissions.includes('MANAGE_USERS') ? `
+                                            <button class="user-action-btn edit" onclick="editUser('${user.userId}')"
+                                                    style="padding: 8px 15px; background: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                                ערוך
+                                            </button>
+                                            <button class="user-action-btn delete" onclick="removeUser('${user.userId}', '${user.name || user.email}')"
+                                                    style="padding: 8px 15px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                                הסר
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                } else {
+                    usersList.innerHTML = '<div class="error-message">שגיאה בטעינת רשימת המשתמשים</div>';
+                }
+
+                // Load pending invitations
+                await loadPendingInvitations();
+
+            } catch (error) {
+                console.error('Error loading users list:', error);
+                usersList.innerHTML = '<div class="error-message">שגיאה בטעינת רשימת המשתמשים: ' + error.message + '</div>';
+            }
+        }
+
+        async function loadPendingInvitations() {
+            const pendingInvitationsList = document.getElementById('pendingInvitationsList');
+            pendingInvitationsList.innerHTML = '<div class="loading">טוען הזמנות ממתינות...</div>';
+
+            try {
+                const response = await apiCall('/listInvitations?status=PENDING', 'GET');
+
+                if (response.success && response.invitations) {
+                    const invitations = response.invitations.filter(inv => inv.status === 'PENDING');
+
+                    if (invitations.length === 0) {
+                        pendingInvitationsList.innerHTML = '<div class="no-data">אין הזמנות ממתינות</div>';
+                    } else {
+                        pendingInvitationsList.innerHTML = invitations.map(invitation => {
+                            const expiresAt = new Date(invitation.expiresAt);
+                            const now = new Date();
+                            const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+                            const isExpiringSoon = daysLeft <= 2;
+
+                            const roleNames = {
+                                'admin': 'מנהל',
+                                'manager': 'מנהל פרויקטים',
+                                'editor': 'עורך',
+                                'viewer': 'צופה',
+                                'user': 'משתמש'
+                            };
+
+                            return `
+                                <div class="invitation-item" style="border: 1px solid #e2e8f0; padding: 15px; margin: 10px 0; border-radius: 5px; background: #fffbeb;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: bold; font-size: 15px;">${invitation.email}</div>
+                                            <div style="color: #718096; font-size: 13px; margin-top: 5px;">
+                                                תפקיד: ${roleNames[invitation.role] || invitation.role} |
+                                                <span style="color: ${isExpiringSoon ? '#f56565' : '#4a5568'};">
+                                                    ${isExpiringSoon ? '⚠️ ' : ''}פג תוקף בעוד ${daysLeft} ימים
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button onclick="resendInvitation('${invitation.invitationId}')"
+                                                    style="padding: 6px 12px; background: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">
+                                                שלח שוב
+                                            </button>
+                                            <button onclick="cancelInvitation('${invitation.invitationId}')"
+                                                    style="padding: 6px 12px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">
+                                                בטל
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                } else {
+                    pendingInvitationsList.innerHTML = '<div class="no-data">אין הזמנות ממתינות</div>';
+                }
+            } catch (error) {
+                console.error('Error loading invitations:', error);
+                pendingInvitationsList.innerHTML = '<div class="error-message">שגיאה בטעינת הזמנות</div>';
+            }
         }
         
         function showInviteUserModal() {
@@ -4099,14 +4300,136 @@
             }
         }
         
-        function editUser(userId) {
-            // TODO: Edit user functionality
+        async function editUser(userId) {
             console.log('Editing user:', userId);
+
+            try {
+                // Get user details
+                const usersResponse = await apiCall('/listUsers', 'GET');
+
+                if (usersResponse.success && usersResponse.users) {
+                    const user = usersResponse.users.find(u => u.userId === userId);
+
+                    if (user) {
+                        // Populate modal with user data
+                        document.getElementById('editUserId').value = user.userId;
+                        document.getElementById('editUserName').value = user.name || user.email;
+                        document.getElementById('editUserEmail').value = user.email;
+                        document.getElementById('editUserRole').value = user.role || 'VIEWER';
+                        document.getElementById('editUserStatus').value = user.status || 'active';
+
+                        // Show modal
+                        document.getElementById('editUserModal').style.display = 'flex';
+                        document.getElementById('editUserMessage').textContent = '';
+                    } else {
+                        alert('משתמש לא נמצא');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user for edit:', error);
+                alert('שגיאה בטעינת נתוני המשתמש');
+            }
         }
-        
-        function removeUser(userId) {
-            // TODO: Remove user functionality
-            console.log('Removing user:', userId);
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').style.display = 'none';
+        }
+
+        async function submitEditUser(event) {
+            event.preventDefault();
+
+            const userId = document.getElementById('editUserId').value;
+            const role = document.getElementById('editUserRole').value;
+            const status = document.getElementById('editUserStatus').value;
+            const messageElement = document.getElementById('editUserMessage');
+            const submitButton = event.target.querySelector('button[type="submit"]');
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'שומר...';
+
+            try {
+                const response = await apiCall(`/updateUser/${userId}`, 'PUT', {
+                    role,
+                    status
+                });
+
+                if (response.success) {
+                    showMessage('editUserMessage', 'המשתמש עודכן בהצלחה!', 'success');
+
+                    // Close modal and refresh list after 1.5 seconds
+                    setTimeout(() => {
+                        closeEditUserModal();
+                        loadUsersList();
+                    }, 1500);
+                } else {
+                    showMessage('editUserMessage', response.message || 'שגיאה בעדכון המשתמש', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                showMessage('editUserMessage', error.message || 'שגיאה בעדכון המשתמש', 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'שמור שינויים';
+            }
+        }
+
+        async function removeUser(userId, userName) {
+            if (!confirm(`האם אתה בטוח שברצונך להסיר את המשתמש "${userName}"?\n\nהמשתמש יוגדר כלא פעיל ולא יוכל להיכנס למערכת.\nהנתונים שהוא יצר יישארו במערכת.`)) {
+                return;
+            }
+
+            try {
+                const response = await apiCall(`/removeUser/${userId}`, 'DELETE');
+
+                if (response.success) {
+                    alert('המשתמש הוסר בהצלחה');
+                    loadUsersList(); // Refresh the users list
+                } else {
+                    alert(response.message || 'שגיאה בהסרת המשתמש');
+                }
+            } catch (error) {
+                console.error('Error removing user:', error);
+                alert('שגיאה בהסרת המשתמש: ' + error.message);
+            }
+        }
+
+        async function resendInvitation(invitationToken) {
+            if (!confirm('האם לשלוח שוב את ההזמנה?')) {
+                return;
+            }
+
+            try {
+                const response = await apiCall(`/resendInvitation/${invitationToken}`, 'POST');
+
+                if (response.success) {
+                    alert('ההזמנה נשלחה מחדש בהצלחה!');
+                } else {
+                    alert(response.message || 'שגיאה בשליחת ההזמנה מחדש');
+                }
+            } catch (error) {
+                console.error('Error resending invitation:', error);
+                alert('שגיאה בשליחת ההזמנה מחדש: ' + error.message);
+            }
+        }
+
+        async function cancelInvitation(invitationToken) {
+            if (!confirm('האם לבטל את ההזמנה? פעולה זו אינה הפיכה.')) {
+                return;
+            }
+
+            try {
+                const response = await apiCall(`/cancelInvitation/${invitationToken}`, 'DELETE');
+
+                if (response.success) {
+                    alert('ההזמנה בוטלה בהצלחה');
+                    loadPendingInvitations(); // Refresh the invitations list
+                } else {
+                    alert(response.message || 'שגיאה בביטול ההזמנה');
+                }
+            } catch (error) {
+                console.error('Error cancelling invitation:', error);
+                alert('שגיאה בביטול ההזמנה: ' + error.message);
+            }
         }
         
         function loadSubscriptionInfo() {
