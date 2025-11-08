@@ -26,7 +26,132 @@ const COMPANY_TABLE_NAMES = {
 // User roles
 const USER_ROLES = {
   ADMIN: 'admin',
-  USER: 'user'
+  MANAGER: 'manager',
+  EDITOR: 'editor', 
+  VIEWER: 'viewer',
+  USER: 'user'  // Legacy support
+};
+
+// Permission definitions for Phase 3
+const PERMISSIONS = {
+  // Billing & Company
+  MANAGE_BILLING: "manage_billing",
+  MANAGE_COMPANY: "manage_company",
+  
+  // User Management  
+  INVITE_USERS: "invite_users",
+  MANAGE_USERS: "manage_users",
+  VIEW_USERS: "view_users",
+  
+  // Data Management
+  MANAGE_PROJECTS: "manage_projects", 
+  CREATE_PROJECTS: "create_projects",
+  EDIT_ALL_PROJECTS: "edit_all_projects",
+  EDIT_OWN_PROJECTS: "edit_own_projects",
+  DELETE_PROJECTS: "delete_projects",
+  
+  // Contractors
+  MANAGE_CONTRACTORS: "manage_contractors",
+  CREATE_CONTRACTORS: "create_contractors", 
+  EDIT_ALL_CONTRACTORS: "edit_all_contractors",
+  EDIT_OWN_CONTRACTORS: "edit_own_contractors",
+  DELETE_CONTRACTORS: "delete_contractors",
+  
+  // Works
+  MANAGE_WORKS: "manage_works",
+  CREATE_WORKS: "create_works",
+  EDIT_ALL_WORKS: "edit_all_works", 
+  EDIT_OWN_WORKS: "edit_own_works",
+  DELETE_WORKS: "delete_works",
+  
+  // Expenses
+  MANAGE_EXPENSES: "manage_expenses",
+  CREATE_EXPENSES: "create_expenses",
+  EDIT_ALL_EXPENSES: "edit_all_expenses",
+  EDIT_OWN_EXPENSES: "edit_own_expenses", 
+  DELETE_EXPENSES: "delete_expenses",
+  
+  // System
+  VIEW_ALL_DATA: "view_all_data",
+  EXPORT_DATA: "export_data",
+  VIEW_REPORTS: "view_reports"
+};
+
+// Role-based permission assignments
+const ROLE_PERMISSIONS = {
+  [USER_ROLES.ADMIN]: [
+    PERMISSIONS.MANAGE_BILLING,
+    PERMISSIONS.MANAGE_COMPANY,
+    PERMISSIONS.INVITE_USERS,
+    PERMISSIONS.MANAGE_USERS,
+    PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.MANAGE_PROJECTS,
+    PERMISSIONS.CREATE_PROJECTS,
+    PERMISSIONS.EDIT_ALL_PROJECTS,
+    PERMISSIONS.DELETE_PROJECTS,
+    PERMISSIONS.MANAGE_CONTRACTORS,
+    PERMISSIONS.CREATE_CONTRACTORS,
+    PERMISSIONS.EDIT_ALL_CONTRACTORS,
+    PERMISSIONS.DELETE_CONTRACTORS,
+    PERMISSIONS.MANAGE_WORKS,
+    PERMISSIONS.CREATE_WORKS,
+    PERMISSIONS.EDIT_ALL_WORKS,
+    PERMISSIONS.DELETE_WORKS,
+    PERMISSIONS.MANAGE_EXPENSES,
+    PERMISSIONS.CREATE_EXPENSES,
+    PERMISSIONS.EDIT_ALL_EXPENSES,
+    PERMISSIONS.DELETE_EXPENSES,
+    PERMISSIONS.VIEW_ALL_DATA,
+    PERMISSIONS.EXPORT_DATA,
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  [USER_ROLES.MANAGER]: [
+    PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.MANAGE_PROJECTS,
+    PERMISSIONS.CREATE_PROJECTS,
+    PERMISSIONS.EDIT_ALL_PROJECTS,
+    PERMISSIONS.DELETE_PROJECTS,
+    PERMISSIONS.MANAGE_CONTRACTORS,
+    PERMISSIONS.CREATE_CONTRACTORS,
+    PERMISSIONS.EDIT_ALL_CONTRACTORS,
+    PERMISSIONS.DELETE_CONTRACTORS,
+    PERMISSIONS.MANAGE_WORKS,
+    PERMISSIONS.CREATE_WORKS,
+    PERMISSIONS.EDIT_ALL_WORKS,
+    PERMISSIONS.DELETE_WORKS,
+    PERMISSIONS.MANAGE_EXPENSES,
+    PERMISSIONS.CREATE_EXPENSES,
+    PERMISSIONS.EDIT_ALL_EXPENSES,
+    PERMISSIONS.DELETE_EXPENSES,
+    PERMISSIONS.VIEW_ALL_DATA,
+    PERMISSIONS.EXPORT_DATA,
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  [USER_ROLES.EDITOR]: [
+    PERMISSIONS.CREATE_PROJECTS,
+    PERMISSIONS.EDIT_OWN_PROJECTS,
+    PERMISSIONS.CREATE_CONTRACTORS,
+    PERMISSIONS.EDIT_OWN_CONTRACTORS,
+    PERMISSIONS.CREATE_WORKS,
+    PERMISSIONS.EDIT_OWN_WORKS,
+    PERMISSIONS.CREATE_EXPENSES,
+    PERMISSIONS.EDIT_OWN_EXPENSES,
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  [USER_ROLES.VIEWER]: [
+    PERMISSIONS.VIEW_REPORTS
+  ],
+  [USER_ROLES.USER]: [  // Legacy role support
+    PERMISSIONS.CREATE_PROJECTS,
+    PERMISSIONS.EDIT_OWN_PROJECTS,
+    PERMISSIONS.CREATE_CONTRACTORS,
+    PERMISSIONS.EDIT_OWN_CONTRACTORS,
+    PERMISSIONS.CREATE_WORKS,
+    PERMISSIONS.EDIT_OWN_WORKS,
+    PERMISSIONS.CREATE_EXPENSES,
+    PERMISSIONS.EDIT_OWN_EXPENSES,
+    PERMISSIONS.VIEW_REPORTS
+  ]
 };
 
 // Invitation status
@@ -397,15 +522,233 @@ async function createCompanyWithAdmin(companyData, adminData) {
   return { company, adminUser };
 }
 
+/**
+ * Get user permissions based on role
+ */
+function getUserPermissions(userRole) {
+  return ROLE_PERMISSIONS[userRole] || [];
+}
+
+/**
+ * Check if user has specific permission
+ */
+function hasPermission(userRole, permission) {
+  const permissions = getUserPermissions(userRole);
+  return permissions.includes(permission);
+}
+
+/**
+ * Check if user can access resource (for own vs all permissions)
+ */
+function canAccessResource(userRole, permission, resourceCreatedBy, userId) {
+  const permissions = getUserPermissions(userRole);
+  
+  // Check if user has the permission
+  if (!permissions.includes(permission)) {
+    return false;
+  }
+  
+  // For "OWN" permissions, check if user created the resource
+  if (permission.includes('_OWN_') && resourceCreatedBy !== userId) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Filter data based on user permissions 
+ */
+function filterDataByPermissions(data, userRole, userId, dataType) {
+  const permissions = getUserPermissions(userRole);
+  
+  // If user has VIEW_ALL_DATA permission, return all data
+  if (permissions.includes(PERMISSIONS.VIEW_ALL_DATA)) {
+    return data;
+  }
+  
+  // Filter based on ownership for users without VIEW_ALL_DATA
+  return data.filter(item => {
+    if (item.createdBy === userId) {
+      return true;
+    }
+    
+    // Check if assigned to user
+    if (item.assignedTo && Array.isArray(item.assignedTo) && item.assignedTo.includes(userId)) {
+      return true;
+    }
+    
+    return false;
+  });
+}
+
+/**
+ * Validate user has required permission for action
+ */
+async function requirePermission(companyId, userId, requiredPermission, resourceId = null) {
+  // Get user from company
+  const user = await validateCompanyUser(companyId, userId);
+  
+  // Check if user has the required permission
+  if (!hasPermission(user.role, requiredPermission)) {
+    throw new Error(`Access denied. Required permission: ${requiredPermission}`);
+  }
+  
+  // For resource-specific permissions, check ownership if needed
+  if (resourceId && requiredPermission.includes('_OWN_')) {
+    // This would need to be implemented per resource type
+    // For now, we'll assume the calling function handles this check
+  }
+  
+  return user;
+}
+
+/**
+ * Legacy function name compatibility
+ */
+function getCompanyContextFromEvent(event) {
+  return getCompanyUserFromEvent(event);
+}
+
+/**
+ * API Middleware for Permission Checking
+ */
+
+/**
+ * Middleware wrapper to require specific permission for Lambda handler
+ */
+function withPermission(requiredPermission, handler) {
+  return async (event, context) => {
+    try {
+      // Handle CORS preflight
+      if (event.httpMethod === 'OPTIONS') {
+        return createResponse(200, { message: 'CORS preflight' });
+      }
+
+      // Get user context from event
+      const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+      
+      // Check if user has required permission
+      if (!hasPermission(userRole, requiredPermission)) {
+        return createErrorResponse(403, `Access denied. Required permission: ${requiredPermission}`);
+      }
+
+      // Add permission context to event for handler use
+      event.permissionContext = {
+        companyId,
+        userId,
+        userRole,
+        permissions: getUserPermissions(userRole),
+        hasPermission: (permission) => hasPermission(userRole, permission)
+      };
+
+      // Call the actual handler
+      return await handler(event, context);
+      
+    } catch (error) {
+      console.error('Permission middleware error:', error);
+      
+      if (error.message.includes('Company authentication required')) {
+        return createErrorResponse(401, 'Authentication required');
+      }
+      
+      if (error.message.includes('missing company')) {
+        return createErrorResponse(401, 'Invalid company context');
+      }
+      
+      return createErrorResponse(403, 'Access denied');
+    }
+  };
+}
+
+/**
+ * Middleware wrapper to require admin role
+ */
+function withAdminRole(handler) {
+  return withPermission(PERMISSIONS.MANAGE_USERS, handler);
+}
+
+/**
+ * Middleware wrapper for company-scoped operations (any authenticated user)
+ */
+function withCompanyAuth(handler) {
+  return async (event, context) => {
+    try {
+      // Handle CORS preflight
+      if (event.httpMethod === 'OPTIONS') {
+        return createResponse(200, { message: 'CORS preflight' });
+      }
+
+      // Get user context from event
+      const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+      
+      // Add auth context to event for handler use
+      event.authContext = {
+        companyId,
+        userId,
+        userRole,
+        permissions: getUserPermissions(userRole),
+        hasPermission: (permission) => hasPermission(userRole, permission)
+      };
+
+      // Call the actual handler
+      return await handler(event, context);
+      
+    } catch (error) {
+      console.error('Company auth middleware error:', error);
+      
+      if (error.message.includes('Company authentication required')) {
+        return createErrorResponse(401, 'Authentication required');
+      }
+      
+      if (error.message.includes('missing company')) {
+        return createErrorResponse(401, 'Invalid company context');
+      }
+      
+      return createErrorResponse(500, 'Authentication error');
+    }
+  };
+}
+
+/**
+ * Check permission within Lambda handler (for manual permission checks)
+ */
+async function checkPermissionInHandler(event, requiredPermission, resourceId = null) {
+  const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+  
+  if (!hasPermission(userRole, requiredPermission)) {
+    throw new Error(`Access denied. Required permission: ${requiredPermission}`);
+  }
+
+  // For resource-specific permissions (edit own vs edit all)
+  if (resourceId && requiredPermission.includes('_OWN_')) {
+    // The calling function should verify ownership
+    // This is a placeholder for ownership validation
+    return { companyId, userId, userRole, requiresOwnershipCheck: true };
+  }
+
+  return { companyId, userId, userRole, requiresOwnershipCheck: false };
+}
+
+/**
+ * Apply data filtering based on user permissions
+ */
+function applyDataFiltering(data, userRole, userId) {
+  return filterDataByPermissions(data, userRole, userId);
+}
+
 module.exports = {
   dynamodb,
   cognito,
   COMPANY_TABLE_NAMES,
   USER_ROLES,
   INVITATION_STATUS,
+  PERMISSIONS,
+  ROLE_PERMISSIONS,
   createResponse,
   createErrorResponse,
   getCompanyUserFromEvent,
+  getCompanyContextFromEvent,  // Legacy compatibility
   validateCompany,
   validateInvitation,
   generateCompanyId,
@@ -420,5 +763,16 @@ module.exports = {
   dynamoOperation,
   validateCompanyUser,
   validateInvitationToken,
-  createCompanyWithAdmin
+  createCompanyWithAdmin,
+  getUserPermissions,
+  hasPermission,
+  canAccessResource,
+  filterDataByPermissions,
+  requirePermission,
+  // Middleware functions
+  withPermission,
+  withAdminRole,
+  withCompanyAuth,
+  checkPermissionInHandler,
+  applyDataFiltering
 };

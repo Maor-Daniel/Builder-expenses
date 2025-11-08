@@ -4,13 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מערכת מעקב הוצאות בניה</title>
-    
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
     <!-- AWS Cognito SDK -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1498.0.min.js"></script>
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
     
     <!-- Paddle SDK -->
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+
+    <!-- Sentry Error Tracking -->
+    <script src="https://browser.sentry-cdn.com/8.47.0/bundle.min.js" integrity="sha384-jTOiFLNTj4ZCOJPcUP/+FlZKD5ixiHIqNR89KfHQZREPHdE/XPqj08e+DYHNlOSF" crossorigin="anonymous"></script>
+    <script src="sentry-init.js"></script>
+
+    <!-- Billing Dashboard -->
+    <script src="billing-dashboard.js"></script>
     <style>
         * {
             margin: 0;
@@ -2280,8 +2288,189 @@
         .subscription-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
-        
+
+        /* Billing Dashboard Styles */
+        .subscription-status-card {
+            padding: 15px;
+        }
+
+        .plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .plan-price {
+            font-size: 1.2rem;
+            color: #4a5568;
+        }
+
+        .plan-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .plan-detail-item {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .plan-detail-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .plan-detail-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .usage-meter-container {
+            margin: 15px 0;
+        }
+
+        .usage-meter {
+            margin-bottom: 20px;
+        }
+
+        .usage-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .usage-label-name {
+            font-weight: 600;
+        }
+
+        .usage-label-count {
+            color: #718096;
+        }
+
+        .usage-bar {
+            width: 100%;
+            height: 24px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .usage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .usage-fill.warning {
+            background: linear-gradient(90deg, #ed8936, #dd6b20);
+        }
+
+        .usage-fill.danger {
+            background: linear-gradient(90deg, #f56565, #e53e3e);
+        }
+
+        .usage-unlimited {
+            color: #38a169;
+            font-weight: 600;
+        }
+
+        .payment-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .payment-history-table th {
+            background: #f7fafc;
+            padding: 12px;
+            text-align: right;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .payment-history-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #4a5568;
+        }
+
+        .payment-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .payment-status.succeeded {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .payment-status.failed {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .payment-status.refunded {
+            background: #e6f7ff;
+            color: #0c5393;
+        }
+
+        .no-payments {
+            text-align: center;
+            padding: 30px;
+            color: #718096;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+        }
+
+        .upgrade-prompt {
+            background: #fff5e6;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .upgrade-prompt-text {
+            color: #856404;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
         .checkbox-label {
             display: flex;
             align-items: center;
@@ -2730,7 +2919,7 @@
                             <form id="companyForm" onsubmit="saveCompanySettings(event)">
                                 <div class="form-group">
                                     <label class="form-label">שם החברה</label>
-                                    <input type="text" id="companyName" class="form-input" placeholder="הכנס שם החברה">
+                                    <input type="text" id="companyNameSettings" class="form-input" placeholder="הכנס שם החברה">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">כתובת</label>
@@ -2764,13 +2953,43 @@
                     
                     <!-- Subscription Settings Section -->
                     <div id="subscriptionSettings" class="settings-section" style="display: none;">
+                        <!-- Subscription Status Card -->
                         <div class="settings-card">
-                            <h3>מנוי ותשלום</h3>
-                            <div id="currentSubscription" class="subscription-info">
-                                <!-- Subscription info will be populated here -->
+                            <h3>מצב מנוי</h3>
+                            <div id="subscriptionStatusCard" class="subscription-status-card">
+                                <div class="loading">טוען מידע על המנוי...</div>
                             </div>
+                        </div>
+
+                        <!-- Usage Meters Card -->
+                        <div class="settings-card">
+                            <h3>שימוש נוכחי</h3>
+                            <div id="usageMetersCard">
+                                <div class="loading">טוען נתוני שימוש...</div>
+                            </div>
+                        </div>
+
+                        <!-- Payment History Card -->
+                        <div class="settings-card">
+                            <h3>היסטוריית תשלומים</h3>
+                            <div id="paymentHistoryCard">
+                                <div class="loading">טוען היסטוריית תשלומים...</div>
+                            </div>
+                        </div>
+
+                        <!-- Subscription Actions Card -->
+                        <div class="settings-card">
+                            <h3>פעולות מנוי</h3>
                             <div class="subscription-actions">
-                                <button class="add-project-button" onclick="showSubscriptionModal()">שדרג מנוי</button>
+                                <button class="add-project-button" onclick="showUpgradeModal()" style="margin: 5px;">
+                                    <span>⬆️</span> שדרג תוכנית
+                                </button>
+                                <button class="add-project-button" onclick="manageBillingInfo()" style="margin: 5px; background: #4A5568;">
+                                    <span>💳</span> נהל פרטי תשלום
+                                </button>
+                                <button class="delete-button" onclick="confirmCancelSubscription()" style="margin: 5px;">
+                                    <span>⚠️</span> בטל מנוי
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2892,6 +3111,45 @@
                 <div class="form-actions">
                     <button type="submit" class="form-submit">שמירת קבלן/ספק</button>
                     <button type="button" class="form-cancel" onclick="closeContractorForm()">ביטול</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invite User Modal -->
+    <div id="inviteUserModal" class="contractor-form-modal">
+        <div class="contractor-form-container">
+            <div class="form-header">
+                <div class="form-title">הזמנת משתמש חדש לחברה</div>
+                <button class="close-form" onclick="closeInviteUserModal()">×</button>
+            </div>
+
+            <div id="inviteUserMessage"></div>
+
+            <form id="inviteUserForm" onsubmit="submitInviteUser(event)">
+                <div class="form-group">
+                    <label class="form-label" for="inviteUserEmail">כתובת אימייל *</label>
+                    <input type="email" id="inviteUserEmail" class="form-input" required
+                           placeholder="user@example.com" style="direction: ltr; text-align: left;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="inviteUserRole">תפקיד *</label>
+                    <select id="inviteUserRole" class="form-input">
+                        <option value="user">משתמש רגיל (צפייה ועריכה)</option>
+                        <option value="admin">מנהל (גישה מלאה)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="inviteUserMessage">הודעה אישית (אופציונלי)</label>
+                    <textarea id="inviteUserMessage" class="form-input" rows="3"
+                              placeholder="הוסף הודעה אישית למשתמש המוזמן..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="form-submit">שלח הזמנה</button>
+                    <button type="button" class="form-cancel" onclick="closeInviteUserModal()">ביטול</button>
                 </div>
             </form>
         </div>
@@ -3141,11 +3399,86 @@
                 
                 const data = await response.json();
                 console.log('✅ Subscription status:', data);
+                
+                // Update subscription UI with real data
+                if (data.success && data.subscription) {
+                    updateSubscriptionUI(data.subscription);
+                }
+                
                 return data;
             } catch (error) {
                 console.error('❌ Error fetching subscription status:', error);
                 return null;
             }
+        }
+
+        // Update the subscription UI with real data
+        function updateSubscriptionUI(subscription) {
+            const subscriptionInfoDiv = document.getElementById('currentSubscription');
+            if (!subscriptionInfoDiv) return;
+            
+            if (!subscription || subscription.subscriptionStatus === 'none') {
+                subscriptionInfoDiv.innerHTML = `
+                    <div class="subscription-status">
+                        <div class="subscription-plan">אין מנוי פעיל</div>
+                        <div class="subscription-badge expired">לא פעיל</div>
+                    </div>
+                    <p>חברתך זקוקה למנוי פעיל כדי להזמין משתמשים ויצירת פרויקטים.</p>
+                    <div class="subscription-actions">
+                        <button class="add-project-button" onclick="showSubscriptionModal()">הירשם למנוי</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const planNames = {
+                'STARTER': 'Starter',
+                'PROFESSIONAL': 'Professional', 
+                'ENTERPRISE': 'Enterprise'
+            };
+            
+            const planName = planNames[subscription.currentPlan] || subscription.currentPlan;
+            const isActive = subscription.subscriptionStatus === 'active';
+            const limits = subscription.limits;
+            const usage = subscription.usage;
+            
+            let usageHTML = '';
+            if (limits && usage) {
+                const userPercent = limits.maxUsers === -1 ? 0 : Math.round((usage.users / limits.maxUsers) * 100);
+                const projectPercent = limits.maxProjects === -1 ? 0 : Math.round((usage.projects / limits.maxProjects) * 100);
+                
+                usageHTML = `
+                    <div class="usage-stats" style="margin-top: 15px; padding: 15px; background: #f7fafc; border-radius: 6px;">
+                        <h4 style="margin-bottom: 10px;">שימוש נוכחי:</h4>
+                        <div style="margin-bottom: 8px;">
+                            <span>משתמשים: ${usage.users} / ${limits.maxUsers === -1 ? '∞' : limits.maxUsers}</span>
+                            ${limits.maxUsers !== -1 ? `<div class="progress-bar" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px;"><div style="width: ${Math.min(userPercent, 100)}%; height: 100%; background: ${userPercent > 80 ? '#e53e3e' : '#38a169'}; border-radius: 3px;"></div></div>` : ''}
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <span>פרויקטים: ${usage.projects} / ${limits.maxProjects === -1 ? '∞' : limits.maxProjects}</span>
+                            ${limits.maxProjects !== -1 ? `<div class="progress-bar" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px;"><div style="width: ${Math.min(projectPercent, 100)}%; height: 100%; background: ${projectPercent > 80 ? '#e53e3e' : '#38a169'}; border-radius: 3px;"></div></div>` : ''}
+                        </div>
+                        <div>הוצאות החודש: ${usage.expensesThisMonth}</div>
+                    </div>
+                `;
+            }
+            
+            subscriptionInfoDiv.innerHTML = `
+                <div class="subscription-status">
+                    <div class="subscription-plan">תוכנית ${planName}</div>
+                    <div class="subscription-badge ${isActive ? 'active' : 'expired'}">${isActive ? 'פעיל' : 'לא פעיל'}</div>
+                </div>
+                ${subscription.nextBillingDate ? `<p>התחדשות הבאה: ${new Date(subscription.nextBillingDate).toLocaleDateString('he-IL')}</p>` : ''}
+                ${usageHTML}
+                <div class="subscription-actions" style="margin-top: 15px;">
+                    ${isActive ? `
+                        <button class="add-project-button" onclick="showUpgradeModal()">שדרג תוכנית</button>
+                        <button class="settings-nav-btn" onclick="showUsageDetails()">פרטי שימוש</button>
+                    ` : `
+                        <button class="add-project-button" onclick="showSubscriptionModal()">חדש מנוי</button>
+                    `}
+                </div>
+            `;
         }
 
         async function showSubscriptionModal() {
@@ -3215,6 +3548,209 @@
 
         function closeSubscriptionModal() {
             const modal = document.getElementById('subscriptionModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Show upgrade modal for existing subscribers
+        async function showUpgradeModal() {
+            console.log('Showing upgrade modal...');
+            
+            try {
+                // Get available plans
+                const plansData = await getSubscriptionPlans();
+                if (!plansData || !plansData.plans) {
+                    alert('שגיאה בטעינת תוכניות המנוי');
+                    return;
+                }
+                
+                let plansHTML = '<h3>שדרג את התוכנית שלך:</h3><div style="margin: 20px 0;">';
+                
+                plansData.plans.forEach(plan => {
+                    const popular = plan.popular ? ' (מומלץ)' : '';
+                    plansHTML += `
+                        <div style="border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; ${plan.popular ? 'border-color: #3182ce; background-color: #ebf8ff;' : ''}">
+                            <h4>${plan.name}${popular}</h4>
+                            <p>מחיר חודשי: $${plan.monthlyPrice}</p>
+                            <p>מחיר שנתי: $${plan.yearlyPrice} (חיסכון 17%!)</p>
+                            <p><strong>מגבלות:</strong></p>
+                            <ul style="margin: 10px 0; padding-right: 20px;">
+                                <li>משתמשים: ${plan.limits.maxUsers === -1 ? 'ללא הגבלה' : plan.limits.maxUsers}</li>
+                                <li>פרויקטים: ${plan.limits.maxProjects === -1 ? 'ללא הגבלה' : plan.limits.maxProjects}</li>
+                                <li>אחסון: ${plan.limits.storage / 1024}GB</li>
+                            </ul>
+                            <button onclick="upgradeToPlan('${plan.id}')" style="background: #38a169; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                                שדרג לתוכנית זו
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                plansHTML += '</div>';
+                
+                // Show modal
+                const modalHTML = `
+                    <div id="upgradeModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; border-radius: 10px; padding: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; direction: rtl;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 style="margin: 0;">שדרג מנוי</h2>
+                                <button onclick="closeUpgradeModal()" style="background: #e53e3e; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">&times;</button>
+                            </div>
+                            ${plansHTML}
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+            } catch (error) {
+                console.error('Error showing upgrade modal:', error);
+                alert('שגיאה בטעינת אפשרויות השדרוג');
+            }
+        }
+
+        function closeUpgradeModal() {
+            const modal = document.getElementById('upgradeModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Upgrade to a specific plan
+        async function upgradeToPlan(planId) {
+            console.log('Upgrading to plan:', planId);
+            
+            if (!currentUserContext.userRole || currentUserContext.userRole !== 'admin') {
+                alert('רק מנהל החברה יכול לשדרג את המנוי');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/upgrade`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentAuthToken}`
+                    },
+                    body: JSON.stringify({
+                        newPlan: planId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('המנוי שודרג בהצלחה!');
+                    closeUpgradeModal();
+                    // Refresh subscription status
+                    await getSubscriptionStatus();
+                } else {
+                    alert('שגיאה בשדרוג המנוי: ' + result.message);
+                }
+                
+            } catch (error) {
+                console.error('Error upgrading subscription:', error);
+                alert('שגיאה בשדרוג המנוי. נסה שוב.');
+            }
+        }
+
+        // Show detailed usage statistics
+        async function showUsageDetails() {
+            console.log('Showing usage details...');
+            
+            try {
+                const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/usage`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentAuthToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                const usage = data.usage;
+                const limits = data.limits;
+                const utilization = data.utilizationPercent;
+                
+                const usageHTML = `
+                    <div style="direction: rtl;">
+                        <h3>סטטיסטיקות שימוש מפורטות</h3>
+                        <div style="margin: 20px 0;">
+                            <h4>שימוש נוכחי:</h4>
+                            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 8px; font-weight: bold;">משאב</td>
+                                    <td style="padding: 8px; font-weight: bold;">שימוש</td>
+                                    <td style="padding: 8px; font-weight: bold;">מגבלה</td>
+                                    <td style="padding: 8px; font-weight: bold;">אחוז</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 8px;">משתמשים</td>
+                                    <td style="padding: 8px;">${usage.users}</td>
+                                    <td style="padding: 8px;">${limits.maxUsers === -1 ? '∞' : limits.maxUsers}</td>
+                                    <td style="padding: 8px;">${utilization && utilization.users ? Math.round(utilization.users) : 0}%</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 8px;">פרויקטים</td>
+                                    <td style="padding: 8px;">${usage.projects}</td>
+                                    <td style="padding: 8px;">${limits.maxProjects === -1 ? '∞' : limits.maxProjects}</td>
+                                    <td style="padding: 8px;">${utilization && utilization.projects ? Math.round(utilization.projects) : 0}%</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 8px;">הוצאות החודש</td>
+                                    <td style="padding: 8px;">${usage.expensesThisMonth}</td>
+                                    <td style="padding: 8px;">ללא הגבלה</td>
+                                    <td style="padding: 8px;">-</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px;">אחסון</td>
+                                    <td style="padding: 8px;">${Math.round(usage.storageUsed / 1024 * 100) / 100}GB</td>
+                                    <td style="padding: 8px;">${limits.storage / 1024}GB</td>
+                                    <td style="padding: 8px;">${utilization && utilization.storage ? Math.round(utilization.storage) : 0}%</td>
+                                </tr>
+                            </table>
+                        </div>
+                        ${utilization && (utilization.users > 80 || utilization.projects > 80 || utilization.storage > 80) ? 
+                            '<div style="background: #fed7d7; padding: 15px; border-radius: 6px; border-right: 4px solid #e53e3e; margin: 15px 0;"><strong>התראה:</strong> אתה מתקרב למגבלות התוכנית שלך. שקול לשדרג כדי להימנע מהגבלות.</div>' : 
+                            '<div style="background: #c6f6d5; padding: 15px; border-radius: 6px; border-right: 4px solid #38a169; margin: 15px 0;"><strong>מצוין!</strong> השימוש שלך נמצא בטווח הבטוח של התוכנית.</div>'
+                        }
+                    </div>
+                `;
+                
+                // Show modal
+                const modalHTML = `
+                    <div id="usageModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; border-radius: 10px; padding: 20px; max-width: 500px; max-height: 80vh; overflow-y: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 style="margin: 0;">פרטי שימוש</h2>
+                                <button onclick="closeUsageModal()" style="background: #e53e3e; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">&times;</button>
+                            </div>
+                            ${usageHTML}
+                            <div style="text-align: center; margin-top: 20px;">
+                                <button onclick="closeUsageModal()" class="settings-nav-btn">סגור</button>
+                                ${utilization && (utilization.users > 80 || utilization.projects > 80) ? 
+                                    '<button onclick="closeUsageModal(); showUpgradeModal();" class="add-project-button" style="margin-right: 10px;">שדרג עכשיו</button>' : 
+                                    ''
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+            } catch (error) {
+                console.error('Error showing usage details:', error);
+                alert('שגיאה בטעינת נתוני השימוש');
+            }
+        }
+
+        function closeUsageModal() {
+            const modal = document.getElementById('usageModal');
             if (modal) {
                 modal.remove();
             }
@@ -3395,7 +3931,12 @@
                 currentUser.signOut();
             }
             currentAuthToken = null;
-            
+
+            // Clear Sentry user context
+            if (typeof window.clearSentryUser === 'function') {
+                window.clearSentryUser();
+            }
+
             // Reset all forms
             resetAuthForms();
             showAuthModal();
@@ -3413,15 +3954,15 @@
             document.querySelectorAll('.settings-section').forEach(section => {
                 section.style.display = 'none';
             });
-            
+
             // Remove active class from all nav buttons
             document.querySelectorAll('.settings-nav-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
+
             // Show selected section
             document.getElementById(sectionName + 'Settings').style.display = 'block';
-            
+
             // Add active class to selected nav button
             if (event && event.target) {
                 event.target.classList.add('active');
@@ -3430,6 +3971,16 @@
                 const navBtn = document.querySelector(`[onclick*="showSettingsSection('${sectionName}')"`);
                 if (navBtn) {
                     navBtn.classList.add('active');
+                }
+            }
+
+            // Load section-specific data
+            if (sectionName === 'subscription') {
+                // Load billing dashboard when subscription section is opened
+                if (typeof loadBillingDashboard === 'function') {
+                    loadBillingDashboard();
+                } else {
+                    console.warn('loadBillingDashboard function not available yet');
                 }
             }
         }
@@ -3465,14 +4016,87 @@
         }
         
         function showInviteUserModal() {
-            // TODO: Show invite user modal
-            console.log('Showing invite user modal...');
-            showMessage('userMessage', 'פיתוח הוספת משתמש בתהליך', 'info');
+            const modal = document.getElementById('inviteUserModal');
+            modal.style.display = 'flex';
+
+            // Clear form
+            document.getElementById('inviteUserForm').reset();
+            document.getElementById('inviteUserMessage').textContent = '';
         }
-        
-        function inviteUser() {
-            // TODO: Send invitation
-            console.log('Sending user invitation...');
+
+        function closeInviteUserModal() {
+            const modal = document.getElementById('inviteUserModal');
+            modal.style.display = 'none';
+        }
+
+        async function submitInviteUser(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('inviteUserEmail').value.trim();
+            const role = document.getElementById('inviteUserRole').value;
+            const personalMessage = document.getElementById('inviteUserMessage').value.trim();
+            const messageElement = document.getElementById('inviteUserMessage');
+            const submitButton = event.target.querySelector('button[type="submit"]');
+
+            // Validate email
+            if (!email || !email.includes('@')) {
+                showMessage('inviteUserMessage', 'אנא הכנס כתובת אימייל תקינה', 'error');
+                return;
+            }
+
+            // Disable submit button
+            submitButton.disabled = true;
+            submitButton.textContent = 'שולח...';
+
+            try {
+                const response = await apiCall('/sendInvitation', 'POST', {
+                    email,
+                    role,
+                    personalMessage: personalMessage || undefined
+                });
+
+                if (response.success) {
+                    showMessage('inviteUserMessage',
+                        `ההזמנה נשלחה בהצלחה ל-${email}! המשתמש יקבל אימייל עם קישור להצטרפות.`,
+                        'success'
+                    );
+
+                    // Clear form after 2 seconds and close modal
+                    setTimeout(() => {
+                        closeInviteUserModal();
+                        loadUsersList(); // Refresh users list if the function exists
+                    }, 2000);
+                } else {
+                    // Handle subscription limit errors
+                    if (response.action === 'upgrade_required') {
+                        showMessage('inviteUserMessage',
+                            `${response.message || 'הגעת למגבלת המשתמשים בתוכנית הנוכחית'}<br>` +
+                            `<a href="${response.upgradeUrl}" style="color: #3182ce; text-decoration: underline;">שדרג את התוכנית שלך</a>`,
+                            'error'
+                        );
+                    } else if (response.action === 'subscription_required') {
+                        showMessage('inviteUserMessage',
+                            `${response.message || 'נדרש מנוי פעיל להזמנת משתמשים'}<br>` +
+                            `<a href="${response.subscribeUrl}" style="color: #3182ce; text-decoration: underline;">הירשם למנוי</a>`,
+                            'error'
+                        );
+                    } else {
+                        showMessage('inviteUserMessage',
+                            response.message || 'שגיאה בשליחת ההזמנה',
+                            'error'
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('Error inviting user:', error);
+                showMessage('inviteUserMessage',
+                    error.message || 'שגיאה בשליחת ההזמנה. אנא נסה שנית.',
+                    'error'
+                );
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'שלח הזמנה';
+            }
         }
         
         function editUser(userId) {
@@ -3833,15 +4457,258 @@
             }
         }
         
+        // Global user context for permission checking
+        let currentUserContext = {
+            userId: null,
+            companyId: null,
+            userRole: 'user',
+            permissions: [],
+            displayName: 'משתמש',
+            email: null
+        };
+
         function updateUserInfo(user) {
             user.getUserAttributes((err, attributes) => {
                 if (!err && attributes) {
                     const nameAttr = attributes.find(attr => attr.Name === 'name');
                     const emailAttr = attributes.find(attr => attr.Name === 'email');
-                    const displayName = nameAttr ? nameAttr.Value : (emailAttr ? emailAttr.Value : 'משתמש');
-                    document.getElementById('userName').textContent = `שלום, ${displayName}`;
+                    const companyIdAttr = attributes.find(attr => attr.Name === 'custom:companyId');
+                    const roleAttr = attributes.find(attr => attr.Name === 'custom:role');
+                    
+                    // Update global user context
+                    currentUserContext.userId = user.getUsername();
+                    currentUserContext.displayName = nameAttr ? nameAttr.Value : (emailAttr ? emailAttr.Value : 'משתמש');
+                    currentUserContext.email = emailAttr ? emailAttr.Value : '';
+                    currentUserContext.companyId = companyIdAttr ? companyIdAttr.Value : null;
+                    currentUserContext.userRole = roleAttr ? roleAttr.Value : 'user';
+                    currentUserContext.permissions = getPermissionsForRole(currentUserContext.userRole);
+
+                    // Set Sentry user context
+                    if (typeof window.setSentryUser === 'function') {
+                        window.setSentryUser({
+                            username: currentUserContext.userId,
+                            attributes: {
+                                email: currentUserContext.email,
+                                name: currentUserContext.displayName,
+                                companyId: currentUserContext.companyId,
+                                role: currentUserContext.userRole
+                            }
+                        });
+                    }
+
+                    // Update UI elements
+                    document.getElementById('userName').textContent = `שלום, ${currentUserContext.displayName}`;
+                    
+                    // Add role indicator
+                    updateRoleIndicator();
+                    
+                    // Apply permission-based UI changes
+                    applyPermissionBasedUI();
+                    
+                    console.log('User context updated:', currentUserContext);
                 }
             });
+        }
+
+        // Permission system functions
+        function getPermissionsForRole(role) {
+            const rolePermissions = {
+                'admin': [
+                    'manage_billing', 'manage_company', 'invite_users', 'manage_users', 'view_users',
+                    'manage_projects', 'create_projects', 'edit_all_projects', 'delete_projects',
+                    'manage_contractors', 'create_contractors', 'edit_all_contractors', 'delete_contractors',
+                    'manage_works', 'create_works', 'edit_all_works', 'delete_works',
+                    'manage_expenses', 'create_expenses', 'edit_all_expenses', 'delete_expenses',
+                    'view_all_data', 'export_data', 'view_reports'
+                ],
+                'manager': [
+                    'view_users', 'manage_projects', 'create_projects', 'edit_all_projects', 'delete_projects',
+                    'manage_contractors', 'create_contractors', 'edit_all_contractors', 'delete_contractors',
+                    'manage_works', 'create_works', 'edit_all_works', 'delete_works',
+                    'manage_expenses', 'create_expenses', 'edit_all_expenses', 'delete_expenses',
+                    'view_all_data', 'export_data', 'view_reports'
+                ],
+                'editor': [
+                    'create_projects', 'edit_own_projects', 'create_contractors', 'edit_own_contractors',
+                    'create_works', 'edit_own_works', 'create_expenses', 'edit_own_expenses', 'view_reports'
+                ],
+                'viewer': ['view_reports'],
+                'user': [  // Legacy role support
+                    'create_projects', 'edit_own_projects', 'create_contractors', 'edit_own_contractors',
+                    'create_works', 'edit_own_works', 'create_expenses', 'edit_own_expenses', 'view_reports'
+                ]
+            };
+            
+            return rolePermissions[role] || rolePermissions['viewer'];
+        }
+
+        function hasPermission(permission) {
+            return currentUserContext.permissions.includes(permission);
+        }
+
+        function updateRoleIndicator() {
+            const roleNames = {
+                'admin': 'מנהל',
+                'manager': 'מנהל פרויקט',
+                'editor': 'עורך',
+                'viewer': 'צופה',
+                'user': 'משתמש'
+            };
+            
+            const roleName = roleNames[currentUserContext.userRole] || 'משתמש';
+            const roleColor = {
+                'admin': '#e53e3e',
+                'manager': '#3182ce',
+                'editor': '#38a169',
+                'viewer': '#718096',
+                'user': '#38a169'
+            }[currentUserContext.userRole] || '#718096';
+            
+            // Find or create role indicator
+            let roleIndicator = document.getElementById('roleIndicator');
+            if (!roleIndicator) {
+                roleIndicator = document.createElement('span');
+                roleIndicator.id = 'roleIndicator';
+                roleIndicator.style.cssText = `
+                    display: inline-block;
+                    padding: 4px 8px;
+                    margin-right: 10px;
+                    border-radius: 12px;
+                    font-size: 0.8rem;
+                    font-weight: bold;
+                    color: white;
+                `;
+                document.getElementById('userName').appendChild(roleIndicator);
+            }
+            
+            roleIndicator.textContent = roleName;
+            roleIndicator.style.backgroundColor = roleColor;
+        }
+
+        function applyPermissionBasedUI() {
+            console.log('Applying permission-based UI changes for role:', currentUserContext.userRole);
+            
+            // Show/hide main navigation tabs
+            updateTabVisibility();
+            
+            // Show/hide action buttons
+            updateActionButtons();
+            
+            // Update settings access
+            updateSettingsAccess();
+            
+            // Add permission tooltips
+            addPermissionTooltips();
+        }
+
+        function updateTabVisibility() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            
+            tabButtons.forEach(button => {
+                const tabName = button.getAttribute('data-tab');
+                let shouldShow = true;
+                
+                switch(tabName) {
+                    case 'addExpense':
+                        shouldShow = hasPermission('create_expenses');
+                        break;
+                    case 'projects':
+                    case 'contractors':
+                    case 'works':
+                        shouldShow = hasPermission('view_reports'); // Basic view access
+                        break;
+                    case 'expenses':
+                        shouldShow = hasPermission('view_reports'); // Basic view access
+                        break;
+                }
+                
+                if (shouldShow) {
+                    button.style.display = 'block';
+                } else {
+                    button.style.display = 'none';
+                }
+            });
+        }
+
+        function updateActionButtons() {
+            // Add Expense button
+            const addExpenseButtons = document.querySelectorAll('.add-expense-button, [data-tab="addExpense"]');
+            addExpenseButtons.forEach(button => {
+                if (hasPermission('create_expenses')) {
+                    button.style.display = 'block';
+                    button.disabled = false;
+                } else {
+                    button.style.display = 'none';
+                }
+            });
+            
+            // Form submit buttons - will be handled when forms are shown
+            updateFormButtonStates();
+        }
+
+        function updateFormButtonStates() {
+            // This will be called when forms are displayed to set proper states
+            const submitButtons = document.querySelectorAll('.form-submit-tab');
+            submitButtons.forEach(button => {
+                const form = button.closest('form');
+                if (form) {
+                    const formId = form.id;
+                    let canSubmit = false;
+                    
+                    switch(formId) {
+                        case 'newExpenseForm':
+                            canSubmit = hasPermission('create_expenses');
+                            break;
+                        default:
+                            canSubmit = true; // Default allow
+                    }
+                    
+                    button.disabled = !canSubmit;
+                    if (!canSubmit) {
+                        button.style.opacity = '0.5';
+                        button.title = 'אין לך הרשאה לפעולה זו';
+                    }
+                }
+            });
+        }
+
+        function updateSettingsAccess() {
+            const settingsButtons = document.querySelectorAll('.settings-nav-btn');
+            
+            settingsButtons.forEach(button => {
+                const buttonText = button.textContent.trim();
+                let shouldShow = true;
+                
+                if (buttonText.includes('ניהול משתמשים')) {
+                    shouldShow = hasPermission('view_users');
+                } else if (buttonText.includes('מנוי ותשלום')) {
+                    shouldShow = hasPermission('manage_billing');
+                } else if (buttonText.includes('פרטי החברה')) {
+                    shouldShow = hasPermission('manage_company') || hasPermission('view_users');
+                }
+                
+                if (shouldShow) {
+                    button.style.display = 'block';
+                } else {
+                    button.style.display = 'none';
+                }
+            });
+        }
+
+        function addPermissionTooltips() {
+            // Add helpful tooltips based on user role
+            const roleDescriptions = {
+                'admin': 'יש לך הרשאות מנהל מלאות - אתה יכול לנהל משתמשים, פרויקטים ותשלומים',
+                'manager': 'יש לך הרשאות מנהל פרויקט - אתה יכול לנהל פרויקטים וגדות נתונים',
+                'editor': 'יש לך הרשאות עריכה - אתה יכול ליצור ולערוך פריטים שיצרת',
+                'viewer': 'יש לך הרשאות צפייה בלבד - אתה יכול לראות דוחות',
+                'user': 'יש לך הרשאות משתמש רגיל - אתה יכול ליצור ולערוך פריטים שיצרת'
+            };
+            
+            const roleIndicator = document.getElementById('roleIndicator');
+            if (roleIndicator && roleDescriptions[currentUserContext.userRole]) {
+                roleIndicator.title = roleDescriptions[currentUserContext.userRole];
+            }
         }
         
         // Company Registration Functions
@@ -4116,7 +4983,7 @@
                 console.log('Loading expenses from API...');
                 const result = await apiCall('/expenses');
                 console.log('Expenses API result:', result);
-                originalMockData = result.data?.expenses || result.items || [];
+                originalMockData = result.expenses || result.data?.expenses || result.items || [];
                 console.log('Expenses after assignment:', originalMockData, 'isArray:', Array.isArray(originalMockData));
                 mockData = [...originalMockData];
                 

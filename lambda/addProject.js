@@ -1,26 +1,34 @@
 // lambda/addProject.js
-// Add a new project with SpentAmount tracking
+// Add a new project with company-scoping and permission checking
 
 const {
   createResponse,
   createErrorResponse,
-  getUserIdFromEvent,
-  validateProject,
+  getCompanyUserFromEvent,
   generateProjectId,
   getCurrentTimestamp,
-  dynamodb,
-  isLocal,
-  TABLE_NAMES,
-  dynamoOperation
-} = require('./shared/multi-table-utils');
+  dynamoOperation,
+  COMPANY_TABLE_NAMES,
+  PERMISSIONS,
+  withPermission,
+  debugLog
+} = require('./shared/company-utils');
 
-exports.handler = async (event) => {
-  console.log('addProject event received:', JSON.stringify(event, null, 2));
+const {
+  validateSubscriptionLimits
+} = require('./shared/paddle-utils');
+
+// Main handler with permission checking
+async function addProjectHandler(event) {
+  debugLog('addProject request received', { 
+    httpMethod: event.httpMethod,
+    hasBody: !!event.body 
+  });
 
   try {
-    // Get user ID from event context
-    const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
+    // Get company and user context (permission already checked by middleware)
+    const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+    debugLog('User context for project creation', { companyId, userId, userRole });
 
     // Parse request body
     let projectData;
@@ -30,24 +38,69 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    console.log('Project data received:', projectData);
+    debugLog('Project data received', projectData);
 
-    // Validate project data
-    try {
-      validateProject(projectData);
-    } catch (validationError) {
-      return createErrorResponse(400, `Validation error: ${validationError.message}`);
+    // Validate required fields
+    if (!projectData.name || typeof projectData.name !== 'string') {
+      return createErrorResponse(400, 'Project name is required and must be a string');
     }
 
-    // Check for duplicate project name - using scan for now
+    if (!projectData.startDate) {
+      return createErrorResponse(400, 'Project start date is required');
+    }
+
+    // Check subscription limits before creating project
+    try {
+      // Get current project count for the company
+      const currentProjectCount = await dynamoOperation('query', {
+        TableName: COMPANY_TABLE_NAMES.PROJECTS,
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: { ':companyId': companyId },
+        Select: 'COUNT'
+      });
+
+      debugLog('Current project count for company', { 
+        companyId, 
+        currentProjects: currentProjectCount.Count 
+      });
+
+      // Validate subscription limits (will throw error if exceeded)
+      await validateSubscriptionLimits(companyId, 'ADD_PROJECT', currentProjectCount.Count);
+
+    } catch (limitError) {
+      debugLog('Subscription limit check failed', { error: limitError.message });
+      
+      if (limitError.message.includes('Project limit reached')) {
+        return createErrorResponse(400, {
+          error: 'Project limit reached',
+          message: limitError.message,
+          action: 'upgrade_required',
+          upgradeUrl: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/#/settings/subscription`
+        });
+      }
+      
+      if (limitError.message.includes('No active subscription')) {
+        return createErrorResponse(400, {
+          error: 'No active subscription',
+          message: 'Company subscription required to create projects',
+          action: 'subscription_required',
+          subscribeUrl: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/#/settings/subscription`
+        });
+      }
+      
+      // Re-throw other errors
+      throw limitError;
+    }
+
+    // Check for duplicate project name within company
     const duplicateCheckParams = {
-      TableName: TABLE_NAMES.PROJECTS,
-      FilterExpression: 'userId = :userId AND #name = :name',
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      FilterExpression: 'companyId = :companyId AND #name = :name',
       ExpressionAttributeNames: {
         '#name': 'name'
       },
       ExpressionAttributeValues: {
-        ':userId': userId,
+        ':companyId': companyId,
         ':name': projectData.name.trim()
       }
     };
@@ -55,7 +108,7 @@ exports.handler = async (event) => {
     try {
       const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
       if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Project with name "${projectData.name}" already exists`);
+        return createErrorResponse(409, `Project with name "${projectData.name}" already exists in company`);
       }
     } catch (error) {
       console.error('Duplicate check failed:', error);
@@ -66,37 +119,54 @@ exports.handler = async (event) => {
     const projectId = generateProjectId();
     const timestamp = getCurrentTimestamp();
 
-    // Create project object with multi-table structure
+    // Create project object with company-scoped structure
     const project = {
-      userId,
-      projectId,
+      companyId,           // Company association
+      projectId,           // Sort key
       name: projectData.name.trim(),
       startDate: projectData.startDate,
       description: projectData.description ? projectData.description.trim() : '',
       status: projectData.status || 'active',
-      SpentAmount: projectData.SpentAmount || 0, // Initialize SpentAmount
+      spentAmount: projectData.spentAmount || 0,
+      budget: projectData.budget || null,
+      
+      // Permission and ownership tracking
+      createdBy: userId,
+      lastModifiedBy: userId,
+      assignedTo: projectData.assignedTo || [userId], // Default assign to creator
+      isPublic: projectData.isPublic !== false, // Default to public unless explicitly false
+      
+      // Timestamps
       createdAt: timestamp,
       updatedAt: timestamp
     };
 
-    console.log('Creating project:', project);
+    debugLog('Creating project', { projectId, companyId, createdBy: userId });
 
-    // Save to DynamoDB Projects table
+    // Save to DynamoDB company projects table
     const putParams = {
-      TableName: TABLE_NAMES.PROJECTS,
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
       Item: project,
       ConditionExpression: 'attribute_not_exists(projectId)' // Prevent overwrites
     };
 
     await dynamoOperation('put', putParams);
 
-    console.log('Project saved successfully:', { projectId });
+    debugLog('Project saved successfully', { projectId, companyId });
 
     return createResponse(201, {
       success: true,
       message: 'Project added successfully',
       data: {
-        project,
+        project: {
+          ...project,
+          // Add permission context for frontend
+          permissions: {
+            canEdit: true,  // Creator can always edit
+            canDelete: true, // Creator can always delete
+            canAssign: true  // Creator can assign to others
+          }
+        },
         projectId
       },
       timestamp
@@ -109,10 +179,17 @@ exports.handler = async (event) => {
       return createErrorResponse(409, 'Project with this ID already exists');
     }
 
-    if (error.message.includes('User ID not found')) {
-      return createErrorResponse(401, 'Unauthorized: Invalid user context');
+    if (error.message.includes('Company authentication required')) {
+      return createErrorResponse(401, 'Authentication required');
+    }
+
+    if (error.message.includes('Access denied')) {
+      return createErrorResponse(403, error.message);
     }
 
     return createErrorResponse(500, 'Failed to add project', error);
   }
-};
+}
+
+// Export handler wrapped with CREATE_PROJECTS permission requirement
+exports.handler = withPermission(PERMISSIONS.CREATE_PROJECTS, addProjectHandler);

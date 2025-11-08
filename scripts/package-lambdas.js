@@ -33,7 +33,9 @@ const LAMBDA_FUNCTIONS = [
   'deleteContractor',
   'getWorks',
   'addWork',
-  'deleteWork'
+  'deleteWork',
+  'subscriptionManager',
+  'paddleWebhook'
 ];
 
 function ensureDirectoryExists(dirPath) {
