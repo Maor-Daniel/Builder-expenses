@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Company expenses request received', {
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'None'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -26,7 +22,6 @@ exports.handler = async (event) => {
   try {
     // Get company and user context from JWT token
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('Company context', { companyId, userId, userRole });
 
     switch (event.httpMethod) {
       case 'GET':
@@ -41,14 +36,12 @@ exports.handler = async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('Company expenses error:', error);
     return createErrorResponse(500, 'Internal server error during expenses operation');
   }
 };
 
 // Get all expenses for the company
 async function getExpenses(companyId, userId) {
-  debugLog('Getting expenses for company', { companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
@@ -68,7 +61,6 @@ async function getExpenses(companyId, userId) {
     return cleaned;
   });
 
-  debugLog('Found expenses', { count: cleanedExpenses.length });
 
   return createResponse(200, {
     success: true,
@@ -80,7 +72,6 @@ async function getExpenses(companyId, userId) {
 // Create a new expense
 async function createExpense(event, companyId, userId) {
   const requestBody = JSON.parse(event.body || '{}');
-  debugLog('Creating expense', requestBody);
 
   const expense = {
     companyId,
@@ -119,7 +110,6 @@ async function createExpense(event, companyId, userId) {
 
   await dynamoOperation('put', params);
 
-  debugLog('Expense created successfully', { expenseId: expense.expenseId });
 
   // Clean deprecated fields before returning
   const cleaned = { ...expense };
@@ -142,7 +132,6 @@ async function updateExpense(event, companyId, userId) {
     return createErrorResponse(400, 'Missing expenseId');
   }
 
-  debugLog('Updating expense', { expenseId, companyId });
 
   // Build update expression dynamically
   const updateExpressions = [];
@@ -180,7 +169,6 @@ async function updateExpense(event, companyId, userId) {
 
   const result = await dynamoOperation('update', params);
 
-  debugLog('Expense updated successfully', { expenseId });
 
   // Clean deprecated fields before returning
   const cleaned = { ...result.Attributes };
@@ -202,7 +190,6 @@ async function deleteExpense(event, companyId, userId) {
     return createErrorResponse(400, 'Missing expenseId');
   }
 
-  debugLog('Deleting expense', { expenseId, companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
@@ -213,7 +200,6 @@ async function deleteExpense(event, companyId, userId) {
 
   const result = await dynamoOperation('delete', params);
 
-  debugLog('Expense deleted successfully', { expenseId });
 
   // Clean deprecated fields before returning
   const cleaned = { ...result.Attributes };

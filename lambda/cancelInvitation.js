@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Cancel invitation request received', {
-    httpMethod: event.httpMethod,
-    pathParameters: event.pathParameters
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -42,10 +38,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invitation token is required');
     }
 
-    debugLog('Retrieving invitation', {
-      companyId,
-      invitationToken
-    });
 
     // Get the invitation from DynamoDB
     const invitationResult = await dynamoOperation('get', {
@@ -75,12 +67,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'This invitation has already expired');
     }
 
-    debugLog('Cancelling invitation', {
-      invitationToken,
-      email: invitation.email,
-      role: invitation.role,
-      previousStatus: invitation.status
-    });
 
     // Update invitation status to CANCELLED
     const updateResult = await dynamoOperation('update', {
@@ -103,11 +89,6 @@ exports.handler = async (event) => {
 
     const updatedInvitation = updateResult.Attributes;
 
-    debugLog('Invitation cancelled successfully', {
-      invitationToken,
-      email: updatedInvitation.email,
-      cancelledBy: userId
-    });
 
     return createResponse(200, {
       success: true,
@@ -125,7 +106,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error cancelling invitation:', error);
 
     if (error.message.includes('company context')) {
       return createErrorResponse(401, 'Authentication required');

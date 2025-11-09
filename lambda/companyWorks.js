@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Company works request received', {
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'None'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -26,7 +22,6 @@ exports.handler = async (event) => {
   try {
     // Get company and user context from JWT token
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('Company context', { companyId, userId, userRole });
 
     switch (event.httpMethod) {
       case 'GET':
@@ -41,14 +36,12 @@ exports.handler = async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('Company works error:', error);
     return createErrorResponse(500, 'Internal server error during works operation');
   }
 };
 
 // Get all works for the company
 async function getWorks(companyId, userId) {
-  debugLog('Getting works for company', { companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.WORKS,
@@ -60,7 +53,6 @@ async function getWorks(companyId, userId) {
 
   const result = await dynamoOperation('query', params);
   
-  debugLog('Found works', { count: result.Items.length });
   
   return createResponse(200, {
     success: true,
@@ -72,7 +64,6 @@ async function getWorks(companyId, userId) {
 // Create a new work
 async function createWork(event, companyId, userId) {
   const requestBody = JSON.parse(event.body || '{}');
-  debugLog('Creating work', requestBody);
 
   const work = {
     companyId,
@@ -127,7 +118,6 @@ async function createWork(event, companyId, userId) {
 
   await dynamoOperation('put', params);
   
-  debugLog('Work created successfully', { workId: work.workId });
   
   return createResponse(201, {
     success: true,
@@ -145,7 +135,6 @@ async function updateWork(event, companyId, userId) {
     return createErrorResponse(400, 'Missing workId');
   }
 
-  debugLog('Updating work', { workId, companyId });
 
   // Build update expression dynamically
   const updateExpressions = [];
@@ -197,7 +186,6 @@ async function updateWork(event, companyId, userId) {
 
   const result = await dynamoOperation('update', params);
   
-  debugLog('Work updated successfully', { workId });
   
   return createResponse(200, {
     success: true,
@@ -214,7 +202,6 @@ async function deleteWork(event, companyId, userId) {
     return createErrorResponse(400, 'Missing workId');
   }
 
-  debugLog('Deleting work', { workId, companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.WORKS,
@@ -225,7 +212,6 @@ async function deleteWork(event, companyId, userId) {
 
   const result = await dynamoOperation('delete', params);
   
-  debugLog('Work deleted successfully', { workId });
   
   return createResponse(200, {
     success: true,

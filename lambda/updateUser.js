@@ -66,10 +66,6 @@ async function validateRoleChange(companyId, targetUserId, newRole, currentAdmin
 }
 
 exports.handler = async (event) => {
-  debugLog('Update user request received', {
-    httpMethod: event.httpMethod,
-    pathParameters: event.pathParameters
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -112,13 +108,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid status. Must be active or inactive');
     }
 
-    debugLog('Validating role change', {
-      companyId,
-      targetUserId,
-      newRole,
-      newStatus,
-      currentUserId
-    });
 
     // Validate the role change
     const currentUser = await validateRoleChange(companyId, targetUserId, newRole, currentUserId);
@@ -167,11 +156,6 @@ exports.handler = async (event) => {
       valueCounter++;
     }
 
-    debugLog('Updating user in DynamoDB', {
-      companyId,
-      targetUserId,
-      updateExpressions: updateExpressions.join(', ')
-    });
 
     // Update user in DynamoDB
     const updateResult = await dynamoOperation('update', {
@@ -202,12 +186,7 @@ exports.handler = async (event) => {
           ]
         }).promise();
 
-        debugLog('Updated Cognito user attributes', {
-          targetUserId,
-          newRole
-        });
       } catch (cognitoError) {
-        console.error('Failed to update Cognito attributes:', cognitoError);
         // Continue anyway - DynamoDB is source of truth
       }
     }
@@ -227,23 +206,11 @@ exports.handler = async (event) => {
           }).promise();
         }
 
-        debugLog('Updated Cognito user status', {
-          targetUserId,
-          newStatus
-        });
       } catch (cognitoError) {
-        console.error('Failed to update Cognito status:', cognitoError);
         // Continue anyway - DynamoDB is source of truth
       }
     }
 
-    debugLog('User updated successfully', {
-      userId: targetUserId,
-      oldRole: currentUser.role,
-      newRole: updatedUser.role,
-      oldStatus: currentUser.status,
-      newStatus: updatedUser.status
-    });
 
     return createResponse(200, {
       success: true,
@@ -269,7 +236,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error updating user:', error);
 
     if (error.message.includes('company context')) {
       return createErrorResponse(401, 'Authentication required');

@@ -30,7 +30,6 @@ Sentry.init({
     beforeSend(event, hint) {
         // Don't send events in local development
         if (process.env.IS_LOCAL === 'true') {
-            console.log('Sentry event (not sent in local development):', event);
             return null;
         }
         return event;

@@ -21,10 +21,6 @@ const {
 const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
 
 exports.handler = async (event) => {
-  debugLog('Send invitation request received', { 
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'Missing'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -44,7 +40,6 @@ exports.handler = async (event) => {
 
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    debugLog('Parsed invitation request', requestBody);
 
     const { email, role, name } = requestBody;
 
@@ -70,7 +65,6 @@ exports.handler = async (event) => {
       }
     } catch (queryError) {
       // If GSI doesn't exist, do a scan instead (less efficient but works)
-      console.log('GSI query failed, falling back to scan');
       const scanParams = {
         TableName: COMPANY_TABLE_NAMES.USERS,
         FilterExpression: 'companyId = :companyId AND email = :email',
@@ -217,9 +211,7 @@ ${invitationUrl}
 
     try {
       await ses.sendEmail(emailParams).promise();
-      debugLog('Invitation email sent successfully', { email, invitationId });
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
       // Don't fail the entire operation if email fails
       // The invitation record is still created and the user can be invited manually
     }
@@ -238,7 +230,6 @@ ${invitationUrl}
     });
 
   } catch (error) {
-    console.error('Send invitation error:', error);
     
     if (error.message.includes('Access denied') || error.message.includes('Required role')) {
       return createErrorResponse(403, 'Only company administrators can send invitations');

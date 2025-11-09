@@ -13,7 +13,6 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('deleteProject event received', event);
 
   try {
     // Get user ID from event context
@@ -24,7 +23,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Get project ID from path parameters
     const projectId = event.pathParameters?.id;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Missing project ID in path parameters');
     }
 
-    debugLog('Project ID to delete', projectId);
 
     // First, verify that the project exists and belongs to the user
     const getParams = {
@@ -52,14 +49,9 @@ exports.handler = async (event) => {
         return createErrorResponse(404, 'Project not found');
       }
     } catch (error) {
-      console.error('Error checking existing project:', error);
       return createErrorResponse(500, 'Failed to verify project ownership');
     }
 
-    debugLog('Existing project found', { 
-      projectId, 
-      name: existingProject.name
-    });
 
     // Check if project has associated expenses
     const expensesCheckParams = {
@@ -98,10 +90,8 @@ exports.handler = async (event) => {
         });
 
         await Promise.all(deletePromises);
-        debugLog('Deleted associated expenses', { count: expensesCheck.Items.length });
       }
     } catch (error) {
-      debugLog('Error checking/deleting associated expenses', error.message);
     }
 
     // Delete the project
@@ -118,7 +108,6 @@ exports.handler = async (event) => {
     const deleteResult = await dynamoOperation('delete', deleteParams);
     const deletedProject = deleteResult.Attributes;
 
-    debugLog('Project deleted successfully', { projectId });
 
     return createResponse(200, {
       success: true,
@@ -131,7 +120,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in deleteProject:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(404, 'Project not found or access denied');

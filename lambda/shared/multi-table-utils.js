@@ -62,22 +62,18 @@ function getUserIdFromEvent(event) {
   
   if (!authEnabled) {
     // Test mode: use hardcoded test user ID
-    console.log('Using test mode authentication');
     return 'test-user-123';
   }
   
   // Production mode: extract user ID from Cognito JWT token
-  console.log('Using Cognito authentication');
   
   if (event.requestContext?.authorizer?.claims?.sub) {
     const userId = event.requestContext.authorizer.claims.sub;
     const userEmail = event.requestContext.authorizer.claims.email;
-    console.log(`Authenticated user: ${userId} (${userEmail})`);
     return userId;
   }
   
   // If no valid token found, throw authentication error
-  console.error('No valid Cognito token found in event context');
   throw new Error('User ID not found in event context - authentication required');
 }
 
@@ -199,14 +195,12 @@ function getCurrentTimestamp() {
  * Log debug information
  */
 function debugLog(message, data = null) {
-  console.log(`[DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
 /**
  * Handle DynamoDB operations with error handling
  */
 async function dynamoOperation(operation, params) {
-  debugLog(`DynamoDB ${operation}`, params);
   
   try {
     let result;
@@ -239,10 +233,8 @@ async function dynamoOperation(operation, params) {
         throw new Error(`Unsupported DynamoDB operation: ${operation}`);
     }
     
-    debugLog(`DynamoDB ${operation} result`, result);
     return result;
   } catch (error) {
-    console.error(`DynamoDB ${operation} error:`, error);
     throw error;
   }
 }

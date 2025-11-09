@@ -12,18 +12,15 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  console.log('getExpenses event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
     const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
 
     // Parse query parameters for filtering
     const queryParams = event.queryStringParameters || {};
     const { startDate, endDate, projectId, contractorId } = queryParams;
     
-    console.log('Query parameters:', queryParams);
 
     let expenses = [];
 
@@ -93,7 +90,6 @@ exports.handler = async (event) => {
       expenses = result.Items || [];
     }
 
-    console.log(`Found ${expenses.length} expenses`);
 
     // Enhance expenses with project and contractor information
     const enhancedExpenses = await Promise.all(
@@ -125,7 +121,6 @@ exports.handler = async (event) => {
             contractorPhone: contractor ? contractor.phone : ''
           };
         } catch (enhanceError) {
-          console.error('Error enhancing expense:', enhanceError);
           // Return original expense if enhancement fails
           return {
             ...expense,
@@ -160,7 +155,6 @@ exports.handler = async (event) => {
       summary.dateRange.latest = new Date(summary.dateRange.latest).toISOString().split('T')[0];
     }
 
-    console.log('Expenses retrieved successfully');
 
     return createResponse(200, {
       success: true,
@@ -179,7 +173,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in getExpenses:', error);
 
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');

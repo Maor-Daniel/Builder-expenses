@@ -15,10 +15,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Company registration request received', { 
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'Missing'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -32,7 +28,6 @@ exports.handler = async (event) => {
   try {
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    debugLog('Parsed request body', requestBody);
 
     const { company, admin } = requestBody;
 
@@ -81,9 +76,7 @@ exports.handler = async (event) => {
     let cognitoUser;
     try {
       cognitoUser = await cognito.adminCreateUser(cognitoParams).promise();
-      debugLog('Cognito admin user created', { username: cognitoUser.User.Username });
     } catch (cognitoError) {
-      console.error('Cognito user creation error:', cognitoError);
       if (cognitoError.code === 'UsernameExistsException') {
         return createErrorResponse(400, 'User with this email already exists');
       }
@@ -99,7 +92,6 @@ exports.handler = async (event) => {
         Permanent: true
       }).promise();
     } catch (passwordError) {
-      console.error('Error setting permanent password:', passwordError);
       // If password setting fails, delete the created user
       await cognito.adminDeleteUser({
         UserPoolId: process.env.COGNITO_USER_POOL_ID || 'us-east-1_OBAlNkRnG',
@@ -142,10 +134,6 @@ exports.handler = async (event) => {
         ]
       }).promise();
 
-      debugLog('Company and admin user created successfully', {
-        companyId: createdCompany.companyId,
-        adminUserId: adminUser.userId
-      });
 
       return createResponse(200, {
         success: true,
@@ -167,7 +155,6 @@ exports.handler = async (event) => {
       });
 
     } catch (dbError) {
-      console.error('Database error during company creation:', dbError);
       
       // Rollback: Delete Cognito user if database operations failed
       try {
@@ -175,16 +162,13 @@ exports.handler = async (event) => {
           UserPoolId: process.env.COGNITO_USER_POOL_ID || 'us-east-1_OBAlNkRnG',
           Username: admin.email
         }).promise();
-        debugLog('Rolled back Cognito user creation');
       } catch (rollbackError) {
-        console.error('Error during rollback:', rollbackError);
       }
       
       throw dbError;
     }
 
   } catch (error) {
-    console.error('Company registration error:', error);
     
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(409, 'Company already exists');

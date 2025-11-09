@@ -20,15 +20,10 @@ const {
 
 // Main handler with permission checking
 async function addProjectHandler(event) {
-  debugLog('addProject request received', { 
-    httpMethod: event.httpMethod,
-    hasBody: !!event.body 
-  });
 
   try {
     // Get company and user context (permission already checked by middleware)
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('User context for project creation', { companyId, userId, userRole });
 
     // Parse request body
     let projectData;
@@ -38,7 +33,6 @@ async function addProjectHandler(event) {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Project data received', projectData);
 
     // Validate required fields
     if (!projectData.name || typeof projectData.name !== 'string') {
@@ -59,16 +53,11 @@ async function addProjectHandler(event) {
         Select: 'COUNT'
       });
 
-      debugLog('Current project count for company', { 
-        companyId, 
-        currentProjects: currentProjectCount.Count 
-      });
 
       // Validate subscription limits (will throw error if exceeded)
       await validateSubscriptionLimits(companyId, 'ADD_PROJECT', currentProjectCount.Count);
 
     } catch (limitError) {
-      debugLog('Subscription limit check failed', { error: limitError.message });
       
       if (limitError.message.includes('Project limit reached')) {
         return createErrorResponse(400, {
@@ -111,7 +100,6 @@ async function addProjectHandler(event) {
         return createErrorResponse(409, `Project with name "${projectData.name}" already exists in company`);
       }
     } catch (error) {
-      console.error('Duplicate check failed:', error);
       // Continue but log the error
     }
 
@@ -141,7 +129,6 @@ async function addProjectHandler(event) {
       updatedAt: timestamp
     };
 
-    debugLog('Creating project', { projectId, companyId, createdBy: userId });
 
     // Save to DynamoDB company projects table
     const putParams = {
@@ -152,7 +139,6 @@ async function addProjectHandler(event) {
 
     await dynamoOperation('put', putParams);
 
-    debugLog('Project saved successfully', { projectId, companyId });
 
     return createResponse(201, {
       success: true,
@@ -173,7 +159,6 @@ async function addProjectHandler(event) {
     });
 
   } catch (error) {
-    console.error('Error in addProject:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(409, 'Project with this ID already exists');

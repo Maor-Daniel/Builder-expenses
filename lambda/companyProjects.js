@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Company projects request received', {
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'None'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -26,7 +22,6 @@ exports.handler = async (event) => {
   try {
     // Get company and user context from JWT token
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('Company context', { companyId, userId, userRole });
 
     switch (event.httpMethod) {
       case 'GET':
@@ -41,14 +36,12 @@ exports.handler = async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('Company projects error:', error);
     return createErrorResponse(500, 'Internal server error during projects operation');
   }
 };
 
 // Get all projects for the company
 async function getProjects(companyId, userId) {
-  debugLog('Getting projects for company', { companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.PROJECTS,
@@ -60,7 +53,6 @@ async function getProjects(companyId, userId) {
 
   const result = await dynamoOperation('query', params);
   
-  debugLog('Found projects', { count: result.Items.length });
   
   return createResponse(200, {
     success: true,
@@ -72,7 +64,6 @@ async function getProjects(companyId, userId) {
 // Create a new project
 async function createProject(event, companyId, userId) {
   const requestBody = JSON.parse(event.body || '{}');
-  debugLog('Creating project', requestBody);
 
   const project = {
     companyId,
@@ -117,7 +108,6 @@ async function createProject(event, companyId, userId) {
 
   await dynamoOperation('put', params);
   
-  debugLog('Project created successfully', { projectId: project.projectId });
   
   return createResponse(201, {
     success: true,
@@ -135,7 +125,6 @@ async function updateProject(event, companyId, userId) {
     return createErrorResponse(400, 'Missing projectId');
   }
 
-  debugLog('Updating project', { projectId, companyId });
 
   // Build update expression dynamically
   const updateExpressions = [];
@@ -179,7 +168,6 @@ async function updateProject(event, companyId, userId) {
 
   const result = await dynamoOperation('update', params);
   
-  debugLog('Project updated successfully', { projectId });
   
   return createResponse(200, {
     success: true,
@@ -196,7 +184,6 @@ async function deleteProject(event, companyId, userId) {
     return createErrorResponse(400, 'Missing projectId');
   }
 
-  debugLog('Deleting project', { projectId, companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.PROJECTS,
@@ -207,7 +194,6 @@ async function deleteProject(event, companyId, userId) {
 
   const result = await dynamoOperation('delete', params);
   
-  debugLog('Project deleted successfully', { projectId });
   
   return createResponse(200, {
     success: true,

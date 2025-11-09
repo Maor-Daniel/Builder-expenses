@@ -6,7 +6,6 @@
 (function() {
     // Check if Sentry is available
     if (typeof Sentry === 'undefined') {
-        console.error('Sentry SDK not loaded');
         return;
     }
 
@@ -46,7 +45,6 @@
         beforeSend(event, hint) {
             // Don't send events in development (optional)
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('Sentry event (not sent in development):', event);
                 return null; // Return null to prevent sending
             }
             return event;
@@ -69,5 +67,4 @@
         Sentry.setUser(null);
     };
 
-    console.log('Sentry initialized successfully');
 })();

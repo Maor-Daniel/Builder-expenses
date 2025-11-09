@@ -38,7 +38,6 @@ async function validateInvitationToken(token) {
 }
 
 exports.handler = async (event) => {
-  debugLog('Accept invitation request', { httpMethod: event.httpMethod });
 
   if (event.httpMethod === 'OPTIONS') {
     return createResponse(200, { message: 'CORS preflight' });
@@ -206,13 +205,11 @@ exports.handler = async (event) => {
           Username: invitation.email
         }).promise();
       } catch (rollbackError) {
-        console.error('Error during rollback:', rollbackError);
       }
       throw dbError;
     }
 
   } catch (error) {
-    console.error('Error accepting invitation:', error);
     
     if (error.message.includes('Invalid or expired')) {
       return createErrorResponse(400, error.message);

@@ -101,7 +101,6 @@ let mockDatabase = [
 // Mock DynamoDB operations
 const mockDynamoDB = {
   async query(params) {
-    console.log('[MOCK DB] Query:', JSON.stringify(params, null, 2));
     
     const userId = params.ExpressionAttributeValues[':userId'];
     let items = mockDatabase.filter(item => item.userId === userId);
@@ -187,7 +186,6 @@ const mockDynamoDB = {
   },
 
   async get(params) {
-    console.log('[MOCK DB] Get:', JSON.stringify(params, null, 2));
     
     const item = mockDatabase.find(expense => 
       expense.userId === params.Key.userId && 
@@ -198,7 +196,6 @@ const mockDynamoDB = {
   },
 
   async put(params) {
-    console.log('[MOCK DB] Put:', JSON.stringify(params, null, 2));
     
     const newItem = { ...params.Item };
     
@@ -215,7 +212,6 @@ const mockDynamoDB = {
   },
 
   async update(params) {
-    console.log('[MOCK DB] Update:', JSON.stringify(params, null, 2));
     
     const itemIndex = mockDatabase.findIndex(expense => 
       expense.userId === params.Key.userId && 
@@ -245,7 +241,6 @@ const mockDynamoDB = {
   },
 
   async delete(params) {
-    console.log('[MOCK DB] Delete:', JSON.stringify(params, null, 2));
     
     const itemIndex = mockDatabase.findIndex(expense => 
       expense.userId === params.Key.userId && 

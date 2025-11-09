@@ -13,7 +13,6 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('deleteWork event received', event);
 
   try {
     // Get user ID from event context
@@ -24,7 +23,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Get work ID from path parameters
     const workId = event.pathParameters?.id;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Missing work ID in path parameters');
     }
 
-    debugLog('Work ID to delete', workId);
 
     // First, verify that the work exists and belongs to the user
     const getParams = {
@@ -52,15 +49,9 @@ exports.handler = async (event) => {
         return createErrorResponse(404, 'Work not found');
       }
     } catch (error) {
-      console.error('Error checking existing work:', error);
       return createErrorResponse(500, 'Failed to verify work ownership');
     }
 
-    debugLog('Existing work found', { 
-      workId, 
-      name: existingWork.name,
-      project: existingWork.project
-    });
 
     // Check if work has associated expenses
     const expensesCheckParams = {
@@ -104,10 +95,8 @@ exports.handler = async (event) => {
         });
 
         await Promise.all(updatePromises);
-        debugLog('Removed work association from expenses', { count: expensesCheck.Items.length });
       }
     } catch (error) {
-      debugLog('Error checking/updating associated expenses', error.message);
     }
 
     // Delete the work
@@ -124,7 +113,6 @@ exports.handler = async (event) => {
     const deleteResult = await dynamoOperation('delete', deleteParams);
     const deletedWork = deleteResult.Attributes;
 
-    debugLog('Work deleted successfully', { workId });
 
     return createResponse(200, {
       success: true,
@@ -137,7 +125,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in deleteWork:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(404, 'Work not found or access denied');

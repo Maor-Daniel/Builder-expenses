@@ -147,7 +147,6 @@ function getTableData(tableName) {
 // Mock DynamoDB operations for multi-table architecture
 const mockMultiTableDB = {
   async query(params) {
-    console.log('[MULTI-TABLE MOCK DB] Query:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     const keyCondition = params.KeyConditionExpression;
@@ -209,7 +208,6 @@ const mockMultiTableDB = {
   },
 
   async get(params) {
-    console.log('[MULTI-TABLE MOCK DB] Get:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     const key = params.Key;
@@ -231,7 +229,6 @@ const mockMultiTableDB = {
   },
 
   async put(params) {
-    console.log('[MULTI-TABLE MOCK DB] Put:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     const newItem = { ...params.Item };
@@ -256,7 +253,6 @@ const mockMultiTableDB = {
   },
 
   async update(params) {
-    console.log('[MULTI-TABLE MOCK DB] Update:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     const key = params.Key;
@@ -304,7 +300,6 @@ const mockMultiTableDB = {
   },
 
   async delete(params) {
-    console.log('[MULTI-TABLE MOCK DB] Delete:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     const key = params.Key;
@@ -331,7 +326,6 @@ const mockMultiTableDB = {
   },
 
   async scan(params) {
-    console.log('[MULTI-TABLE MOCK DB] Scan:', JSON.stringify(params, null, 2));
     
     const data = getTableData(params.TableName);
     let items = [...data];

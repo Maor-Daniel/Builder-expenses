@@ -12,18 +12,15 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  console.log('getWorks event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
     const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
 
     // Parse query parameters for filtering
     const queryParams = event.queryStringParameters || {};
     const { projectId, contractorId, status, sortBy } = queryParams;
     
-    console.log('Query parameters:', queryParams);
 
     let works = [];
 
@@ -83,7 +80,6 @@ exports.handler = async (event) => {
       works = result.Items || [];
     }
 
-    console.log(`Found ${works.length} works`);
 
     // Enhance works with project and contractor information
     const enhancedWorks = await Promise.all(
@@ -115,7 +111,6 @@ exports.handler = async (event) => {
             contractorPhone: contractor ? contractor.phone : ''
           };
         } catch (enhanceError) {
-          console.error('Error enhancing work:', enhanceError);
           // Return original work if enhancement fails
           return {
             ...work,
@@ -152,7 +147,6 @@ exports.handler = async (event) => {
       }, {})
     };
 
-    console.log('Works retrieved successfully');
 
     return createResponse(200, {
       success: true,
@@ -171,7 +165,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in getWorks:', error);
 
     if (error.message.includes('User ID not found')) {
       return createErrorResponse(401, 'Unauthorized: Invalid user context');

@@ -126,20 +126,12 @@ async function getUserDataCount(companyId, userId) {
     counts.expenses = expensesResult.Count || 0;
 
   } catch (error) {
-    debugLog('Error counting user data', {
-      error: error.message,
-      userId
-    });
   }
 
   return counts;
 }
 
 exports.handler = async (event) => {
-  debugLog('Remove user request received', {
-    httpMethod: event.httpMethod,
-    pathParameters: event.pathParameters
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -169,12 +161,6 @@ exports.handler = async (event) => {
     const queryParams = event.queryStringParameters || {};
     const hardDelete = queryParams.hardDelete === 'true'; // Default is soft delete
 
-    debugLog('Validating user removal', {
-      companyId,
-      targetUserId,
-      currentUserId,
-      hardDelete
-    });
 
     // Validate the removal
     const targetUser = await validateUserRemoval(companyId, targetUserId, currentUserId);
@@ -194,10 +180,6 @@ exports.handler = async (event) => {
         );
       }
 
-      debugLog('Hard deleting user from company', {
-        targetUserId,
-        companyId
-      });
 
       // Delete from company-users table
       await dynamoOperation('delete', {
@@ -214,10 +196,6 @@ exports.handler = async (event) => {
       //   Username: targetUserId
       // }).promise();
 
-      debugLog('User hard deleted successfully', {
-        targetUserId,
-        userEmail: targetUser.email
-      });
 
       return createResponse(200, {
         success: true,
@@ -231,12 +209,6 @@ exports.handler = async (event) => {
       // Soft delete: set status to inactive
       // This preserves data relationships and audit trail
 
-      debugLog('Soft deleting user (setting to inactive)', {
-        targetUserId,
-        companyId,
-        hasData,
-        dataCount
-      });
 
       // Update user status to inactive
       const updateResult = await dynamoOperation('update', {
@@ -264,19 +236,10 @@ exports.handler = async (event) => {
           Username: targetUserId
         }).promise();
 
-        debugLog('Disabled user in Cognito', {
-          targetUserId
-        });
       } catch (cognitoError) {
-        console.error('Failed to disable Cognito user:', cognitoError);
         // Continue anyway - DynamoDB status is what matters
       }
 
-      debugLog('User soft deleted successfully', {
-        targetUserId,
-        userEmail: targetUser.email,
-        dataCount
-      });
 
       return createResponse(200, {
         success: true,
@@ -295,7 +258,6 @@ exports.handler = async (event) => {
     }
 
   } catch (error) {
-    console.error('Error removing user:', error);
 
     if (error.message.includes('company context')) {
       return createErrorResponse(401, 'Authentication required');

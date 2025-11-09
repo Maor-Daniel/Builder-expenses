@@ -13,7 +13,6 @@ const {
 } = require('./shared/utils');
 
 exports.handler = async (event) => {
-  debugLog('updateExpense event received', event);
 
   try {
     // Get user ID from event context
@@ -24,7 +23,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Get expense ID from path parameters
     const expenseId = event.pathParameters?.expenseId;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Missing expense ID in path parameters');
     }
 
-    debugLog('Expense ID to update', expenseId);
 
     // Parse request body
     let updateData;
@@ -42,7 +39,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Update data received', updateData);
 
     // Validate update data
     try {
@@ -69,11 +65,9 @@ exports.handler = async (event) => {
         return createErrorResponse(404, 'Expense not found');
       }
     } catch (error) {
-      console.error('Error checking existing expense:', error);
       return createErrorResponse(500, 'Failed to verify expense ownership');
     }
 
-    debugLog('Existing expense found', { expenseId, project: existingExpense.project });
 
     // Build update expression
     const timestamp = getCurrentTimestamp();
@@ -115,7 +109,6 @@ exports.handler = async (event) => {
         }
       } catch (error) {
         // Continue without duplicate check if GSI doesn't exist
-        debugLog('Duplicate check skipped', error.message);
       }
     }
 
@@ -149,7 +142,6 @@ exports.handler = async (event) => {
     const updateResult = await dynamoOperation('update', updateParams);
     const updatedExpense = updateResult.Attributes;
 
-    debugLog('Expense updated successfully', { expenseId });
 
     return createResponse(200, {
       success: true,
@@ -163,7 +155,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in updateExpense:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(404, 'Expense not found or access denied');

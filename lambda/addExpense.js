@@ -19,7 +19,6 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('addExpense event received', event);
 
   try {
     // Get user ID from event context or use default for single user app
@@ -30,7 +29,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Parse request body
     let expenseData;
@@ -40,7 +38,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    debugLog('Expense data received', expenseData);
 
     // Validate expense data
     try {
@@ -115,7 +112,6 @@ exports.handler = async (event) => {
         return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
       }
     } catch (error) {
-      console.error('Duplicate check failed:', error);
       // Continue but log the error
     }
 
@@ -132,11 +128,9 @@ exports.handler = async (event) => {
     try {
       await updateProjectSpentAmount(userId, expense.projectId, expense.amount);
     } catch (updateError) {
-      console.error('Failed to update project SpentAmount:', updateError);
       // Don't fail the expense creation for this
     }
 
-    console.log('Expense saved successfully:', { expenseId });
 
     return createResponse(201, {
       success: true,
@@ -149,7 +143,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in addExpense:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(409, 'Expense with this ID already exists');

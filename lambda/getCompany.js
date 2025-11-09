@@ -12,9 +12,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Get company request received', { 
-    httpMethod: event.httpMethod 
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -29,7 +26,6 @@ exports.handler = async (event) => {
     // Get company context from authenticated user
     const { companyId, userId, userRole } = getCompanyContextFromEvent(event);
     
-    debugLog('Retrieving company information', { companyId, userId, userRole });
 
     // Get company information
     const companyResult = await dynamoOperation('get', {
@@ -61,7 +57,6 @@ exports.handler = async (event) => {
       // TODO: Add project count, expense count, etc. when implementing those endpoints
     };
 
-    debugLog('Company information retrieved successfully', { companyId, userCount });
 
     return createResponse(200, {
       success: true,
@@ -89,7 +84,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error retrieving company information:', error);
     
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');

@@ -17,12 +17,10 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  console.log('addWork event received:', JSON.stringify(event, null, 2));
 
   try {
     // Get user ID from event context
     const userId = getUserIdFromEvent(event);
-    console.log('User ID:', userId);
 
     // Parse request body
     let workData;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invalid JSON in request body');
     }
 
-    console.log('Work data received:', workData);
 
     // Validate work data
     try {
@@ -68,7 +65,6 @@ exports.handler = async (event) => {
       updatedAt: timestamp
     };
 
-    console.log('Creating work:', work);
 
     // Save to DynamoDB Works table
     const putParams = {
@@ -79,7 +75,6 @@ exports.handler = async (event) => {
 
     await dynamoOperation('put', putParams);
 
-    console.log('Work saved successfully:', { workId });
 
     return createResponse(201, {
       success: true,
@@ -92,7 +87,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in addWork:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(409, 'Work with this ID already exists');

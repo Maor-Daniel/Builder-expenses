@@ -16,11 +16,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  console.log('Paddle webhook received:', {
-    method: event.httpMethod,
-    headers: Object.keys(event.headers || {}),
-    bodyLength: event.body ? event.body.length : 0
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -41,7 +36,6 @@ exports.handler = async (event) => {
     // Verify webhook signature
     const signature = event.headers['paddle-signature'] || event.headers['Paddle-Signature'];
     if (!verifyPaddleWebhook(webhookBody, signature)) {
-      console.error('Invalid webhook signature');
       return createErrorResponse(401, 'Invalid webhook signature');
     }
 
@@ -51,16 +45,9 @@ exports.handler = async (event) => {
       // Modern Paddle sends JSON data
       webhookData = JSON.parse(webhookBody);
     } catch (parseError) {
-      console.error('Failed to parse webhook data:', parseError);
       return createErrorResponse(400, 'Invalid webhook data format');
     }
 
-    console.log('Processed webhook data:', {
-      event_type: webhookData.event_type,
-      notification_id: webhookData.notification_id,
-      subscription_id: webhookData.data?.subscription?.id,
-      customer_id: webhookData.data?.subscription?.customer_id || webhookData.data?.transaction?.customer_id
-    });
 
     // Route webhook based on modern event types
     switch (webhookData.event_type) {
@@ -89,7 +76,6 @@ exports.handler = async (event) => {
         break;
 
       default:
-        console.log('Unhandled webhook event:', webhookData.event_type);
     }
 
     // Store webhook for audit trail
@@ -102,7 +88,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Paddle webhook error:', error);
     return createErrorResponse(500, 'Internal server error processing webhook');
   }
 };
@@ -112,7 +97,6 @@ exports.handler = async (event) => {
  */
 async function handleSubscriptionCreated(webhookData) {
   const subscription = webhookData.data;
-  console.log('Processing subscription created:', subscription.id);
 
   const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
@@ -149,7 +133,6 @@ async function handleSubscriptionCreated(webhookData) {
     }
   });
 
-  console.log('Subscription created successfully for company:', companyId);
 }
 
 /**
@@ -157,7 +140,6 @@ async function handleSubscriptionCreated(webhookData) {
  */
 async function handleSubscriptionUpdated(webhookData) {
   const subscription = webhookData.data;
-  console.log('Processing subscription updated:', subscription.id);
 
   const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
@@ -195,7 +177,6 @@ async function handleSubscriptionUpdated(webhookData) {
     }
   });
 
-  console.log('Subscription updated successfully for company:', companyId);
 }
 
 /**
@@ -203,7 +184,6 @@ async function handleSubscriptionUpdated(webhookData) {
  */
 async function handleSubscriptionCancelled(webhookData) {
   const subscription = webhookData.data;
-  console.log('Processing subscription cancelled:', subscription.id);
 
   const companyId = subscription.custom_data?.companyId;
   if (!companyId) {
@@ -233,7 +213,6 @@ async function handleSubscriptionCancelled(webhookData) {
     }
   });
 
-  console.log('Subscription cancelled for company:', companyId);
 }
 
 /**
@@ -241,7 +220,6 @@ async function handleSubscriptionCancelled(webhookData) {
  */
 async function handlePaymentSucceeded(webhookData) {
   const transaction = webhookData.data;
-  console.log('Processing payment succeeded:', transaction.id);
 
   const companyId = transaction.custom_data?.companyId;
 
@@ -257,7 +235,6 @@ async function handlePaymentSucceeded(webhookData) {
     paidAt: transaction.billed_at || new Date().toISOString()
   });
 
-  console.log('Payment recorded successfully:', transaction.id);
 }
 
 /**
@@ -265,7 +242,6 @@ async function handlePaymentSucceeded(webhookData) {
  */
 async function handlePaymentFailed(webhookData) {
   const transaction = webhookData.data;
-  console.log('Processing payment failed:', transaction.id);
 
   const companyId = transaction.custom_data?.companyId;
 
@@ -294,14 +270,12 @@ async function handlePaymentFailed(webhookData) {
     });
   }
 
-  console.log('Payment failure recorded:', transaction.id);
 }
 
 /**
  * Handle payment refunded
  */
 async function handlePaymentRefunded(webhookData) {
-  console.log('Processing payment refunded:', webhookData.order_id);
 
   const companyId = webhookData.passthrough?.companyId;
 
@@ -317,7 +291,6 @@ async function handlePaymentRefunded(webhookData) {
     paidAt: new Date().toISOString()
   });
 
-  console.log('Refund recorded successfully:', webhookData.order_id);
 }
 
 /**
