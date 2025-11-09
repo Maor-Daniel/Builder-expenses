@@ -3154,8 +3154,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="inviteUserMessage">הודעה אישית (אופציונלי)</label>
-                    <textarea id="inviteUserMessage" class="form-input" rows="3"
+                    <label class="form-label" for="inviteUserPersonalMessage">הודעה אישית (אופציונלי)</label>
+                    <textarea id="inviteUserPersonalMessage" class="form-input" rows="3"
                               placeholder="הוסף הודעה אישית למשתמש המוזמן..."></textarea>
                 </div>
 
@@ -4043,6 +4043,9 @@
                 } else {
                     console.warn('loadBillingDashboard function not available yet');
                 }
+            } else if (sectionName === 'user') {
+                // Load users list and invitations when user management section is opened
+                loadUsersList();
             }
         }
         
@@ -4125,7 +4128,7 @@
                                         ${roleName}
                                     </div>
                                     <div class="user-actions" style="display: flex; gap: 10px;">
-                                        ${currentUserPermissions && currentUserPermissions.includes('MANAGE_USERS') ? `
+                                        ${currentUserContext && currentUserContext.userRole === 'admin' ? `
                                             <button class="user-action-btn edit" onclick="editUser('${user.userId}')"
                                                     style="padding: 8px 15px; background: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer;">
                                                 ערוך
@@ -4144,12 +4147,12 @@
                     usersList.innerHTML = '<div class="error-message">שגיאה בטעינת רשימת המשתמשים</div>';
                 }
 
-                // Load pending invitations
-                await loadPendingInvitations();
-
             } catch (error) {
                 console.error('Error loading users list:', error);
                 usersList.innerHTML = '<div class="error-message">שגיאה בטעינת רשימת המשתמשים: ' + error.message + '</div>';
+            } finally {
+                // Always load pending invitations, even if users list fails
+                await loadPendingInvitations();
             }
         }
 
@@ -4160,8 +4163,8 @@
             try {
                 const response = await apiCall('/listInvitations?status=PENDING', 'GET');
 
-                if (response.success && response.invitations) {
-                    const invitations = response.invitations.filter(inv => inv.status === 'PENDING');
+                if (response.success && response.data && response.data.invitations) {
+                    const invitations = response.data.invitations.filter(inv => inv.status === 'pending');
 
                     if (invitations.length === 0) {
                         pendingInvitationsList.innerHTML = '<div class="no-data">אין הזמנות ממתינות</div>';
@@ -4193,11 +4196,11 @@
                                             </div>
                                         </div>
                                         <div style="display: flex; gap: 10px;">
-                                            <button onclick="resendInvitation('${invitation.invitationId}')"
+                                            <button onclick="resendInvitation('${invitation.id}')"
                                                     style="padding: 6px 12px; background: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">
                                                 שלח שוב
                                             </button>
-                                            <button onclick="cancelInvitation('${invitation.invitationId}')"
+                                            <button onclick="cancelInvitation('${invitation.id}')"
                                                     style="padding: 6px 12px; background: #f56565; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">
                                                 בטל
                                             </button>
@@ -4235,7 +4238,7 @@
 
             const email = document.getElementById('inviteUserEmail').value.trim();
             const role = document.getElementById('inviteUserRole').value;
-            const personalMessage = document.getElementById('inviteUserMessage').value.trim();
+            const personalMessage = document.getElementById('inviteUserPersonalMessage').value.trim();
             const messageElement = document.getElementById('inviteUserMessage');
             const submitButton = event.target.querySelector('button[type="submit"]');
 

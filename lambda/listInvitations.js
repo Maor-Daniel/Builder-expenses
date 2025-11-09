@@ -54,7 +54,7 @@ exports.handler = async (event) => {
         },
         ExpressionAttributeValues: {
           ':companyId': companyId,
-          ':status': status.toUpperCase()
+          ':status': status.toLowerCase()
         }
       });
     } else {
@@ -140,10 +140,10 @@ exports.handler = async (event) => {
     // Calculate summary statistics
     const summary = {
       totalCount: finalInvitations.length,
-      pendingCount: finalInvitations.filter(inv => inv.status === 'PENDING' && !inv.isExpired).length,
+      pendingCount: finalInvitations.filter(inv => inv.status === 'pending' && !inv.isExpired).length,
       expiredCount: finalInvitations.filter(inv => inv.isExpired).length,
-      acceptedCount: finalInvitations.filter(inv => inv.status === 'ACCEPTED').length,
-      cancelledCount: finalInvitations.filter(inv => inv.status === 'CANCELLED').length,
+      acceptedCount: finalInvitations.filter(inv => inv.status === 'accepted').length,
+      cancelledCount: finalInvitations.filter(inv => inv.status === 'cancelled').length,
       byRole: finalInvitations.reduce((counts, inv) => {
         counts[inv.role] = (counts[inv.role] || 0) + 1;
         return counts;

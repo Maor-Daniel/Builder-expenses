@@ -22,7 +22,7 @@ function log(message, color = 'reset') {
 
 const LAMBDA_FUNCTIONS = [
   'getExpenses',
-  'addExpense', 
+  'addExpense',
   'updateExpense',
   'deleteExpense',
   'getProjects',
@@ -35,7 +35,19 @@ const LAMBDA_FUNCTIONS = [
   'addWork',
   'deleteWork',
   'subscriptionManager',
-  'paddleWebhook'
+  'paddleWebhook',
+  // User Management Functions
+  'listUsers',
+  'updateUser',
+  'removeUser',
+  'inviteUser',
+  'sendInvitation',
+  'listInvitations',
+  'acceptInvitation',
+  'resendInvitation',
+  'cancelInvitation',
+  'getCompany',
+  'updateCompany'
 ];
 
 function ensureDirectoryExists(dirPath) {
