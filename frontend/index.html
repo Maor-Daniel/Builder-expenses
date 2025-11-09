@@ -6838,7 +6838,7 @@
                     option.value = work.workId;
                     
                     // Use the correct field names based on API response structure
-                    const workName = work.WorkName || work.name || 'ללא שם';
+                    const workName = work.WorkName || work.workName || work.name || 'ללא שם';
                     
                     // Resolve project and contractor names from IDs if needed
                     let projectName = work.projectName || work.project;
