@@ -88,6 +88,11 @@ exports.handler = async (event) => {
       expressionAttributeValues[':companyEmail'] = requestBody.companyEmail.trim();
     }
 
+    if (requestBody.logoUrl !== undefined) {
+      updateExpressions.push('logoUrl = :logoUrl');
+      expressionAttributeValues[':logoUrl'] = requestBody.logoUrl.trim();
+    }
+
     // Always update the updatedAt timestamp
     updateExpressions.push('updatedAt = :updatedAt');
 
@@ -130,6 +135,7 @@ exports.handler = async (event) => {
           companyAddress: updatedCompany.companyAddress,
           companyPhone: updatedCompany.companyPhone,
           companyEmail: updatedCompany.companyEmail,
+          logoUrl: updatedCompany.logoUrl,
           createdAt: updatedCompany.createdAt,
           updatedAt: updatedCompany.updatedAt
         }

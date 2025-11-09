@@ -47,7 +47,13 @@ const LAMBDA_FUNCTIONS = [
   'resendInvitation',
   'cancelInvitation',
   'getCompany',
-  'updateCompany'
+  'updateCompany',
+  'uploadCompanyLogo',
+  // Company expense management
+  'companyExpenses',
+  'companyProjects',
+  'companyContractors',
+  'companyWorks'
 ];
 
 function ensureDirectoryExists(dirPath) {
