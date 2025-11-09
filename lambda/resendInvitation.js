@@ -19,10 +19,13 @@ const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Send invitation email via SES
 async function sendInvitationEmail(invitation, companyName) {
-  const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitation.invitationToken}`;
+  const invitationToken = invitation.token || invitation.invitationToken;
+  const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitationToken}`;
+
+  console.log('Sending invitation email to:', invitation.email, 'with URL:', invitationUrl);
 
   const emailParams = {
-    Source: process.env.FROM_EMAIL || 'noreply@yankale.com',
+    Source: process.env.SES_EMAIL_SOURCE || process.env.FROM_EMAIL || 'maordtech@gmail.com',
     Destination: {
       ToAddresses: [invitation.email]
     },
@@ -155,7 +158,9 @@ ${invitationUrl}
     }
   };
 
-  await ses.sendEmail(emailParams).promise();
+  const result = await ses.sendEmail(emailParams).promise();
+  console.log('SES email sent successfully. MessageId:', result.MessageId);
+  return result;
 }
 
 exports.handler = async (event) => {
@@ -209,8 +214,8 @@ exports.handler = async (event) => {
     const invitation = invitationResult.Item;
 
     // Check invitation status
-    if (invitation.status !== 'PENDING') {
-      return createErrorResponse(400, `Cannot resend invitation. Status is ${invitation.status}. Only PENDING invitations can be resent.`);
+    if (invitation.status !== 'pending') {
+      return createErrorResponse(400, `Cannot resend invitation. Status is ${invitation.status}. Only pending invitations can be resent.`);
     }
 
     // Check if invitation has expired
@@ -233,8 +238,7 @@ exports.handler = async (event) => {
     const companyResult = await dynamoOperation('get', {
       TableName: COMPANY_TABLE_NAMES.COMPANIES,
       Key: {
-        companyId,
-        SK: 'COMPANY'
+        companyId
       }
     });
 

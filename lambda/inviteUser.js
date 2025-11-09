@@ -30,9 +30,13 @@ function generateInvitationToken() {
 // Send invitation email via SES
 async function sendInvitationEmail(invitation) {
   const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitation.invitationToken}`;
-  
+
+  console.log('FROM_EMAIL env var:', process.env.FROM_EMAIL);
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@yankale.com';
+  console.log('Using FROM_EMAIL:', fromEmail);
+
   const emailParams = {
-    Source: process.env.FROM_EMAIL || 'noreply@yankale.com',
+    Source: fromEmail,
     Destination: {
       ToAddresses: [invitation.email]
     },

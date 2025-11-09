@@ -109,6 +109,10 @@ exports.handler = async (event) => {
     const token = generateInvitationToken();
     const timestamp = getCurrentTimestamp();
 
+    // Calculate expiration date (7 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
     const invitation = {
       companyId,
       invitationId,
@@ -118,6 +122,8 @@ exports.handler = async (event) => {
       token,
       status: INVITATION_STATUS.PENDING,
       invitedBy: userId,
+      invitedAt: timestamp,
+      expiresAt: expiresAt.toISOString(),
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -140,7 +146,7 @@ exports.handler = async (event) => {
     const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}?invitation=${token}`;
     
     const emailParams = {
-      Source: process.env.FROM_EMAIL || 'noreply@constructionexpenses.com',
+      Source: process.env.SES_EMAIL_SOURCE || process.env.FROM_EMAIL || 'maordtech@gmail.com',
       Destination: {
         ToAddresses: [email]
       },
