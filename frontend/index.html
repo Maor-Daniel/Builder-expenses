@@ -6482,13 +6482,25 @@
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
             const button = document.querySelector(`label[for="${inputId}"]`);
-            
-            input.value = '';
-            preview.innerHTML = '';
-            button.classList.remove('has-file');
-            
-            // Reset button text
-            button.querySelector('.upload-text').textContent = 'העלה תמונת קבלה';
+
+            // Add null checks before accessing properties
+            if (input) {
+                input.value = '';
+            }
+
+            if (preview) {
+                preview.innerHTML = '';
+            }
+
+            if (button) {
+                button.classList.remove('has-file');
+
+                // Reset button text - check if upload-text element exists
+                const uploadText = button.querySelector('.upload-text');
+                if (uploadText) {
+                    uploadText.textContent = 'העלה תמונת קבלה';
+                }
+            }
         }
 
         // Image modal functions
