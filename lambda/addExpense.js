@@ -80,33 +80,16 @@ exports.handler = async (event) => {
     if (expenseData.receiptImage) {
       const imageData = expenseData.receiptImage.data;
       const imageSizeKB = Math.round(imageData.length * 0.75 / 1024); // Rough base64 to bytes conversion
-      
+
       if (imageSizeKB > 300) { // Leave room for other data in 400KB limit
         return createErrorResponse(400, `Receipt image too large (${imageSizeKB}KB). Please use an image smaller than 300KB.`);
       }
-      
+
       expense.receiptImage = {
         name: expenseData.receiptImage.name,
         data: imageData,
         type: expenseData.receiptImage.type,
         size: expenseData.receiptImage.size
-      };
-    }
-
-    // Add contractor signature if provided
-    if (expenseData.contractorSignature) {
-      const signatureData = expenseData.contractorSignature.data;
-      const signatureSizeKB = Math.round(signatureData.length * 0.75 / 1024); // Rough base64 to bytes conversion
-      
-      if (signatureSizeKB > 100) { // Signatures should be smaller
-        return createErrorResponse(400, `Signature too large (${signatureSizeKB}KB). Please use a smaller signature.`);
-      }
-      
-      expense.contractorSignature = {
-        name: expenseData.contractorSignature.name,
-        data: signatureData,
-        type: expenseData.contractorSignature.type,
-        size: expenseData.contractorSignature.size
       };
     }
 

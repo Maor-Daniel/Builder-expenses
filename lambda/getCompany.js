@@ -72,6 +72,10 @@ exports.handler = async (event) => {
           name: company.name,
           description: company.description,
           industry: company.industry,
+          companyAddress: company.companyAddress,
+          companyPhone: company.companyPhone,
+          companyEmail: company.companyEmail,
+          logoUrl: company.logoUrl,
           createdAt: company.createdAt,
           updatedAt: company.updatedAt
         },

@@ -59,13 +59,21 @@ async function getExpenses(companyId, userId) {
   };
 
   const result = await dynamoOperation('query', params);
-  
-  debugLog('Found expenses', { count: result.Items.length });
-  
+
+  // Filter out deprecated fields (signature and paymentTerms)
+  const cleanedExpenses = (result.Items || []).map(expense => {
+    const cleaned = { ...expense };
+    delete cleaned.contractorSignature;
+    delete cleaned.paymentTerms;
+    return cleaned;
+  });
+
+  debugLog('Found expenses', { count: cleanedExpenses.length });
+
   return createResponse(200, {
     success: true,
-    expenses: result.Items || [],
-    count: result.Items.length
+    expenses: cleanedExpenses,
+    count: cleanedExpenses.length
   });
 }
 
@@ -110,13 +118,18 @@ async function createExpense(event, companyId, userId) {
   };
 
   await dynamoOperation('put', params);
-  
+
   debugLog('Expense created successfully', { expenseId: expense.expenseId });
-  
+
+  // Clean deprecated fields before returning
+  const cleaned = { ...expense };
+  delete cleaned.contractorSignature;
+  delete cleaned.paymentTerms;
+
   return createResponse(201, {
     success: true,
     message: 'Expense created successfully',
-    expense
+    expense: cleaned
   });
 }
 
@@ -166,13 +179,18 @@ async function updateExpense(event, companyId, userId) {
   };
 
   const result = await dynamoOperation('update', params);
-  
+
   debugLog('Expense updated successfully', { expenseId });
-  
+
+  // Clean deprecated fields before returning
+  const cleaned = { ...result.Attributes };
+  delete cleaned.contractorSignature;
+  delete cleaned.paymentTerms;
+
   return createResponse(200, {
     success: true,
     message: 'Expense updated successfully',
-    expense: result.Attributes
+    expense: cleaned
   });
 }
 
@@ -194,12 +212,17 @@ async function deleteExpense(event, companyId, userId) {
   };
 
   const result = await dynamoOperation('delete', params);
-  
+
   debugLog('Expense deleted successfully', { expenseId });
-  
+
+  // Clean deprecated fields before returning
+  const cleaned = { ...result.Attributes };
+  delete cleaned.contractorSignature;
+  delete cleaned.paymentTerms;
+
   return createResponse(200, {
     success: true,
     message: 'Expense deleted successfully',
-    deletedExpense: result.Attributes
+    deletedExpense: cleaned
   });
 }
