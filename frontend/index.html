@@ -7025,31 +7025,41 @@
 
         function onWorkSelected() {
             const selectedWorkId = document.getElementById('newWorkName').value;
+            const selectElement = document.getElementById('newWorkName');
 
             if (!selectedWorkId) {
                 // If no work is selected, don't auto-select project/contractor
                 return;
             }
 
+            console.log('🔍 DEBUG onWorkSelected:', { selectedWorkId, works: works.length });
+
             // Find the selected work
             const selectedWork = works.find(w => w.workId === selectedWorkId);
+            console.log('🔍 DEBUG selectedWork:', selectedWork);
 
             if (selectedWork) {
                 // Auto-select the project
                 if (selectedWork.projectId) {
                     const project = projects.find(p => p.projectId === selectedWork.projectId);
+                    console.log('🔍 DEBUG project lookup:', { projectId: selectedWork.projectId, found: !!project });
                     if (project) {
-                        document.getElementById('projectName').value = project.projectId;
+                        document.getElementById('newProjectName').value = project.projectId;
+                        console.log('🔍 DEBUG set project to:', project.projectId);
                     }
                 }
 
                 // Auto-select the contractor
                 if (selectedWork.contractorId) {
                     const contractor = contractors.find(c => c.contractorId === selectedWork.contractorId);
+                    console.log('🔍 DEBUG contractor lookup:', { contractorId: selectedWork.contractorId, found: !!contractor });
                     if (contractor) {
-                        document.getElementById('contractorName').value = contractor.contractorId;
+                        document.getElementById('newContractorName').value = contractor.contractorId;
+                        console.log('🔍 DEBUG set contractor to:', contractor.contractorId);
                     }
                 }
+            } else {
+                console.log('🔍 DEBUG selectedWork not found');
             }
         }
 
