@@ -13,7 +13,6 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('deleteContractor event received', event);
 
   try {
     // Get user ID from event context
@@ -24,7 +23,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Get contractor ID from path parameters
     const contractorId = event.pathParameters?.id;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Missing contractor ID in path parameters');
     }
 
-    debugLog('Contractor ID to delete', contractorId);
 
     // First, verify that the contractor exists and belongs to the user
     const getParams = {
@@ -52,14 +49,9 @@ exports.handler = async (event) => {
         return createErrorResponse(404, 'Contractor not found');
       }
     } catch (error) {
-      console.error('Error checking existing contractor:', error);
       return createErrorResponse(500, 'Failed to verify contractor ownership');
     }
 
-    debugLog('Existing contractor found', { 
-      contractorId, 
-      name: existingContractor.name
-    });
 
     // Check if contractor has associated expenses
     const expensesCheckParams = {
@@ -81,7 +73,6 @@ exports.handler = async (event) => {
         );
       }
     } catch (error) {
-      debugLog('Error checking associated expenses', error.message);
     }
 
     // Delete the contractor
@@ -98,7 +89,6 @@ exports.handler = async (event) => {
     const deleteResult = await dynamoOperation('delete', deleteParams);
     const deletedContractor = deleteResult.Attributes;
 
-    debugLog('Contractor deleted successfully', { contractorId });
 
     return createResponse(200, {
       success: true,
@@ -111,7 +101,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error in deleteContractor:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(404, 'Contractor not found or access denied');

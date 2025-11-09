@@ -13,7 +13,6 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
-  debugLog('deleteExpense event received', event);
 
   try {
     // Get user ID from event context
@@ -24,7 +23,6 @@ exports.handler = async (event) => {
       // For single user app, use a default user ID
       userId = 'default-user';
     }
-    debugLog('User ID', userId);
 
     // Get expense ID from path parameters
     const expenseId = event.pathParameters?.id;
@@ -32,7 +30,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Missing expense ID in path parameters');
     }
 
-    debugLog('Expense ID to delete', expenseId);
 
     // First, verify that the expense exists and belongs to the user
     const getParams = {
@@ -52,15 +49,9 @@ exports.handler = async (event) => {
         return createErrorResponse(404, 'Expense not found');
       }
     } catch (error) {
-      console.error('Error checking existing expense:', error);
       return createErrorResponse(500, 'Failed to verify expense ownership');
     }
 
-    debugLog('Existing expense found', { 
-      expenseId, 
-      project: existingExpense.project,
-      amount: existingExpense.amount 
-    });
 
     // Business rule: Prevent deletion of expenses with certain statuses
     const protectedStatuses = ['paid', 'processed'];
@@ -97,7 +88,6 @@ exports.handler = async (event) => {
 
       const updateResult = await dynamoOperation('update', updateParams);
       
-      debugLog('Expense soft deleted successfully', { expenseId });
 
       return createResponse(200, {
         success: true,
@@ -125,7 +115,6 @@ exports.handler = async (event) => {
       const deleteResult = await dynamoOperation('delete', deleteParams);
       const deletedExpense = deleteResult.Attributes;
 
-      debugLog('Expense hard deleted successfully', { expenseId });
 
       return createResponse(200, {
         success: true,
@@ -140,7 +129,6 @@ exports.handler = async (event) => {
     }
 
   } catch (error) {
-    console.error('Error in deleteExpense:', error);
 
     if (error.code === 'ConditionalCheckFailedException') {
       return createErrorResponse(404, 'Expense not found or access denied');

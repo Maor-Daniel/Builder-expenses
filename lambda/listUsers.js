@@ -16,9 +16,6 @@ const AWS = require('aws-sdk');
 const cognito = new AWS.CognitoIdentityServiceProvider();
 
 exports.handler = async (event) => {
-  debugLog('List users request received', {
-    httpMethod: event.httpMethod
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -49,13 +46,6 @@ exports.handler = async (event) => {
       offset = 0
     } = queryParams;
 
-    debugLog('Retrieving users', {
-      companyId,
-      role,
-      status,
-      sortBy,
-      sortOrder
-    });
 
     // Query company users from DynamoDB
     const queryResult = await dynamoOperation('query', {
@@ -104,10 +94,6 @@ exports.handler = async (event) => {
           };
         } catch (error) {
           // If Cognito lookup fails, return DynamoDB data only
-          debugLog('Failed to enrich user from Cognito', {
-            userId: user.userId,
-            error: error.message
-          });
           return {
             ...user,
             name: user.name || user.email || 'Unknown User'
@@ -154,10 +140,6 @@ exports.handler = async (event) => {
       }
     };
 
-    debugLog('Users retrieved successfully', {
-      totalUsers: stats.totalUsers,
-      returned: paginatedUsers.length
-    });
 
     return createResponse(200, {
       success: true,
@@ -172,7 +154,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error listing users:', error);
 
     if (error.message.includes('company context')) {
       return createErrorResponse(401, 'Authentication required');

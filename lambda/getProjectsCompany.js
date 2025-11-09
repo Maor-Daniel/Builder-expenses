@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Get company projects request received', { 
-    httpMethod: event.httpMethod,
-    queryStringParameters: event.queryStringParameters 
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -38,7 +34,6 @@ exports.handler = async (event) => {
     const queryParams = event.queryStringParameters || {};
     const { status, search, startDate, endDate } = queryParams;
 
-    debugLog('Query parameters', { status, search, startDate, endDate });
 
     // Build DynamoDB query parameters
     let params = {
@@ -79,13 +74,11 @@ exports.handler = async (event) => {
       params.ExpressionAttributeNames = expressionAttributeNames;
     }
 
-    debugLog('DynamoDB query params', params);
 
     // Execute query
     const result = await dynamoOperation('query', params);
     const projects = result.Items || [];
 
-    debugLog(`Found ${projects.length} projects for company ${companyId}`);
 
     // Calculate summary statistics
     const summary = {
@@ -108,7 +101,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Get company projects error:', error);
     
     if (error.message.includes('authentication required') || error.message.includes('not found in company')) {
       return createErrorResponse(401, 'Authentication required');

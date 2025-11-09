@@ -13,9 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('List invitations request received', { 
-    httpMethod: event.httpMethod 
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -39,7 +36,6 @@ exports.handler = async (event) => {
     const queryParams = event.queryStringParameters || {};
     const { status, sortBy } = queryParams;
 
-    debugLog('Retrieving invitations', { companyId, status, sortBy });
 
     // Build query parameters
     let queryPromise;
@@ -98,7 +94,6 @@ exports.handler = async (event) => {
             name: inviterResult.Item ? inviterResult.Item.name : 'Unknown User' 
           };
         } catch (error) {
-          console.error(`Error fetching inviter ${inviterId}:`, error);
           return { inviterId, name: 'Unknown User' };
         }
       });
@@ -150,11 +145,6 @@ exports.handler = async (event) => {
       }, {})
     };
 
-    debugLog('Invitations retrieved successfully', { 
-      companyId, 
-      totalCount: finalInvitations.length,
-      pendingCount: summary.pendingCount 
-    });
 
     return createResponse(200, {
       success: true,
@@ -171,7 +161,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error retrieving invitations:', error);
     
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');

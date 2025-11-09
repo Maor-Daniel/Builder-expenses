@@ -21,11 +21,9 @@ let dynamodb;
 try {
   dynamodb = isLocal ? mockDynamoDB : new AWS.DynamoDB.DocumentClient(dynamoConfig);
   if (isLocal) {
-    console.log('🎭 Using Mock Database for demonstration');
   }
 } catch (error) {
   dynamodb = mockDynamoDB;
-  console.log('🎭 Falling back to Mock Database');
 }
 
 // Table name - use local table for development
@@ -132,7 +130,6 @@ function getCurrentTimestamp() {
  */
 function debugLog(message, data = null) {
   if (isLocal) {
-    console.log(`[DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
   }
 }
 
@@ -140,7 +137,6 @@ function debugLog(message, data = null) {
  * Handle DynamoDB operations with error handling
  */
 async function dynamoOperation(operation, params) {
-  debugLog(`DynamoDB ${operation}`, params);
   
   try {
     let result;
@@ -164,10 +160,8 @@ async function dynamoOperation(operation, params) {
         throw new Error(`Unsupported DynamoDB operation: ${operation}`);
     }
     
-    debugLog(`DynamoDB ${operation} result`, result);
     return result;
   } catch (error) {
-    console.error(`DynamoDB ${operation} error:`, error);
     throw error;
   }
 }

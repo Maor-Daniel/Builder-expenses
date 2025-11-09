@@ -5,7 +5,6 @@
 
 // Load complete billing dashboard when settings section is opened
 async function loadBillingDashboard() {
-    console.log('📊 Loading billing dashboard...');
 
     try {
         // Load all dashboard sections in parallel
@@ -15,9 +14,7 @@ async function loadBillingDashboard() {
             loadPaymentHistoryCard()
         ]);
 
-        console.log('✅ Billing dashboard loaded successfully');
     } catch (error) {
-        console.error('❌ Error loading billing dashboard:', error);
     }
 }
 
@@ -108,7 +105,6 @@ async function loadSubscriptionStatusCard() {
         `;
 
     } catch (error) {
-        console.error('Error loading subscription status:', error);
         statusCard.innerHTML = `
             <div style="color: #e53e3e; padding: 15px; text-align: center;">
                 שגיאה בטעינת מצב המנוי
@@ -166,7 +162,6 @@ async function loadUsageMetersCard() {
         `;
 
     } catch (error) {
-        console.error('Error loading usage data:', error);
         usageCard.innerHTML = `
             <div style="color: #e53e3e; padding: 15px; text-align: center;">
                 שגיאה בטעינת נתוני שימוש
@@ -303,7 +298,6 @@ async function loadPaymentHistoryCard() {
         */
 
     } catch (error) {
-        console.error('Error loading payment history:', error);
         historyCard.innerHTML = `
             <div style="color: #e53e3e; padding: 15px; text-align: center;">
                 שגיאה בטעינת היסטוריית תשלומים
@@ -341,7 +335,6 @@ async function manageBillingInfo() {
         // In production, you would get the Paddle customer portal URL from your backend
         // window.open(customerPortalUrl, '_blank');
     } catch (error) {
-        console.error('Error managing billing:', error);
         alert('שגיאה בפתיחת דף ניהול התשלום');
     }
 }
@@ -376,7 +369,6 @@ async function confirmCancelSubscription() {
         await loadBillingDashboard();
 
     } catch (error) {
-        console.error('Error canceling subscription:', error);
         alert('שגיאה בביטול המנוי. אנא נסה שנית.');
     }
 }
@@ -405,7 +397,6 @@ async function upgradeToPlan(planId) {
         await loadBillingDashboard();
 
     } catch (error) {
-        console.error('Error upgrading subscription:', error);
         alert('שגיאה בשדרוג המנוי. אנא נסה שנית.');
     }
 }

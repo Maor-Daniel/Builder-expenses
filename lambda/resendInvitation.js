@@ -22,7 +22,6 @@ async function sendInvitationEmail(invitation, companyName) {
   const invitationToken = invitation.token || invitation.invitationToken;
   const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitationToken}`;
 
-  console.log('Sending invitation email to:', invitation.email, 'with URL:', invitationUrl);
 
   const emailParams = {
     Source: process.env.SES_EMAIL_SOURCE || process.env.FROM_EMAIL || 'maordtech@gmail.com',
@@ -159,15 +158,10 @@ ${invitationUrl}
   };
 
   const result = await ses.sendEmail(emailParams).promise();
-  console.log('SES email sent successfully. MessageId:', result.MessageId);
   return result;
 }
 
 exports.handler = async (event) => {
-  debugLog('Resend invitation request received', {
-    httpMethod: event.httpMethod,
-    pathParameters: event.pathParameters
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -193,10 +187,6 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invitation token is required');
     }
 
-    debugLog('Retrieving invitation', {
-      companyId,
-      invitationToken
-    });
 
     // Get the invitation from DynamoDB
     const invitationResult = await dynamoOperation('get', {
@@ -244,11 +234,6 @@ exports.handler = async (event) => {
 
     const companyName = companyResult.Item?.name || 'החברה';
 
-    debugLog('Resending invitation email', {
-      email: invitation.email,
-      role: invitation.role,
-      attempt: emailAttempts + 1
-    });
 
     // Send the email
     try {
@@ -270,11 +255,6 @@ exports.handler = async (event) => {
         }
       });
 
-      debugLog('Invitation resent successfully', {
-        invitationToken,
-        email: invitation.email,
-        attempts: emailAttempts + 1
-      });
 
       return createResponse(200, {
         success: true,
@@ -290,7 +270,6 @@ exports.handler = async (event) => {
       });
 
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
 
       // Update invitation with error
       await dynamoOperation('update', {
@@ -314,7 +293,6 @@ exports.handler = async (event) => {
     }
 
   } catch (error) {
-    console.error('Error resending invitation:', error);
 
     if (error.message.includes('company context')) {
       return createErrorResponse(401, 'Authentication required');

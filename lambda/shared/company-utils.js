@@ -200,7 +200,6 @@ function getCompanyUserFromEvent(event) {
   
   if (!authEnabled) {
     // Test mode: use hardcoded test company and user
-    console.log('Using test mode for company authentication');
     return {
       companyId: 'test-company-123',
       userId: 'test-user-123',
@@ -210,7 +209,6 @@ function getCompanyUserFromEvent(event) {
   }
   
   // Production mode: extract from Cognito JWT token
-  console.log('Using Cognito company authentication');
   
   // First try to get from API Gateway authorizer (if configured)
   if (event.requestContext?.authorizer?.claims) {
@@ -225,7 +223,6 @@ function getCompanyUserFromEvent(event) {
       throw new Error('Invalid authentication token - missing company or user information');
     }
     
-    console.log(`Authenticated company user: ${userId} from company ${companyId} with role ${userRole}`);
     
     return {
       companyId,
@@ -246,7 +243,6 @@ function getCompanyUserFromEvent(event) {
   try {
     // Parse JWT token (without verification for now - in production should verify)
     const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    console.log('Parsed JWT payload:', payload);
     
     const userId = payload.sub;
     const userEmail = payload.email;
@@ -257,7 +253,6 @@ function getCompanyUserFromEvent(event) {
       throw new Error('Invalid authentication token - missing company or user information');
     }
     
-    console.log(`Authenticated company user: ${userId} from company ${companyId} with role ${userRole}`);
     
     return {
       companyId,
@@ -266,7 +261,6 @@ function getCompanyUserFromEvent(event) {
       userEmail
     };
   } catch (parseError) {
-    console.error('Failed to parse JWT token:', parseError);
     throw new Error('Invalid authentication token format');
   }
 }
@@ -358,14 +352,12 @@ function getCurrentTimestamp() {
  * Log debug information
  */
 function debugLog(message, data = null) {
-  console.log(`[COMPANY DEBUG] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
 /**
  * Handle DynamoDB operations with error handling
  */
 async function dynamoOperation(operation, params) {
-  debugLog(`DynamoDB ${operation}`, params);
   
   try {
     let result;
@@ -398,10 +390,8 @@ async function dynamoOperation(operation, params) {
         throw new Error(`Unsupported DynamoDB operation: ${operation}`);
     }
     
-    debugLog(`DynamoDB ${operation} result`, result);
     return result;
   } catch (error) {
-    console.error(`DynamoDB ${operation} error:`, error);
     throw error;
   }
 }
@@ -646,7 +636,6 @@ function withPermission(requiredPermission, handler) {
       return await handler(event, context);
       
     } catch (error) {
-      console.error('Permission middleware error:', error);
       
       if (error.message.includes('Company authentication required')) {
         return createErrorResponse(401, 'Authentication required');
@@ -695,7 +684,6 @@ function withCompanyAuth(handler) {
       return await handler(event, context);
       
     } catch (error) {
-      console.error('Company auth middleware error:', error);
       
       if (error.message.includes('Company authentication required')) {
         return createErrorResponse(401, 'Authentication required');

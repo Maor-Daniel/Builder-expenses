@@ -3362,13 +3362,16 @@
         let paddleInitialized = false;
         
         function initializePaddle() {
+            console.log('Initializing Paddle...');
             
             if (typeof Paddle === 'undefined') {
+                console.error('Paddle SDK not loaded');
                 return false;
             }
             
             // Check if we have a real client token (not placeholder)
             if (!PADDLE_CONFIG.clientToken || PADDLE_CONFIG.clientToken.includes('your_paddle_client_token')) {
+                console.warn('Paddle client token not configured. Please set real token from Paddle Dashboard.');
                 return false;
             }
             
@@ -3386,8 +3389,10 @@
                 });
                 
                 paddleInitialized = true;
+                console.log('✅ Paddle initialized successfully');
                 return true;
             } catch (error) {
+                console.error('❌ Paddle initialization failed:', error);
                 return false;
             }
         }
@@ -3395,6 +3400,7 @@
         // Subscription Management Functions
         async function getSubscriptionPlans() {
             try {
+                console.log('Fetching subscription plans...');
                 const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/plans`);
                 
                 if (!response.ok) {
@@ -3402,18 +3408,22 @@
                 }
                 
                 const data = await response.json();
+                console.log('✅ Subscription plans loaded:', data);
                 return data;
             } catch (error) {
+                console.error('❌ Error fetching subscription plans:', error);
                 return null;
             }
         }
 
         async function createSubscription(planId, userEmail, companyName) {
             if (!paddleInitialized) {
+                console.error('Paddle not initialized. Cannot create subscription.');
                 return;
             }
             
             try {
+                console.log('Creating subscription for plan:', planId);
                 
                 // Call backend to create checkout session
                 const checkoutData = {
@@ -3437,20 +3447,24 @@
                 }
                 
                 const result = await response.json();
+                console.log('✅ Checkout session created:', result);
                 
                 // Open Paddle checkout
                 if (result.checkoutUrl) {
                     window.open(result.checkoutUrl, '_blank');
                 } else {
+                    console.error('No checkout URL received');
                 }
                 
             } catch (error) {
+                console.error('❌ Error creating subscription:', error);
                 alert('שגיאה ביצירת מנוי. נסה שוב.');
             }
         }
 
         async function getSubscriptionStatus() {
             try {
+                console.log('Fetching subscription status...');
                 const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/status`, {
                     headers: {
                         'Authorization': `Bearer ${currentAuthToken}`
@@ -3462,6 +3476,7 @@
                 }
                 
                 const data = await response.json();
+                console.log('✅ Subscription status:', data);
                 
                 // Update subscription UI with real data
                 if (data.success && data.subscription) {
@@ -3470,6 +3485,7 @@
                 
                 return data;
             } catch (error) {
+                console.error('❌ Error fetching subscription status:', error);
                 return null;
             }
         }
@@ -3544,6 +3560,7 @@
         }
 
         async function showSubscriptionModal() {
+            console.log('📋 Subscription modal requested');
             
             try {
                 // Get available plans
@@ -3602,6 +3619,7 @@
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
                 
             } catch (error) {
+                console.error('Error showing subscription modal:', error);
                 alert('שגיאה בטעינת תוכניות המנוי');
             }
         }
@@ -3615,6 +3633,7 @@
 
         // Show upgrade modal for existing subscribers
         async function showUpgradeModal() {
+            console.log('Showing upgrade modal...');
             
             try {
                 // Get available plans
@@ -3664,6 +3683,7 @@
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
                 
             } catch (error) {
+                console.error('Error showing upgrade modal:', error);
                 alert('שגיאה בטעינת אפשרויות השדרוג');
             }
         }
@@ -3677,6 +3697,7 @@
 
         // Upgrade to a specific plan
         async function upgradeToPlan(planId) {
+            console.log('Upgrading to plan:', planId);
             
             if (!currentUserContext.userRole || currentUserContext.userRole !== 'admin') {
                 alert('רק מנהל החברה יכול לשדרג את המנוי');
@@ -3707,12 +3728,14 @@
                 }
                 
             } catch (error) {
+                console.error('Error upgrading subscription:', error);
                 alert('שגיאה בשדרוג המנוי. נסה שוב.');
             }
         }
 
         // Show detailed usage statistics
         async function showUsageDetails() {
+            console.log('Showing usage details...');
             
             try {
                 const response = await fetch(`${PADDLE_CONFIG.apiEndpoint}/subscription/usage`, {
@@ -3799,6 +3822,7 @@
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
                 
             } catch (error) {
+                console.error('Error showing usage details:', error);
                 alert('שגיאה בטעינת נתוני השימוש');
             }
         }
@@ -3811,6 +3835,7 @@
         }
 
         async function selectSubscriptionPlan(planId) {
+            console.log('Selected plan:', planId);
             
             if (!paddleInitialized) {
                 alert('Paddle לא אותחל. נא לטעון מחדש את הדף.');
@@ -3827,6 +3852,7 @@
                 
                 currentUser.getUserAttributes((err, attributes) => {
                     if (err) {
+                        console.error('Error getting user attributes:', err);
                         alert('שגיאה בקבלת פרטי המשתמש');
                         return;
                     }
@@ -3843,6 +3869,7 @@
                 });
                 
             } catch (error) {
+                console.error('Error selecting subscription plan:', error);
                 alert('שגיאה בבחירת תוכנית המנוי');
             }
         }
@@ -3859,24 +3886,32 @@
         
         // Authentication Functions
         function checkAuthState() {
+            console.log('Checking authentication state...');
             try {
                 const currentUser = userPool.getCurrentUser();
+                console.log('Current user:', currentUser);
                 if (currentUser != null) {
                     currentUser.getSession((err, session) => {
+                        console.log('Session error:', err);
+                        console.log('Session:', session);
                         if (err || !session.isValid()) {
+                            console.log('Session invalid, showing auth modal');
                             showAuthModal();
                             return;
                         }
                         // User is authenticated
+                        console.log('User authenticated, showing main app');
                         currentAuthToken = session.getIdToken().getJwtToken();
                         showMainApp();
                         updateUserInfo(currentUser);
                         loadCompanyInfo();
                     });
                 } else {
+                    console.log('No current user, showing auth modal');
                     showAuthModal();
                 }
             } catch (error) {
+                console.error('Error in checkAuthState:', error);
                 showAuthModal();
             }
         }
@@ -3917,6 +3952,7 @@
                     loadCompanyInfo();
                 },
                 onFailure: function (err) {
+                    console.error('Authentication failed:', err);
                     authMessage.textContent = 'שגיאה בהתחברות: ' + (err.message || 'שם משתמש או סיסמה שגויים');
                     loginButton.textContent = 'התחבר';
                     loginButton.disabled = false;
@@ -3962,6 +3998,7 @@
                     loadCompanyInfo();
                 },
                 onFailure: function (err) {
+                    console.error('Password update failed:', err);
                     authMessage.textContent = 'שגיאה בעדכון סיסמה: ' + err.message;
                     newPasswordButton.textContent = 'עדכן סיסמה';
                     newPasswordButton.disabled = false;
@@ -3988,6 +4025,8 @@
         
         // Settings functions
         function showSettings() {
+            console.log('🔍 showSettings called');
+            console.log('🔍 About to call switchTab with settings');
             switchTab('settings');
         }
         
@@ -4022,6 +4061,7 @@
                 if (typeof loadBillingDashboard === 'function') {
                     loadBillingDashboard();
                 } else {
+                    console.warn('loadBillingDashboard function not available yet');
                 }
             } else if (sectionName === 'user') {
                 // Load users list and invitations when user management section is opened
@@ -4036,8 +4076,10 @@
         let selectedLogoFile = null;
 
         async function loadCompanyInfo() {
+            console.log('Loading company info for header...');
             try {
                 const response = await apiCall('/getCompany', 'GET');
+                console.log('Company info response:', response);
 
                 if (response.success && response.data && response.data.company) {
                     const company = response.data.company;
@@ -4055,13 +4097,16 @@
                     }
                 }
             } catch (error) {
+                console.error('Error loading company info:', error);
                 // Don't show error to user, just keep default header
             }
         }
 
         async function loadCompanySettings() {
+            console.log('Loading company settings...');
             try {
                 const response = await apiCall('/getCompany', 'GET');
+                console.log('Company settings response:', response);
 
                 if (response.success && response.data && response.data.company) {
                     const company = response.data.company;
@@ -4097,8 +4142,10 @@
                         editNoLogo.style.display = 'none';
                     }
                 } else {
+                    console.error('Failed to load company settings:', response);
                 }
             } catch (error) {
+                console.error('Error loading company settings:', error);
             }
         }
 
@@ -4126,6 +4173,7 @@
 
         async function saveCompanySettings(event) {
             event.preventDefault();
+            console.log('Saving company settings...');
 
             try {
                 // First, upload logo if a new one was selected
@@ -4150,6 +4198,7 @@
                 }
 
                 const response = await apiCall('/updateCompany', 'PUT', updateData);
+                console.log('Update company response:', response);
 
                 if (response.success) {
                     showMessage('companyMessage', 'הגדרות החברה נשמרו בהצלחה', 'success');
@@ -4170,6 +4219,7 @@
                     showMessage('companyMessage', response.message || 'שגיאה בשמירת הגדרות', 'error');
                 }
             } catch (error) {
+                console.error('Error saving company settings:', error);
                 showMessage('companyMessage', 'שגיאה בשמירת הגדרות החברה', 'error');
             }
         }
@@ -4212,6 +4262,7 @@
         }
 
         async function uploadCompanyLogo(file) {
+            console.log('Uploading logo:', file.name);
             document.getElementById('logoUploadStatus').innerHTML =
                 '<span style="color: #4299e1;">⏳ מעלה לוגו...</span>';
 
@@ -4227,6 +4278,7 @@
                 }
 
                 const { uploadUrl, logoUrl } = presignResponse.data;
+                console.log('Got pre-signed URL, uploading to S3...');
 
                 // Step 2: Upload file directly to S3
                 const uploadResponse = await fetch(uploadUrl, {
@@ -4241,11 +4293,13 @@
                     throw new Error(`Upload failed: ${uploadResponse.status}`);
                 }
 
+                console.log('Logo uploaded successfully:', logoUrl);
                 document.getElementById('logoUploadStatus').innerHTML =
                     '<span style="color: #48bb78;">✓ לוגו הועלה בהצלחה</span>';
 
                 return logoUrl;
             } catch (error) {
+                console.error('Error uploading logo:', error);
                 document.getElementById('logoUploadStatus').innerHTML =
                     '<span style="color: #e53e3e;">❌ שגיאה בהעלאת הלוגו</span>';
                 return null;
@@ -4253,6 +4307,7 @@
         }
         
         async function loadUsersList() {
+            console.log('Loading users list...');
             const usersList = document.getElementById('usersList');
             const usersStats = document.getElementById('usersStats');
             const pendingInvitationsList = document.getElementById('pendingInvitationsList');
@@ -4338,6 +4393,7 @@
                 }
 
             } catch (error) {
+                console.error('Error loading users list:', error);
                 usersList.innerHTML = '<div class="error-message">שגיאה בטעינת רשימת המשתמשים: ' + error.message + '</div>';
             } finally {
                 // Always load pending invitations, even if users list fails
@@ -4403,6 +4459,7 @@
                     pendingInvitationsList.innerHTML = '<div class="no-data">אין הזמנות ממתינות</div>';
                 }
             } catch (error) {
+                console.error('Error loading invitations:', error);
                 pendingInvitationsList.innerHTML = '<div class="error-message">שגיאה בטעינת הזמנות</div>';
             }
         }
@@ -4480,6 +4537,7 @@
                     }
                 }
             } catch (error) {
+                console.error('Error inviting user:', error);
                 showMessage('inviteUserMessage',
                     error.message || 'שגיאה בשליחת ההזמנה. אנא נסה שנית.',
                     'error'
@@ -4491,6 +4549,7 @@
         }
         
         async function editUser(userId) {
+            console.log('Editing user:', userId);
 
             try {
                 // Get user details
@@ -4515,6 +4574,7 @@
                     }
                 }
             } catch (error) {
+                console.error('Error loading user for edit:', error);
                 alert('שגיאה בטעינת נתוני המשתמש');
             }
         }
@@ -4553,6 +4613,7 @@
                     showMessage('editUserMessage', response.message || 'שגיאה בעדכון המשתמש', 'error');
                 }
             } catch (error) {
+                console.error('Error updating user:', error);
                 showMessage('editUserMessage', error.message || 'שגיאה בעדכון המשתמש', 'error');
             } finally {
                 submitButton.disabled = false;
@@ -4575,6 +4636,7 @@
                     alert(response.message || 'שגיאה בהסרת המשתמש');
                 }
             } catch (error) {
+                console.error('Error removing user:', error);
                 alert('שגיאה בהסרת המשתמש: ' + error.message);
             }
         }
@@ -4593,6 +4655,7 @@
                     alert(response.message || 'שגיאה בשליחת ההזמנה מחדש');
                 }
             } catch (error) {
+                console.error('Error resending invitation:', error);
                 alert('שגיאה בשליחת ההזמנה מחדש: ' + error.message);
             }
         }
@@ -4612,12 +4675,14 @@
                     alert(response.message || 'שגיאה בביטול ההזמנה');
                 }
             } catch (error) {
+                console.error('Error cancelling invitation:', error);
                 alert('שגיאה בביטול ההזמנה: ' + error.message);
             }
         }
         
         function loadSubscriptionInfo() {
             // TODO: Load subscription info from API
+            console.log('Loading subscription info...');
             const subscriptionInfo = document.getElementById('currentSubscription');
             subscriptionInfo.innerHTML = `
                 <div class="subscription-status">
@@ -4632,6 +4697,7 @@
         function savePreferences(event) {
             event.preventDefault();
             // TODO: Save preferences to API
+            console.log('Saving preferences...');
             showMessage('preferencesMessage', 'ההעדפות נשמרו בהצלחה', 'success');
         }
         
@@ -4754,6 +4820,7 @@
                 registerButton.disabled = false;
                 
                 if (err) {
+                    console.error('Registration error:', err);
                     let errorMessage = 'שגיאה בהרשמה';
                     
                     if (err.code === 'UsernameExistsException') {
@@ -4772,6 +4839,7 @@
                 }
                 
                 pendingUser = result.user;
+                console.log('User registered successfully:', result.user.getUsername());
                 
                 // Show verification form
                 document.getElementById('registerForm').style.display = 'none';
@@ -4807,6 +4875,7 @@
                 verifyButton.disabled = false;
                 
                 if (err) {
+                    console.error('Verification error:', err);
                     let errorMessage = 'קוד אימות שגוי';
                     
                     if (err.code === 'CodeMismatchException') {
@@ -4822,6 +4891,7 @@
                     return;
                 }
                 
+                console.log('Email confirmed successfully');
                 verificationMessage.textContent = 'האימייל אומת בהצלחה! כעת תוכל להתחבר';
                 verificationMessage.style.color = '#38a169';
                 
@@ -4844,6 +4914,7 @@
                 const verificationMessage = document.getElementById('verificationMessage');
                 
                 if (err) {
+                    console.error('Resend error:', err);
                     verificationMessage.textContent = 'שגיאה בשליחת קוד מחדש';
                     verificationMessage.style.color = '#e53e3e';
                     return;
@@ -4896,6 +4967,7 @@
         }
         
         function showAuthModal() {
+            console.log('Showing auth modal');
             document.getElementById('authContainer').style.display = 'flex';
             document.getElementById('mainContent').style.display = 'none';
             const userInfo = document.getElementById('userInfo');
@@ -4903,6 +4975,7 @@
         }
         
         async function showMainApp() {
+            console.log('Showing main app');
             document.getElementById('authContainer').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             const userInfo = document.getElementById('userInfo');
@@ -4916,6 +4989,7 @@
                 }
                 
                 // Load data after authentication is complete
+                console.log('Loading company data...');
                 await loadFromStorage();
                 
                 // Render UI with loaded data
@@ -4931,9 +5005,11 @@
                     initializeContractors();
                 }
                 
+                console.log('App initialized successfully with company data');
                 
                 // Test subscription functionality (optional - only if Paddle is initialized)
                 if (paddleInitialized) {
+                    console.log('🎯 Testing subscription functionality...');
                     setTimeout(async () => {
                         await getSubscriptionPlans();
                         await getSubscriptionStatus();
@@ -4941,6 +5017,7 @@
                 }
                 
             } catch (error) {
+                console.error('Failed to initialize app:', error);
                 // Try to render with whatever data we have
                 populateProjectFilter();
                 populateNewExpenseProjectFilter();
@@ -4999,6 +5076,7 @@
                     // Apply permission-based UI changes
                     applyPermissionBasedUI();
                     
+                    console.log('User context updated:', currentUserContext);
                 }
             });
         }
@@ -5079,6 +5157,7 @@
         }
 
         function applyPermissionBasedUI() {
+            console.log('Applying permission-based UI changes for role:', currentUserContext.userRole);
             
             // Show/hide main navigation tabs
             updateTabVisibility();
@@ -5287,6 +5366,7 @@
                     messageElement.style.color = '#e53e3e';
                 }
             } catch (error) {
+                console.error('Company registration error:', error);
                 messageElement.textContent = 'שגיאת תקשורת - נסה שוב מאוחר יותר';
                 messageElement.style.color = '#e53e3e';
             } finally {
@@ -5331,6 +5411,7 @@
                     messageElement.style.color = '#e53e3e';
                 }
             } catch (error) {
+                console.error('Invitation validation error:', error);
                 messageElement.textContent = 'שגיאה בבדיקת ההזמנה';
                 messageElement.style.color = '#e53e3e';
             } finally {
@@ -5400,6 +5481,7 @@
                     messageElement.style.color = '#e53e3e';
                 }
             } catch (error) {
+                console.error('Accept invitation error:', error);
                 messageElement.textContent = 'שגיאת תקשורת - נסה שוב מאוחר יותר';
                 messageElement.style.color = '#e53e3e';
             } finally {
@@ -5410,6 +5492,7 @@
 
         // Initialize authentication and Paddle on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, initializing systems...');
             
             // Initialize Paddle (will warn if token not configured)
             initializePaddle();
@@ -5429,7 +5512,9 @@
             // Add authentication header if available
             if (currentAuthToken) {
                 headers['Authorization'] = `Bearer ${currentAuthToken}`;
+                console.log('Adding auth token to request:', currentAuthToken.substring(0, 20) + '...');
             } else {
+                console.log('WARNING: No currentAuthToken available!');
             }
             
             const options = {
@@ -5443,16 +5528,22 @@
             }
             
             try {
+                console.log(`API Call: ${method} ${url}`);
+                console.log('Request data:', data);
+                console.log('Request options:', options);
                 const response = await fetch(url, options);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
+                    console.error(`HTTP error! status: ${response.status}, response:`, errorText);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const result = await response.json();
+                console.log(`API Response:`, result);
                 return result;
             } catch (error) {
+                console.error('API call failed:', error);
                 throw error;
             }
         }
@@ -5460,8 +5551,11 @@
         // API Data Functions
         async function loadExpenses() {
             try {
+                console.log('Loading expenses from API...');
                 const result = await apiCall('/expenses');
+                console.log('Expenses API result:', result);
                 originalMockData = result.expenses || result.data?.expenses || result.items || [];
+                console.log('Expenses after assignment:', originalMockData, 'isArray:', Array.isArray(originalMockData));
                 mockData = [...originalMockData];
                 
                 // Refresh works display when expenses are loaded
@@ -5471,6 +5565,7 @@
                 
                 return originalMockData;
             } catch (error) {
+                console.warn('Failed to load expenses from API:', error);
                 // Fallback to localStorage
                 const saved = localStorage.getItem('construction_expenses');
                 if (saved) {
@@ -5483,15 +5578,22 @@
         
         async function loadProjects() {
             try {
+                console.log('Loading projects from API...');
                 const result = await apiCall('/projects');
+                console.log('Projects API result:', result);
+                console.log('result.data?.projects type:', typeof result.data?.projects, 'isArray:', Array.isArray(result.data?.projects));
                 projects = result.projects || result.data?.projects || result.data || result.items || [];
+                console.log('Projects after assignment:', projects, 'type:', typeof projects, 'isArray:', Array.isArray(projects));
                 return projects;
             } catch (error) {
+                console.warn('Failed to load projects from API:', error);
                 // Fallback to localStorage
                 const saved = localStorage.getItem('construction_projects');
                 if (saved) {
                     projects = JSON.parse(saved);
+                    console.log('Projects loaded from localStorage:', projects);
                 } else {
+                    console.log('No projects in localStorage either');
                 }
                 return projects;
             }
@@ -5499,10 +5601,14 @@
         
         async function loadContractors() {
             try {
+                console.log('Loading contractors from API...');
                 const result = await apiCall('/contractors');
+                console.log('Contractors API result:', result);
                 contractors = result.contractors || result.data?.contractors || result.data || result.items || [];
+                console.log('Contractors after assignment:', contractors, 'isArray:', Array.isArray(contractors));
                 return contractors;
             } catch (error) {
+                console.warn('Failed to load contractors from API:', error);
                 // Fallback to localStorage
                 const saved = localStorage.getItem('construction_contractors');
                 if (saved) {
@@ -5518,6 +5624,7 @@
                 // Also save to localStorage as backup
                 localStorage.setItem('construction_expenses', JSON.stringify(originalMockData));
             } catch (error) {
+                console.warn('Failed to save expense to API:', error);
                 // Save to localStorage as fallback
                 localStorage.setItem('construction_expenses', JSON.stringify(originalMockData));
                 throw error;
@@ -5530,6 +5637,7 @@
                 // Also save to localStorage as backup
                 localStorage.setItem('construction_projects', JSON.stringify(projects));
             } catch (error) {
+                console.warn('Failed to save project to API:', error);
                 // Save to localStorage as fallback
                 localStorage.setItem('construction_projects', JSON.stringify(projects));
                 throw error;
@@ -5542,6 +5650,7 @@
                 // Also save to localStorage as backup
                 localStorage.setItem('construction_contractors', JSON.stringify(contractors));
             } catch (error) {
+                console.warn('Failed to save contractor to API:', error);
                 // Save to localStorage as fallback
                 localStorage.setItem('construction_contractors', JSON.stringify(contractors));
                 throw error;
@@ -5553,6 +5662,7 @@
                 await apiCall(`/expenses/${expenseId}`, 'DELETE');
                 localStorage.setItem('construction_expenses', JSON.stringify(originalMockData));
             } catch (error) {
+                console.warn('Failed to delete expense from API:', error);
                 localStorage.setItem('construction_expenses', JSON.stringify(originalMockData));
                 throw error;
             }
@@ -5562,6 +5672,7 @@
             try {
                 await apiCall(`/projects/${projectId}?cascade=true`, 'DELETE');
             } catch (error) {
+                console.warn('Failed to delete project from API:', error);
                 throw error;
             }
         }
@@ -5570,6 +5681,7 @@
             try {
                 await apiCall(`/contractors/${contractorId}`, 'DELETE');
             } catch (error) {
+                console.warn('Failed to delete contractor from API:', error);
                 throw error;
             }
         }
@@ -5582,6 +5694,7 @@
                 localStorage.setItem('construction_contractors', JSON.stringify(contractors));
                 localStorage.setItem('construction_works', JSON.stringify(works));
             } catch (error) {
+                console.warn('Failed to save to localStorage:', error);
             }
         }
         
@@ -5611,6 +5724,7 @@
         // Clear old localStorage data for company users
         function clearOldData() {
             if (currentAuthToken) {
+                console.log('Company authentication detected - clearing old localStorage data');
                 localStorage.removeItem('construction_expenses');
                 localStorage.removeItem('construction_projects');
                 localStorage.removeItem('construction_contractors');
@@ -5631,11 +5745,18 @@
                     loadWorks()
                 ]);
                 
+                console.log('Data loaded from API successfully');
+                console.log('Expenses:', originalMockData.length);
+                console.log('Projects:', projects.length);
+                console.log('Contractors:', contractors.length);
+                console.log('Works:', works.length);
                 
             } catch (error) {
+                console.warn('Failed to load from API:', error);
                 
                 // For company users, don't fall back to localStorage (data isolation)
                 if (currentAuthToken) {
+                    console.log('Company user detected - initializing with empty data instead of localStorage fallback');
                     originalMockData = [];
                     mockData = [];
                     projects = [];
@@ -5644,6 +5765,7 @@
                     return;
                 }
                 
+                console.log('Using localStorage fallback for non-company user:');
                 
                 // Fallback to localStorage
                 try {
@@ -5669,6 +5791,7 @@
                         works = JSON.parse(savedWorks);
                     }
                 } catch (localError) {
+                    console.warn('Failed to load from localStorage:', localError);
                     // Initialize with empty arrays if everything fails
                     originalMockData = [];
                     mockData = [];
@@ -5696,6 +5819,7 @@
         }
 
         function switchTab(tabName, event = null) {
+            console.log('🔍 switchTab called with:', tabName);
             
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -5709,9 +5833,12 @@
             
             // Show selected tab content
             const targetTab = document.getElementById(tabName + 'Tab');
+            console.log('🔍 Target tab element:', targetTab);
             if (targetTab) {
                 targetTab.classList.add('active');
+                console.log('🔍 Added active class to:', tabName + 'Tab');
             } else {
+                console.error('❌ Tab element not found:', tabName + 'Tab');
             }
             
             // Add active class to selected tab button
@@ -5734,6 +5861,7 @@
                 }
                 renderContractorsGrid();
             } else if (tabName === 'works') {
+                console.log('🔍 DEBUG: Switching to works tab, calling renderWorksGrid()');
                 renderWorksGrid();
             } else if (tabName === 'addExpense') {
                 // Initialize signature canvas when switching to add expense tab
@@ -5758,22 +5886,28 @@
             const grid = document.getElementById('projectsGrid');
             
             // DEBUG: Log what projects contains
+            console.log('🔍 renderProjectsGrid: projects variable:', projects, 'type:', typeof projects, 'isArray:', Array.isArray(projects));
             
             // Comprehensive safety check for all arrays
         function ensureArraysInitialized() {
             if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array, resetting to empty array');
                 projects = [];
             }
             if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array, resetting to empty array');
                 contractors = [];
             }
             if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array, resetting to empty array');
                 originalMockData = [];
             }
             if (!Array.isArray(mockData)) {
+                console.warn('🚨 mockData is not an array, resetting to empty array');
                 mockData = [];
             }
             if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array, resetting to empty array');
                 works = [];
             }
         }
@@ -5781,6 +5915,7 @@
         // Safety check: ensure projects is an array
             ensureArraysInitialized();
             if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array, resetting to empty array');
                 projects = [];
             }
             
@@ -5932,6 +6067,7 @@
             
             // Safety check: ensure originalMockData is an array
             if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array in showProjectDetails, resetting');
                 originalMockData = [];
             }
             
@@ -5981,6 +6117,7 @@
             
             // Safety check: ensure projectContractors array is valid
             if (!Array.isArray(projectContractors)) {
+                console.warn('🚨 projectContractors is not an array in showProjectDetails, resetting');
                 projectContractors = [];
             }
             
@@ -6159,6 +6296,7 @@
                 // Reload projects from API to get consistent data structure
                 await loadProjects();
             } catch (error) {
+                console.error('Failed to save project:', error);
                 // Add to local projects array as fallback
                 projects.push(newProject);
                 showMessage('projectFormMessage', 'שגיאה בשמירת הפרויקט. נשמר מקומית.', 'warning');
@@ -6201,6 +6339,7 @@
             }
             
         } catch (error) {
+            console.error('Error in submitProject:', error);
             showMessage('projectFormMessage', 'שגיאה ביצירת פרויקט', 'error');
         } finally {
                 // Re-enable submission
@@ -6228,6 +6367,7 @@
             
             // Prevent double submission
             if (expenseSubmitting) {
+                console.log('Expense submission already in progress');
                 return;
             }
             
@@ -6249,6 +6389,7 @@
                 try {
                     receiptImage = await readFileAsDataURL(receiptImageFile);
                 } catch (error) {
+                    console.error('Error reading receipt image:', error);
                     showMessage('formMessage', 'שגיאה בקריאת תמונת הקבלה', 'error');
                     return;
                 }
@@ -6300,6 +6441,7 @@
             try {
                 await saveExpense(formData); // Send formData directly to API
             } catch (error) {
+                console.error('Failed to save expense:', error);
                 let errorMessage = 'שגיאה בשמירת ההוצאה';
                 
                 if (error.message?.includes('Foreign key validation')) {
@@ -6346,6 +6488,7 @@
                 }, 2000);
                 
             } catch (error) {
+                console.error('Error in submitExpense:', error);
                 showMessage('formMessage', 'שגיאה בשמירת ההוצאה', 'error');
             } finally {
                 // Re-enable form submission
@@ -6647,6 +6790,7 @@
                 try {
                     receiptImage = await readFileAsDataURL(receiptImageFile);
                 } catch (error) {
+                    console.error('Error reading receipt image:', error);
                     showMessage('addExpenseMessage', 'שגיאה בקריאת תמונת הקבלה', 'error');
                     return;
                 }
@@ -6655,6 +6799,10 @@
             // DEBUG: Check dropdown values before creating formData
             const projectDropdown = document.getElementById('newProjectName');
             const contractorDropdown = document.getElementById('newContractorName');
+            console.log('🔍 DEBUG: Project dropdown value:', projectDropdown.value);
+            console.log('🔍 DEBUG: Contractor dropdown value:', contractorDropdown.value);
+            console.log('🔍 DEBUG: Project dropdown options:', Array.from(projectDropdown.options).map(o => ({value: o.value, text: o.textContent})));
+            console.log('🔍 DEBUG: Contractor dropdown options:', Array.from(contractorDropdown.options).map(o => ({value: o.value, text: o.textContent})));
             
             const formData = {
                 projectId: projectDropdown.value,
@@ -6669,6 +6817,7 @@
             };
 
             // DEBUG: Log the complete form data
+            console.log('🔍 DEBUG: Complete formData being sent:', JSON.stringify(formData, null, 2));
 
             // Add work information if selected
             const selectedWorkId = document.getElementById('newWorkName').value;
@@ -6709,6 +6858,7 @@
             try {
                 await saveExpense(newExpense);
             } catch (apiError) {
+                console.error('Failed to save expense:', apiError);
                 showMessage('addExpenseMessage', 'שגיאה בשמירת ההוצאה. נשמרה מקומית.', 'warning');
             }
 
@@ -6728,6 +6878,7 @@
             }, 2000);
             
         } catch (error) {
+            console.error('Error in submitNewExpense:', error);
             showMessage('addExpenseMessage', 'שגיאה בהוספת הוצאה', 'error');
         } finally {
             // Re-enable submission
@@ -6762,9 +6913,11 @@
             const select = document.getElementById('newProjectName');
             
             // DEBUG: Log projects data when populating dropdown
+            console.log('🔍 DEBUG: populateNewExpenseProjectFilter called with projects:', projects, 'length:', projects?.length);
             
             // Safety check: ensure projects is an array
             if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateNewExpenseProjectFilter, resetting');
                 projects = [];
             }
             
@@ -6798,12 +6951,15 @@
             const select = document.getElementById('newContractorName');
             
             // DEBUG: Log contractors data when populating dropdown
+            console.log('🔍 DEBUG: populateNewExpenseContractorFilter called with contractors:', contractors, 'length:', contractors?.length);
             
             // Safety checks: ensure arrays exist
             if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array, resetting');
                 originalMockData = [];
             }
             if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array, resetting');
                 contractors = [];
             }
             
@@ -6826,6 +6982,7 @@
             
             // Safety check: ensure works is an array
             if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array in populateNewExpenseWorkFilter, resetting');
                 works = [];
             }
             
@@ -6838,7 +6995,7 @@
                     option.value = work.workId;
                     
                     // Use the correct field names based on API response structure
-                    const workName = work.WorkName || work.name || 'ללא שם';
+                    const workName = work.workName || work.WorkName || work.name || 'ללא שם';
                     
                     // Resolve project and contractor names from IDs if needed
                     let projectName = work.projectName || work.project;
@@ -6875,27 +7032,34 @@
                 return;
             }
 
+            console.log('🔍 DEBUG onWorkSelected:', { selectedWorkId, works: works.length });
 
             // Find the selected work
             const selectedWork = works.find(w => w.workId === selectedWorkId);
+            console.log('🔍 DEBUG selectedWork:', selectedWork);
 
             if (selectedWork) {
                 // Auto-select the project
                 if (selectedWork.projectId) {
                     const project = projects.find(p => p.projectId === selectedWork.projectId);
+                    console.log('🔍 DEBUG project lookup:', { projectId: selectedWork.projectId, found: !!project });
                     if (project) {
                         document.getElementById('newProjectName').value = project.projectId;
+                        console.log('🔍 DEBUG set project to:', project.projectId);
                     }
                 }
 
                 // Auto-select the contractor
                 if (selectedWork.contractorId) {
                     const contractor = contractors.find(c => c.contractorId === selectedWork.contractorId);
+                    console.log('🔍 DEBUG contractor lookup:', { contractorId: selectedWork.contractorId, found: !!contractor });
                     if (contractor) {
                         document.getElementById('newContractorName').value = contractor.contractorId;
+                        console.log('🔍 DEBUG set contractor to:', contractor.contractorId);
                     }
                 }
             } else {
+                console.log('🔍 DEBUG selectedWork not found');
             }
         }
 
@@ -6967,6 +7131,7 @@
                 // Reload contractors from API to get consistent data structure
                 await loadContractors();
             } catch (error) {
+                console.error('Failed to save contractor:', error);
                 // Add to local contractors array as fallback
                 contractors.push(contractorData);
                 showMessage('contractorFormMessage', 'שגיאה בשמירת הקבלן. נשמר מקומית.', 'warning');
@@ -6988,6 +7153,7 @@
             }, 1500);
             
             } catch (error) {
+                console.error('Error in submitContractor:', error);
                 showMessage('contractorFormMessage', 'שגיאה בהוספת קבלן/ספק', 'error');
             } finally {
                 // Re-enable submission
@@ -7021,6 +7187,7 @@
             
             // Safety check: ensure projects is an array
             if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateWorkProjectDropdown, resetting');
                 projects = [];
             }
             
@@ -7040,6 +7207,7 @@
             
             // Safety check: ensure contractors is an array
             if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array in populateWorkContractorDropdown, resetting');
                 contractors = [];
             }
             
@@ -7102,6 +7270,10 @@
             };
 
             // DEBUG: Log the work data being sent
+            console.log('🔍 DEBUG: Work data being sent:', JSON.stringify(workData, null, 2));
+            console.log('🔍 DEBUG: projectId type:', typeof workData.projectId, 'value:', workData.projectId);
+            console.log('🔍 DEBUG: contractorId type:', typeof workData.contractorId, 'value:', workData.contractorId);
+            console.log('🔍 DEBUG: TotalWorkCost type:', typeof workData.TotalWorkCost, 'value:', workData.TotalWorkCost);
 
             // Validate required fields
             const missingFields = [];
@@ -7123,6 +7295,7 @@
                     const contractData = await readFileAsDataURL(contractFile);
                     workData.contract = contractData;
                 } catch (error) {
+                    console.error('Error reading contract file:', error);
                     document.getElementById('worksFormMessage').innerHTML = 
                         '<div class="error-message">שגיאה בהעלאת קובץ החוזה</div>';
                     return;
@@ -7133,6 +7306,7 @@
             // Remove client-side duplicate checking as the server has the authoritative data
 
         } catch (error) {
+            console.error('Error in work data preparation:', error);
             document.getElementById('worksFormMessage').innerHTML = 
                 '<div class="error-message">שגיאה בהכנת נתוני העבודה</div>';
             return;
@@ -7160,6 +7334,7 @@
                 }, 1500);
                 
             } catch (error) {
+                console.error('Error saving work:', error);
                 document.getElementById('worksFormMessage').innerHTML = 
                     '<div class="error-message">שגיאה בשמירת העבודה</div>';
             } finally {
@@ -7176,11 +7351,13 @@
             
             // Safety check: ensure contractors is an array
             if (!Array.isArray(contractors)) {
+                console.warn('🚨 contractors is not an array in renderContractorsGrid, resetting');
                 contractors = [];
             }
             
             // Safety check: ensure originalMockData is an array
             if (!Array.isArray(originalMockData)) {
+                console.warn('🚨 originalMockData is not an array in renderContractorsGrid, resetting');
                 originalMockData = [];
             }
             
@@ -7230,6 +7407,7 @@
             let contractor = contractors.find(c => c.contractorId === contractorId);
             
             if (!contractor) {
+                console.warn('Contractor not found:', contractorId);
                 return;
             }
 
@@ -7425,6 +7603,7 @@
             
             // Safety check: ensure works is an array
             if (!Array.isArray(works)) {
+                console.warn('🚨 works is not an array in renderWorksGrid, resetting');
                 works = [];
             }
             
@@ -7434,7 +7613,10 @@
             }
             
             let html = '';
+            console.log('🔍 DEBUG: renderWorksGrid - works data:', works);
             works.forEach((work, index) => {
+                console.log(`🔍 DEBUG: Processing work ${index}:`, work);
+                console.log(`🔍 DEBUG: work.WorkName="${work.WorkName}", work.workName="${work.workName}", work.TotalWorkCost="${work.TotalWorkCost}", work.totalWorkCost="${work.totalWorkCost}", work.projectName="${work.projectName}", work.contractorName="${work.contractorName}"`);
                 // Calculate how much was paid from related expenses
                 const workExpenses = originalMockData.filter(expense => expense.workId === work.workId);
                 const totalPaid = workExpenses.reduce((sum, expense) => sum + (parseFloat(expense.amount) || 0), 0);
@@ -7447,14 +7629,18 @@
                 
                 // If enhanced names are missing, resolve from IDs
                 if (!projectName && work.projectId) {
+                    console.log(`🔍 DEBUG: Looking for project with ID ${work.projectId} in`, projects);
                     const project = projects.find(p => p.projectId === work.projectId);
+                    console.log(`🔍 DEBUG: Found project:`, project);
                     projectName = project ? project.name : 'לא זוהה';
                 } else if (!projectName) {
                     projectName = 'לא זוהה';
                 }
                 
                 if (!contractorName && work.contractorId) {
+                    console.log(`🔍 DEBUG: Looking for contractor with ID ${work.contractorId} in`, contractors);
                     const contractor = contractors.find(c => c.contractorId === work.contractorId);
+                    console.log(`🔍 DEBUG: Found contractor:`, contractor);
                     contractorName = contractor ? contractor.name : 'לא זוהה';
                 } else if (!contractorName) {
                     contractorName = 'לא זוהה';
@@ -7497,6 +7683,7 @@
                 works.push(workData);
                 localStorage.setItem('construction_works', JSON.stringify(works));
             } catch (error) {
+                console.warn('Failed to save work to API:', error);
                 // Save to localStorage as fallback
                 works.push(workData);
                 localStorage.setItem('construction_works', JSON.stringify(works));
@@ -7506,8 +7693,11 @@
 
         async function loadWorks() {
             try {
+                console.log('Loading works from API...');
                 const result = await apiCall('/works');
+                console.log('Works API result:', result);
                 works = result.works || result.data?.works || result.data || result.items || [];
+                console.log('Works after assignment:', works, 'isArray:', Array.isArray(works));
                 
                 // Refresh works display when works are loaded
                 if (document.getElementById('worksTab').classList.contains('active')) {
@@ -7516,6 +7706,7 @@
                 
                 return works;
             } catch (error) {
+                console.warn('Failed to load works from API:', error);
                 // Fallback to localStorage
                 const saved = localStorage.getItem('construction_works');
                 if (saved) {
@@ -7557,15 +7748,20 @@
                 await loadExpenses();
                 
                 // Show success message
+                console.log('Work deleted successfully');
                 
             } catch (error) {
+                console.error('Error deleting work:', error);
                 alert('שגיאה במחיקת העבודה');
             }
         }
 
         function showWorkDetails(workId) {
+            console.log('🔍 DEBUG: showWorkDetails called with workId:', workId);
             const work = works.find(w => w.workId === workId);
+            console.log('🔍 DEBUG: Found work for modal:', work);
             if (!work) {
+                console.warn('Work not found:', workId);
                 return;
             }
 
@@ -7743,6 +7939,7 @@
             
             // Safety check: ensure projects is an array
             if (!Array.isArray(projects)) {
+                console.warn('🚨 projects is not an array in populateProjectFilter, resetting');
                 projects = [];
             }
             
@@ -7985,6 +8182,7 @@
                         await deleteExpenseAPI(expenseId);
                         showMessage('ההוצאה נמחקה בהצלחה!', 'success');
                     } catch (error) {
+                        console.error('Failed to delete expense from API:', error);
                         showMessage('שגיאה במחיקת ההוצאה מהשרת. נמחקה מקומית.', 'warning');
                     }
                     
@@ -7997,6 +8195,7 @@
             if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה? זה ימחק גם את כל ההוצאות שלו.')) {
                 // Safety check: ensure projects is an array
                 if (!Array.isArray(projects)) {
+                    console.warn('🚨 projects is not an array in deleteProject, resetting');
                     projects = [];
                 }
                 
@@ -8023,6 +8222,7 @@
                     showMessage('הפרויקט וכל ההוצאות שלו נמחקו בהצלחה!', 'success');
                     
                 } catch (error) {
+                    console.error('Failed to delete project:', error);
                     showMessage('שגיאה במחיקת הפרויקט מהשרת', 'error');
                 }
             }
@@ -8032,6 +8232,7 @@
             if (confirm('האם אתה בטוח שברצונך למחוק קבלן זה?')) {
                 // Safety check: ensure contractors is an array
                 if (!Array.isArray(contractors)) {
+                    console.warn('🚨 contractors is not an array in deleteContractor, resetting');
                     contractors = [];
                 }
                 
@@ -8056,6 +8257,7 @@
                     showMessage('הקבלן נמחק בהצלחה!', 'success');
                     
                 } catch (error) {
+                    console.error('Failed to delete contractor:', error);
                     showMessage('שגיאה במחיקת הקבלן מהשרת', 'error');
                 }
             }
@@ -8091,6 +8293,7 @@
                     if (typeof switchTab === 'function') {
                         switchTab(tabName);
                     } else {
+                        console.error('switchTab function not found');
                     }
                 });
             });
@@ -8106,6 +8309,7 @@
                 });
             });
             
+            console.log('UI event listeners initialized');
         });
     </script>
 </body>

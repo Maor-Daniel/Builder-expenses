@@ -31,9 +31,7 @@ function generateInvitationToken() {
 async function sendInvitationEmail(invitation) {
   const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitation.invitationToken}`;
 
-  console.log('FROM_EMAIL env var:', process.env.FROM_EMAIL);
   const fromEmail = process.env.FROM_EMAIL || 'noreply@yankale.com';
-  console.log('Using FROM_EMAIL:', fromEmail);
 
   const emailParams = {
     Source: fromEmail,
@@ -131,10 +129,6 @@ ${invitationUrl}
 }
 
 exports.handler = async (event) => {
-  debugLog('User invitation request received', { 
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'Missing'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -156,7 +150,6 @@ exports.handler = async (event) => {
 
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    debugLog('Parsed invitation request', requestBody);
 
     const { email, role, personalMessage } = requestBody;
 
@@ -182,16 +175,11 @@ exports.handler = async (event) => {
         Select: 'COUNT'
       });
 
-      debugLog('Current user count for company', { 
-        companyId, 
-        currentUsers: currentUserCount.Count 
-      });
 
       // Validate subscription limits (will throw error if exceeded)
       await validateSubscriptionLimits(companyId, 'ADD_USER', currentUserCount.Count);
 
     } catch (limitError) {
-      debugLog('Subscription limit check failed', { error: limitError.message });
       
       if (limitError.message.includes('User limit reached')) {
         return createErrorResponse(400, {
@@ -317,10 +305,8 @@ exports.handler = async (event) => {
         }
       });
 
-      debugLog('Invitation email sent successfully', { messageId: emailResult.MessageId });
       
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
       // Don't fail the invitation creation, just mark email as not sent
       await dynamoOperation('update', {
         TableName: COMPANY_TABLE_NAMES.INVITATIONS,
@@ -334,11 +320,6 @@ exports.handler = async (event) => {
       });
     }
 
-    debugLog('User invitation created successfully', { 
-      invitationToken, 
-      email, 
-      role: inviteeRole 
-    });
 
     return createResponse(200, {
       success: true,
@@ -358,7 +339,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error creating user invitation:', error);
     
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');

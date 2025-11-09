@@ -72,7 +72,6 @@ const { dynamoOperation, COMPANY_TABLE_NAMES } = require('./company-utils');
  */
 function verifyPaddleWebhook(body, paddleSignature) {
   if (!PADDLE_CONFIG.webhookSecret || !paddleSignature) {
-    console.error('Missing webhook verification data');
     return false;
   }
   
@@ -89,7 +88,6 @@ function verifyPaddleWebhook(body, paddleSignature) {
     }
     
     if (!timestamp || !signature) {
-      console.error('Invalid signature format');
       return false;
     }
     
@@ -108,7 +106,6 @@ function verifyPaddleWebhook(body, paddleSignature) {
       Buffer.from(expectedSignature, 'hex')
     );
   } catch (error) {
-    console.error('Webhook verification error:', error);
     return false;
   }
 }
@@ -189,7 +186,6 @@ async function createPaddleCustomer(customerData) {
       });
     } catch (error) {
       // Customer might already exist, that's okay
-      console.log('Customer creation note:', error.message);
     }
 
     // Create transaction/checkout
@@ -214,7 +210,6 @@ async function createPaddleCustomer(customerData) {
       transaction_id: transaction.data.id
     };
   } catch (error) {
-    console.error('Error creating Paddle customer/checkout:', error);
     throw error;
   }
 }
@@ -227,7 +222,6 @@ async function getSubscriptionDetails(subscriptionId) {
     const response = await paddleApiCall(`subscriptions/${subscriptionId}`, 'GET');
     return response.data;
   } catch (error) {
-    console.error('Error getting subscription details:', error);
     throw error;
   }
 }
@@ -242,7 +236,6 @@ async function cancelSubscription(subscriptionId) {
     });
     return response.data;
   } catch (error) {
-    console.error('Error canceling subscription:', error);
     throw error;
   }
 }
@@ -261,7 +254,6 @@ async function updateSubscriptionPlan(subscriptionId, newPriceId) {
     });
     return response.data;
   } catch (error) {
-    console.error('Error updating subscription:', error);
     throw error;
   }
 }

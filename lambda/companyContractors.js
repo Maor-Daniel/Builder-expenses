@@ -13,10 +13,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Company contractors request received', {
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'None'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -26,7 +22,6 @@ exports.handler = async (event) => {
   try {
     // Get company and user context from JWT token
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('Company context', { companyId, userId, userRole });
 
     switch (event.httpMethod) {
       case 'GET':
@@ -41,14 +36,12 @@ exports.handler = async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('Company contractors error:', error);
     return createErrorResponse(500, 'Internal server error during contractors operation');
   }
 };
 
 // Get all contractors for the company
 async function getContractors(companyId, userId) {
-  debugLog('Getting contractors for company', { companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
@@ -60,7 +53,6 @@ async function getContractors(companyId, userId) {
 
   const result = await dynamoOperation('query', params);
   
-  debugLog('Found contractors', { count: result.Items.length });
   
   return createResponse(200, {
     success: true,
@@ -72,7 +64,6 @@ async function getContractors(companyId, userId) {
 // Create a new contractor
 async function createContractor(event, companyId, userId) {
   const requestBody = JSON.parse(event.body || '{}');
-  debugLog('Creating contractor', requestBody);
 
   const contractor = {
     companyId,
@@ -123,7 +114,6 @@ async function createContractor(event, companyId, userId) {
 
   await dynamoOperation('put', params);
   
-  debugLog('Contractor created successfully', { contractorId: contractor.contractorId });
   
   return createResponse(201, {
     success: true,
@@ -141,7 +131,6 @@ async function updateContractor(event, companyId, userId) {
     return createErrorResponse(400, 'Missing contractorId');
   }
 
-  debugLog('Updating contractor', { contractorId, companyId });
 
   // Build update expression dynamically
   const updateExpressions = [];
@@ -198,7 +187,6 @@ async function updateContractor(event, companyId, userId) {
 
   const result = await dynamoOperation('update', params);
   
-  debugLog('Contractor updated successfully', { contractorId });
   
   return createResponse(200, {
     success: true,
@@ -215,7 +203,6 @@ async function deleteContractor(event, companyId, userId) {
     return createErrorResponse(400, 'Missing contractorId');
   }
 
-  debugLog('Deleting contractor', { contractorId, companyId });
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
@@ -226,7 +213,6 @@ async function deleteContractor(event, companyId, userId) {
 
   const result = await dynamoOperation('delete', params);
   
-  debugLog('Contractor deleted successfully', { contractorId });
   
   return createResponse(200, {
     success: true,

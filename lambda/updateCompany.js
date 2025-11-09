@@ -14,10 +14,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  debugLog('Update company request received', { 
-    httpMethod: event.httpMethod,
-    body: event.body ? 'Present' : 'Missing'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -39,7 +35,6 @@ exports.handler = async (event) => {
 
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    debugLog('Parsed update request', requestBody);
 
     const updates = {};
     const updateExpressions = [];
@@ -113,15 +108,10 @@ exports.handler = async (event) => {
       updateParams.ExpressionAttributeNames = expressionAttributeNames;
     }
 
-    debugLog('Updating company with params', updateParams);
 
     const result = await dynamoOperation('update', updateParams);
     const updatedCompany = result.Attributes;
 
-    debugLog('Company updated successfully', { 
-      companyId,
-      updatedFields: updateExpressions.length - 1 // Subtract updatedAt
-    });
 
     return createResponse(200, {
       success: true,
@@ -144,7 +134,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error updating company information:', error);
     
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');

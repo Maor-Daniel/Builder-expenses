@@ -20,9 +20,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
 exports.handler = async (event) => {
-  debugLog('Upload company logo request received', {
-    httpMethod: event.httpMethod
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -59,11 +56,6 @@ exports.handler = async (event) => {
     const fileExtension = fileName.split('.').pop();
     const uniqueFileName = `${companyId}/logo-${Date.now()}.${fileExtension}`;
 
-    debugLog('Generating pre-signed URL', {
-      companyId,
-      fileName: uniqueFileName,
-      fileType
-    });
 
     // Generate pre-signed URL for upload
     const uploadParams = {
@@ -79,10 +71,6 @@ exports.handler = async (event) => {
     // Generate the public URL where the logo will be accessible
     const logoUrl = `https://${LOGO_BUCKET}.s3.amazonaws.com/${uniqueFileName}`;
 
-    debugLog('Pre-signed URL generated successfully', {
-      companyId,
-      logoUrl
-    });
 
     return createResponse(200, {
       success: true,
@@ -96,7 +84,6 @@ exports.handler = async (event) => {
     });
 
   } catch (error) {
-    console.error('Error generating upload URL:', error);
 
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');

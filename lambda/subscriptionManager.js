@@ -21,11 +21,6 @@ const {
 } = require('./shared/company-utils');
 
 exports.handler = async (event) => {
-  console.log('Subscription manager request:', {
-    method: event.httpMethod,
-    path: event.path,
-    body: event.body ? 'Present' : 'None'
-  });
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -40,7 +35,6 @@ exports.handler = async (event) => {
 
     // All other requests require authentication
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    console.log('Authenticated request:', { companyId, userId, userRole });
 
     switch (event.httpMethod) {
       case 'GET':
@@ -78,7 +72,6 @@ exports.handler = async (event) => {
     return createErrorResponse(404, 'Endpoint not found');
 
   } catch (error) {
-    console.error('Subscription manager error:', error);
     
     if (error.message.includes('authentication required')) {
       return createErrorResponse(401, 'Authentication required');
@@ -139,7 +132,6 @@ async function getSubscriptionStatus(companyId) {
       try {
         paddleSubscription = await getSubscriptionDetails(company.subscriptionId);
       } catch (error) {
-        console.warn('Failed to get Paddle subscription details:', error);
       }
     }
 
@@ -163,7 +155,6 @@ async function getSubscriptionStatus(companyId) {
     });
 
   } catch (error) {
-    console.error('Error getting subscription status:', error);
     return createErrorResponse(500, 'Failed to get subscription status');
   }
 }
@@ -211,7 +202,6 @@ async function getCurrentUsage(companyId) {
     };
 
   } catch (error) {
-    console.error('Error getting usage stats:', error);
     return {
       users: 0,
       projects: 0,
@@ -228,7 +218,6 @@ async function createSubscription(event, companyId, userId) {
   const requestBody = JSON.parse(event.body || '{}');
   const { planName, billingCycle = 'monthly', companyName, email, country = 'US' } = requestBody;
 
-  console.log('Creating subscription:', { companyId, planName, billingCycle });
 
   // Validate plan
   if (!SUBSCRIPTION_PLANS[planName]) {
@@ -257,7 +246,6 @@ async function createSubscription(event, companyId, userId) {
     });
 
   } catch (error) {
-    console.error('Error creating subscription:', error);
     return createErrorResponse(500, 'Failed to create subscription checkout');
   }
 }
@@ -274,7 +262,6 @@ async function upgradeSubscription(event, companyId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
   const { newPlan } = requestBody;
 
-  console.log('Upgrading subscription:', { companyId, newPlan });
 
   // Validate new plan
   if (!SUBSCRIPTION_PLANS[newPlan]) {
@@ -315,7 +302,6 @@ async function upgradeSubscription(event, companyId, userRole) {
     });
 
   } catch (error) {
-    console.error('Error upgrading subscription:', error);
     return createErrorResponse(500, 'Failed to upgrade subscription');
   }
 }
@@ -355,7 +341,6 @@ async function cancelCompanySubscription(companyId, userRole) {
     return createErrorResponse(403, 'Only company administrators can cancel subscriptions');
   }
 
-  console.log('Canceling subscription for company:', companyId);
 
   try {
     // Get current company subscription
@@ -378,7 +363,6 @@ async function cancelCompanySubscription(companyId, userRole) {
     });
 
   } catch (error) {
-    console.error('Error canceling subscription:', error);
     return createErrorResponse(500, 'Failed to cancel subscription');
   }
 }

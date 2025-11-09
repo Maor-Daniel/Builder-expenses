@@ -17,21 +17,15 @@ const {
 
 // Main handler with permission-based filtering
 async function getProjectsHandler(event) {
-  debugLog('getProjects request received', { 
-    httpMethod: event.httpMethod,
-    queryParameters: event.queryStringParameters 
-  });
 
   try {
     // Get company and user context
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-    debugLog('User context', { companyId, userId, userRole });
 
     // Parse query parameters for filtering
     const queryParams = event.queryStringParameters || {};
     const { status, sortBy } = queryParams;
     
-    debugLog('Query parameters', queryParams);
 
     // Build company-scoped DynamoDB query parameters
     let params = {
@@ -49,12 +43,10 @@ async function getProjectsHandler(event) {
       params.ExpressionAttributeValues[':status'] = status;
     }
 
-    debugLog('DynamoDB query params', params);
 
     const result = await dynamoOperation('query', params);
     let projects = result.Items || [];
 
-    debugLog(`Found ${projects.length} projects before filtering`);
 
     // Apply role-based data filtering
     if (!hasPermission(userRole, PERMISSIONS.VIEW_ALL_DATA)) {
@@ -72,7 +64,6 @@ async function getProjectsHandler(event) {
         return false;
       });
       
-      debugLog(`After permission filtering: ${projects.length} projects`);
     }
 
     // Sort projects based on sortBy parameter
@@ -108,12 +99,6 @@ async function getProjectsHandler(event) {
       }
     };
 
-    debugLog('Projects retrieved successfully', { 
-      companyId, 
-      totalCount: projects.length,
-      userRole,
-      hasViewAllPermission: hasPermission(userRole, PERMISSIONS.VIEW_ALL_DATA)
-    });
 
     return createResponse(200, {
       success: true,
@@ -130,7 +115,6 @@ async function getProjectsHandler(event) {
     });
 
   } catch (error) {
-    console.error('Error in getProjects:', error);
 
     if (error.message.includes('Company authentication required')) {
       return createErrorResponse(401, 'Authentication required');
