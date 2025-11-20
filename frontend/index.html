@@ -3,17 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת מעקב הוצאות בניה</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome -->
+    <title>מערכת מעקב הוצאות בניה - נהל את הפרויקטים שלך בקלות</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
     <style>
         * {
             margin: 0;
@@ -22,2544 +13,795 @@
         }
 
         body {
-            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f8f9fa;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            color: #1a202c;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            direction: rtl;
         }
 
-        /* Clerk Auth Container */
-        #clerkAuthContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        }
-
-        .clerk-loading {
-            text-align: center;
-            color: #4a5568;
-        }
-
-        .clerk-loading h2 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-
-        .spinner {
-            border: 3px solid #e2e8f0;
-            border-radius: 50%;
-            border-top: 3px solid #3182ce;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Main App Container */
-        #mainContent {
-            display: none;
-            width: 100%;
-        }
-
-        /* Header */
+        /* Header / Navigation */
         .header {
-            background: #ffffff;
-            padding: 20px 40px;
-            border-bottom: 1px solid #e2e8f0;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .header h1 {
-            color: #1a202c;
+        .logo {
             font-size: 1.5rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .header h1 i {
-            color: #3182ce;
-            font-size: 1.3rem;
-        }
-
-        /* User Info */
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .user-details {
-            text-align: left;
-        }
-
-        .user-name {
-            font-weight: 500;
-            color: #2d3748;
-            font-size: 1rem;
-        }
-
-        .company-name {
-            font-size: 0.85rem;
-            color: #718096;
-        }
-
-        .user-menu {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-user {
-            padding: 8px 16px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            background: #ffffff;
-        }
-
-        .btn-profile {
-            color: #3182ce;
-            border-color: #3182ce;
-        }
-
-        .btn-profile:hover {
-            background: #3182ce;
-            color: white;
-        }
-
-        .btn-org {
-            color: #38a169;
-            border-color: #38a169;
-        }
-
-        .btn-org:hover {
-            background: #38a169;
-            color: white;
-        }
-
-        .btn-signout {
-            color: #e53e3e;
-            border-color: #e53e3e;
-        }
-
-        .btn-signout:hover {
-            background: #e53e3e;
-            color: white;
-        }
-
-        /* Main Container */
-        .container {
-            padding: 30px;
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        /* Dashboard Cards */
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-        }
-
-        .card {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            transition: all 0.2s;
-        }
-
-        .card:hover {
-            border-color: #cbd5e0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-
-        .card-icon {
-            font-size: 1.25rem;
-            margin-bottom: 12px;
-            color: #718096;
-        }
-
-        .card-title {
-            color: #718096;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .card-value {
-            color: #1a202c;
-            font-size: 2rem;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        /* Tabs */
-        .tabs {
-            background: white;
-            border-radius: 12px;
-            padding: 8px;
-            margin-bottom: 24px;
-            display: flex;
-            gap: 4px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            background: transparent;
-            color: #718096;
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 0.9375rem;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .tab-button.active {
-            background: #3182ce;
-            color: white;
-        }
-
-        .tab-button:hover:not(.active) {
-            background: #f7fafc;
-            color: #4a5568;
-        }
-
-        /* Content Area */
-        .content-area {
-            background: white;
-            border-radius: 12px;
-            padding: 32px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            min-height: 500px;
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #4a5568;
-            font-weight: 500;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #3182ce;
-            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-        }
-
-        .btn-primary {
-            background: #3182ce;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 8px;
-            font-size: 0.9375rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        .btn-primary:hover {
-            background: #2c5282;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* Message */
-        .message {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .message.success {
-            background: #c6f6d5;
-            color: #22543d;
-            border-left: 4px solid #48bb78;
-        }
-
-        .message.error {
-            background: #fed7d7;
-            color: #742a2a;
-            border-left: 4px solid #f56565;
-        }
-
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 24px;
-        }
-
-        th {
-            background: #f7fafc;
-            padding: 14px 16px;
-            text-align: right;
-            color: #4a5568;
-            font-weight: 600;
-            font-size: 0.875rem;
-            border-bottom: 1px solid #e2e8f0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        td {
-            padding: 16px;
-            border-bottom: 1px solid #f0f0f0;
-            color: #1a202c;
-            font-size: 0.9375rem;
-        }
-
-        tr:hover {
-            background: #fafafa;
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Action Buttons */
-        .btn-edit, .btn-delete {
-            padding: 6px 16px;
-            background: white;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 0 4px;
-            font-family: 'Rubik', sans-serif;
-        }
-
-        .btn-edit {
-            border: 1.5px solid #1a202c;
-            color: #1a202c;
-        }
-
-        .btn-edit:hover {
-            background: #1a202c;
-            color: white;
-        }
-
-        .btn-delete {
-            border: 1.5px solid #e53e3e;
-            color: #e53e3e;
-        }
-
-        .btn-delete:hover {
-            background: #c53030;
-            border-color: #c53030;
-            color: white;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #718096;
-        }
-
-        .loading i {
-            font-size: 3rem;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 32px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            animation: slideDown 0.3s;
-            border: 1px solid #e2e8f0;
-        }
-
-        @keyframes slideDown {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-content h2 {
-            color: #1a202c;
-            margin-bottom: 28px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 16px;
-        }
-
-        .close {
-            color: #718096;
-            float: left;
-            font-size: 28px;
             font-weight: bold;
-            cursor: pointer;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
             transition: color 0.3s;
         }
 
-        .close:hover,
-        .close:focus {
-            color: #2d3748;
+        .nav-links a:hover {
+            color: #34495e;
         }
 
-        .modal-content form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .modal-content .form-group {
-            margin-bottom: 0;
-        }
-
-        .modal-content label {
-            display: block;
-            margin-bottom: 6px;
-            color: #4a5568;
-            font-weight: 500;
-            font-size: 0.875rem;
-        }
-
-        .modal-content input,
-        .modal-content select,
-        .modal-content textarea {
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
             font-size: 1rem;
-            font-family: 'Rubik', sans-serif;
-            transition: border-color 0.3s;
-        }
-
-        .modal-content input[type="file"] {
-            padding: 8px;
-            cursor: pointer;
-        }
-
-        .modal-content input[type="file"]::file-selector-button {
-            background: #3182ce;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 10px;
-            font-family: 'Rubik', sans-serif;
-        }
-
-        .modal-content input[type="file"]::file-selector-button:hover {
-            background: #2c5aa0;
-        }
-
-        .modal-content input:focus,
-        .modal-content select:focus,
-        .modal-content textarea:focus {
-            outline: none;
-            border-color: #3182ce;
-            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-        }
-
-        .modal-content textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .modal-content button[type="submit"] {
-            background: #3182ce;
-            color: white;
-            padding: 11px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9375rem;
             font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
         }
 
-        .modal-content button[type="submit"]:hover {
-            background: #2c5282;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .btn-primary {
+            background: #34495e;
+            color: white;
         }
 
-        .modal-content button[type="button"] {
-            background: #ffffff;
-            color: #4a5568;
-            padding: 11px 24px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.9375rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .modal-content button[type="button"]:hover {
-            background: #f7fafc;
-            border-color: #cbd5e0;
-        }
-
-        /* Charts and Reports */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .metric-card {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .metric-card:hover {
+        .btn-primary:hover {
+            background: #2c3e50;
             transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(52, 73, 94, 0.3);
         }
 
-        .metric-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
+        .btn-secondary {
+            background: transparent;
+            color: #34495e;
+            border: 2px solid #34495e;
+        }
+
+        .btn-secondary:hover {
+            background: #34495e;
+            color: white;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .hero-buttons {
             display: flex;
-            align-items: center;
+            gap: 1rem;
             justify-content: center;
-            font-size: 24px;
-            margin-bottom: 12px;
-        }
-
-        .metric-icon.blue { background: #dbeafe; color: #3182ce; }
-        .metric-icon.green { background: #d1fae5; color: #10b981; }
-        .metric-icon.purple { background: #e9d5ff; color: #9333ea; }
-        .metric-icon.orange { background: #fed7aa; color: #f97316; }
-
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1a202c;
-            margin: 8px 0;
-        }
-
-        .metric-label {
-            color: #718096;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .metric-change {
-            font-size: 0.875rem;
-            margin-top: 8px;
-            font-weight: 500;
-        }
-
-        .metric-change.positive { color: #10b981; }
-        .metric-change.negative { color: #ef4444; }
-
-        .chart-container {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            margin-bottom: 24px;
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .chart-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #1a202c;
-        }
-
-        .chart-canvas {
-            position: relative;
-            height: 300px;
-        }
-
-        .reports-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 24px;
-        }
-
-        .report-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .report-card:hover {
-            border-color: #3182ce;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
-        }
-
-        .report-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin-bottom: 12px;
-            background: #dbeafe;
-            color: #3182ce;
-        }
-
-        .report-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #1a202c;
-            margin-bottom: 8px;
-        }
-
-        .report-description {
-            font-size: 0.875rem;
-            color: #718096;
-        }
-
-        .filter-bar {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
             flex-wrap: wrap;
         }
 
-        .filter-bar label {
-            margin: 0;
-            font-size: 0.875rem;
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
         }
 
-        .filter-bar select, .filter-bar input {
-            padding: 8px 12px;
-            font-size: 0.875rem;
-            min-width: 150px;
+        /* Features Section */
+        .features {
+            padding: 5rem 2rem;
+            background: #f9fafb;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 8px;
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 3rem;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: #3182ce;
-            transition: width 0.3s;
+        .section-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
         }
 
-        .progress-fill.warning { background: #f97316; }
-        .progress-fill.danger { background: #ef4444; }
-
-        .budget-table {
-            width: 100%;
-            margin-top: 20px;
+        .section-header p {
+            font-size: 1.1rem;
+            color: #6b7280;
         }
 
-        .budget-table td {
-            padding: 12px;
+        .features-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
         }
 
-        .alert-badge {
-            display: inline-block;
-            padding: 4px 12px;
+        .feature-card {
+            background: white;
+            padding: 2rem;
             border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
         }
 
-        .alert-badge.success { background: #d1fae5; color: #065f46; }
-        .alert-badge.warning { background: #fed7aa; color: #9a3412; }
-        .alert-badge.danger { background: #fee2e2; color: #991b1b; }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 5rem 2rem;
+            background: white;
+        }
+
+        .steps-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 1.5rem;
+        }
+
+        .step h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .step p {
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 5rem 2rem;
+            background: #f9fafb;
+        }
+
+        .pricing-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card.featured {
+            transform: scale(1.05);
+            border: 3px solid #34495e;
+            position: relative;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -15px;
+            right: 50%;
+            transform: translateX(50%);
+            background: #34495e;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-period {
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .trial-badge {
+            background: #27ae60;
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        .features-list {
+            list-style: none;
+            margin-bottom: 2rem;
+            text-align: right;
+        }
+
+        .features-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+        }
+
+        .features-list li i {
+            color: #10b981;
+            margin-left: 0.5rem;
+        }
+
+        .pricing-card .btn {
+            margin-top: auto;
+            width: 100%;
+        }
+
+        /* FAQ Section */
+        .faq {
+            padding: 5rem 2rem;
+            background: #f9fafb;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: white;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+        }
+
+        .faq-question {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #1f2937;
+            transition: background 0.3s;
+        }
+
+        .faq-question:hover {
+            background: #f9fafb;
+        }
+
+        .faq-answer {
+            padding: 0 1.5rem 1.5rem;
+            color: #6b7280;
+            line-height: 1.8;
+            display: none;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .faq-item.active .faq-question i {
+            transform: rotate(180deg);
+        }
+
+        .faq-question i {
+            transition: transform 0.3s;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .footer {
+            background: #1f2937;
+            color: #9ca3af;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section a {
+            color: #9ca3af;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            border-top: 1px solid #374151;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .section-header h2 {
+                font-size: 2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Clerk Auth Container -->
-    <div id="clerkAuthContainer">
-        <div class="clerk-loading">
-            <h2>מערכת מעקב הוצאות בניה</h2>
-            <div class="spinner"></div>
-            <p>מאתחל מערכת אבטחה...</p>
-        </div>
-    </div>
-
-    <!-- Main Application -->
-    <div id="mainContent">
-        <div class="header">
-            <h1>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">
                 <i class="fas fa-hard-hat"></i>
                 מערכת מעקב הוצאות בניה
-            </h1>
-            <div class="user-info" id="userInfo">
-                <div class="user-details">
-                    <div class="user-name" id="userName">טוען...</div>
-                    <div class="company-name" id="companyName">טוען...</div>
+            </div>
+            <nav class="nav-links">
+                <a href="#features">תכונות</a>
+                <a href="#how-it-works">איך זה עובד</a>
+                <a href="#pricing">תמחור</a>
+                <a href="#faq">שאלות נפוצות</a>
+                <a href="app.html" class="btn btn-primary">התחבר</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>נהל את הוצאות הבניה שלך בקלות ובמקצועיות</h1>
+            <p>מערכת מתקדמת למעקב אחר כל הוצאה, פרויקט וקבלן. חסוך זמן, שמור על תקציב ושלוט במלוא המידע.</p>
+            <div class="hero-buttons">
+                <a href="app.html" class="btn btn-primary btn-large">התחל עכשיו בחינם</a>
+                <a href="#how-it-works" class="btn btn-secondary btn-large">גלה איך זה עובד</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="section-header">
+            <h2>כל מה שאתה צריך לניהול הוצאות בניה</h2>
+            <p>מערכת מקיפה שמאפשרת לך לנהל כל היבט של הוצאות הבניה במקום אחד</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-project-diagram"></i>
                 </div>
-                <div class="user-menu">
-                    <button class="btn-user btn-profile" onclick="ClerkAuth.showUserProfile()">
-                        <i class="fas fa-user"></i> פרופיל
-                    </button>
-                    <button class="btn-user btn-org" onclick="ClerkAuth.showOrganizationSwitcher()">
-                        <i class="fas fa-building"></i> החלף חברה
-                    </button>
-                    <button class="btn-user btn-signout" onclick="signOut()">
-                        <i class="fas fa-sign-out-alt"></i> יציאה
-                    </button>
+                <h3>ניהול פרויקטים</h3>
+                <p>עקוב אחר מספר פרויקטים במקביל, הגדר תקציבים ועקוב אחר השימוש בתקציב בזמן אמת עם התראות חכמות.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>ניהול קבלנים</h3>
+                <p>שמור מידע מפורט על כל הקבלנים, עקוב אחר העבודות שהם ביצעו וההוצאות הקשורות אליהם.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <h3>העלאת קבלות</h3>
+                <p>העלה תמונות של קבלות ישירות למערכת, כולל תמיכה בצילום ממכשיר נייד לנוחיות מקסימלית.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>דוחות מתקדמים</h3>
+                <p>ייצא דוחות מפורטים לאקסל, קבל סיכומים לפי פרויקט וקבלן, וצפה בניתוח כלכלי מלא.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>חיפוש וסינון</h3>
+                <p>מצא כל הוצאה תוך שניות עם חיפוש מתקדם, סינון לפי תאריכים, פרויקטים וקבלנים.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h3>התראות חכמות</h3>
+                <p>קבל התראות כאשר הפרויקט מתקרב לתקציב המקסימלי או עובר אותו, ושמור על שליטה מלאה.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="section-header">
+            <h2>התחל בשלושה שלבים פשוטים</h2>
+            <p>הקמת המערכת לוקחת פחות מ-5 דקות</p>
+        </div>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>הירשם והתחבר</h3>
+                <p>צור חשבון חינמי תוך שניות והתחבר למערכת באמצעות אימייל.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>הוסף פרויקטים וקבלנים</h3>
+                <p>הזן את הפרויקטים והקבלנים שלך, הגדר תקציבים ופרטים נוספים.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>התחל לעקוב אחר הוצאות</h3>
+                <p>הוסף הוצאות, העלה קבלות וצפה בדוחות מפורטים בזמן אמת.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="section-header">
+            <h2>תמחור פשוט ושקוף</h2>
+            <p>בחר את התוכנית המתאימה לך • 30 יום ניסיון חינם לכל תוכנית (נדרש כרטיס אשראי)</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <h3>בסיסי</h3>
+                <div class="price">₪100</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> משתמש אחד</li>
+                    <li><i class="fas fa-check"></i> עד 3 פרויקטים</li>
+                    <li><i class="fas fa-check"></i> עד 50 הוצאות בחודש</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> תמיכה בסיסית</li>
+                </ul>
+                <a href="app.html" class="btn btn-secondary">התחל ניסיון חינם</a>
+            </div>
+
+            <div class="pricing-card featured">
+                <div class="featured-badge">מומלץ ביותר</div>
+                <h3>מקצועי</h3>
+                <div class="price">₪200</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> עד 3 משתמשים</li>
+                    <li><i class="fas fa-check"></i> עד 10 פרויקטים</li>
+                    <li><i class="fas fa-check"></i> הוצאות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF מתקדם</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
+                </ul>
+                <a href="app.html" class="btn btn-primary">התחל ניסיון חינם</a>
+            </div>
+
+            <div class="pricing-card">
+                <h3>ארגוני</h3>
+                <div class="price">₪300</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> עד 10 משתמשים</li>
+                    <li><i class="fas fa-check"></i> פרויקטים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> הוצאות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF מתקדם</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> גיבויים אוטומטיים</li>
+                    <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
+                </ul>
+                <a href="app.html" class="btn btn-secondary">התחל ניסיון חינם</a>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="pricing.html" class="btn btn-secondary">ראה פירוט מלא של התוכניות</a>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="section-header">
+            <h2>שאלות נפוצות</h2>
+            <p>מצא תשובות לשאלות הנפוצות ביותר</p>
+        </div>
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם המערכת מתאימה גם לפרויקטים קטנים?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן! המערכת מתאימה לכל סוגי הפרויקטים, מפרויקטים קטנים של שיפוץ דירה ועד פרויקטים גדולים של בניה מסחרית. החבילה החינמית מושלמת לפרויקטים קטנים.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם אני יכול לייצא את הנתונים שלי?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    בהחלט! ניתן לייצא את כל הנתונים לקובץ CSV/Excel, כולל כל המידע על הוצאות, פרויקטים, קבלנים וקבלות.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם הקבלות שלי מאוחסנות בצורה מאובטחת?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כל הקבלות מאוחסנות באמזון S3 עם הצפנה מלאה. המערכת עומדת בכל תקני האבטחה הנדרשים ומבטיחה שהמידע שלך מוגן.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם אני יכול לבטל את המנוי בכל עת?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן, אין התחייבות. ניתן לבטל את המנוי בכל עת מתוך הגדרות החשבון, והחיוב יפסק באופן מיידי.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם יש תמיכה טכנית?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן! משתמשי החבילה החינמית מקבלים תמיכה בסיסית באימייל, משתמשי החבילה המקצועית מקבלים תמיכה מועדפת, ומשתמשי החבילה הארגונית מקבלים תמיכה 24/7.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם המערכת עובדת גם בנייד?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    בהחלט! המערכת מותאמת לחלוטין לשימוש בנייד ובטאבלט, כך שתוכל לנהל את ההוצאות שלך מכל מקום.
                 </div>
             </div>
         </div>
+    </section>
 
-        <div class="container">
-            <!-- Dashboard Cards -->
-            <div class="dashboard-cards">
-                <div class="card">
-                    <div class="card-icon">💰</div>
-                    <div class="card-title">סה"כ הוצאות</div>
-                    <div class="card-value" id="totalExpenses">₪0</div>
-                </div>
-                <div class="card">
-                    <div class="card-icon">🏗️</div>
-                    <div class="card-title">פרויקטים פעילים</div>
-                    <div class="card-value" id="activeProjects">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-icon">👷</div>
-                    <div class="card-title">קבלנים</div>
-                    <div class="card-value" id="totalContractors">0</div>
-                </div>
-                <div class="card">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">הוצאות החודש</div>
-                    <div class="card-value" id="monthlyExpenses">₪0</div>
-                </div>
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2>מוכנים להתחיל?</h2>
+        <p>הצטרפו עכשיו ותתחילו לנהל את הוצאות הבניה שלכם בצורה מקצועית</p>
+        <a href="app.html" class="btn btn-primary btn-large">התחל בחינם עכשיו</a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>על המערכת</h4>
+                <ul>
+                    <li><a href="#features">תכונות</a></li>
+                    <li><a href="#how-it-works">איך זה עובד</a></li>
+                    <li><a href="pricing.html">תמחור</a></li>
+                    <li><a href="#faq">שאלות נפוצות</a></li>
+                </ul>
             </div>
-
-            <!-- Main Tabs -->
-            <div class="tabs">
-                <button class="tab-button active" onclick="showTab('expenses')">
-                    <i class="fas fa-receipt"></i> הוצאות
-                </button>
-                <button class="tab-button" onclick="showTab('projects')">
-                    <i class="fas fa-project-diagram"></i> פרויקטים
-                </button>
-                <button class="tab-button" onclick="showTab('contractors')">
-                    <i class="fas fa-users"></i> קבלנים
-                </button>
-                <button class="tab-button" onclick="showTab('works')">
-                    <i class="fas fa-hammer"></i> עבודות
-                </button>
-                <button class="tab-button" onclick="showTab('reports')">
-                    <i class="fas fa-chart-bar"></i> דוחות
-                </button>
-                <button class="tab-button" onclick="showTab('billing')">
-                    <i class="fas fa-credit-card"></i> חיוב ומנוי
-                </button>
+            <div class="footer-section">
+                <h4>תמיכה</h4>
+                <ul>
+                    <li><a href="#">צור קשר</a></li>
+                    <li><a href="#">מרכז עזרה</a></li>
+                    <li><a href="#">דווח על בעיה</a></li>
+                </ul>
             </div>
-
-            <!-- Content Area -->
-            <div class="content-area">
-                <div id="messageArea" class="message"></div>
-                <div id="tabContent">
-                    <!-- Tab content will be loaded here -->
-                    <div class="loading">
-                        <i class="fas fa-spinner"></i>
-                        <p>טוען נתונים...</p>
-                    </div>
-                </div>
+            <div class="footer-section">
+                <h4>חוקי</h4>
+                <ul>
+                    <li><a href="terms.html">תנאי שימוש</a></li>
+                    <li><a href="privacy.html">מדיניות פרטיות</a></li>
+                    <li><a href="refund.html">מדיניות ביטולים</a></li>
+                </ul>
             </div>
         </div>
-    </div>
-
-    <!-- Modal Forms -->
-    <div id="projectModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('projectModal')">&times;</span>
-            <h2>הוסף פרויקט חדש</h2>
-            <form id="projectForm" onsubmit="submitProject(event)">
-                <input type="text" id="projectName" placeholder="שם פרויקט *" required>
-                <textarea id="projectDescription" placeholder="תיאור" rows="3"></textarea>
-                <div class="form-group">
-                    <label for="projectStartDate">תאריך התחלה *</label>
-                    <input type="date" id="projectStartDate" required>
-                </div>
-                <div class="form-group">
-                    <label for="projectEndDate">תאריך סיום</label>
-                    <input type="date" id="projectEndDate">
-                </div>
-                <input type="number" id="projectBudget" placeholder="תקציב" step="0.01">
-                <input type="text" id="projectLocation" placeholder="מיקום">
-                <input type="text" id="projectClient" placeholder="שם לקוח">
-                <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" class="btn-secondary" onclick="closeModal('projectModal')">ביטול</button>
-            </form>
+        <div class="footer-bottom">
+            <p>&copy; 2024 מערכת מעקב הוצאות בניה. כל הזכויות שמורות.</p>
         </div>
-    </div>
+    </footer>
 
-    <div id="contractorModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('contractorModal')">&times;</span>
-            <h2>הוסף קבלן חדש</h2>
-            <form id="contractorForm" onsubmit="submitContractor(event)">
-                <input type="text" id="contractorName" placeholder="שם קבלן *" required>
-                <input type="tel" id="contractorPhone" placeholder="טלפון">
-                <input type="text" id="contractorSpecialty" placeholder="התמחות">
-                <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" class="btn-secondary" onclick="closeModal('contractorModal')">ביטול</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="workModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('workModal')">&times;</span>
-            <h2>הוסף עבודה חדשה</h2>
-            <form id="workForm" onsubmit="submitWork(event)">
-                <input type="text" id="workName" placeholder="שם עבודה *" required>
-                <select id="workProjectId" required>
-                    <option value="">בחר פרויקט *</option>
-                </select>
-                <select id="workContractorId" required>
-                    <option value="">בחר קבלן *</option>
-                </select>
-                <input type="number" id="workCost" placeholder="עלות כוללת *" step="0.01" required>
-                <textarea id="workDescription" placeholder="תיאור" rows="3"></textarea>
-                <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" class="btn-secondary" onclick="closeModal('workModal')">ביטול</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="expenseModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('expenseModal')">&times;</span>
-            <h2>הוסף הוצאה חדשה</h2>
-            <form id="expenseForm" onsubmit="submitExpense(event)">
-                <input type="text" id="expenseDescription" placeholder="תיאור *" required>
-                <input type="number" id="expenseAmount" placeholder="סכום *" step="0.01" required>
-                <input type="date" id="expenseDate" placeholder="תאריך *" required>
-                <input type="text" id="expenseInvoice" placeholder="מספר חשבונית *" required>
-                <div class="form-group">
-                    <label for="expenseReceipt">תמונת חשבונית / קבלה</label>
-                    <input type="file" id="expenseReceipt" accept="image/*,application/pdf">
-                    <small id="receiptPreview" style="display: none; color: #3182ce; margin-top: 5px;"></small>
-                </div>
-                <select id="expensePayment" required>
-                    <option value="">אמצעי תשלום *</option>
-                    <option value="Cash">מזומן</option>
-                    <option value="Credit Card">כרטיס אשראי</option>
-                    <option value="Bank Transfer">העברה בנקאית</option>
-                    <option value="Check">המחאה</option>
-                </select>
-                <select id="expenseWorkId" onchange="onWorkSelected()">
-                    <option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>
-                </select>
-                <select id="expenseProjectId">
-                    <option value="">בחר פרויקט (אופציונלי)</option>
-                </select>
-                <select id="expenseContractorId">
-                    <option value="">בחר קבלן (אופציונלי)</option>
-                </select>
-                <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" class="btn-secondary" onclick="closeModal('expenseModal')">ביטול</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Clerk Configuration -->
     <script>
-        // Clerk Configuration
-        window.CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
-        window.CLERK_FRONTEND_API = 'https://Builder-expenses.clerk.accounts.dev';
+        function toggleFaq(element) {
+            const faqItem = element.parentElement;
+            const wasActive = faqItem.classList.contains('active');
 
-        // API Configuration
-        const API_CONFIG = {
-            endpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod'
-        };
+            // Close all FAQ items
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
 
-        // Application State
-        let currentUser = null;
-        let currentOrganization = null;
-        let authToken = null;
-        let currentTab = 'expenses'; // Track current active tab
-        let appData = {
-            expenses: [],
-            projects: [],
-            contractors: [],
-            works: []
-        };
-    </script>
-
-    <!-- Clerk Authentication Module -->
-    <script src="clerk-auth.js"></script>
-
-    <!-- Main Application Script -->
-    <script>
-        // Initialize Clerk when page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Initialize Clerk
-                await ClerkAuth.initialize();
-
-                // Check authentication status
-                if (ClerkAuth.isAuthenticated()) {
-                    // User is authenticated
-                    await initializeApp();
-                } else {
-                    // Show Clerk sign-in
-                    showClerkAuth();
-                }
-            } catch (error) {
-                console.error('Failed to initialize Clerk:', error);
-                showError('Failed to initialize authentication system');
+            // Open clicked item if it wasn't active
+            if (!wasActive) {
+                faqItem.classList.add('active');
             }
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
         });
-
-        // Set up authentication callback
-        window.onUserAuthenticated = async (user) => {
-            console.log('User authenticated:', user);
-            currentUser = user;
-            await initializeApp();
-        };
-
-        window.onUserSignedOut = () => {
-            console.log('User signed out');
-            currentUser = null;
-            currentOrganization = null;
-            authToken = null;
-            showClerkAuth();
-        };
-
-        // Show Clerk Authentication
-        async function showClerkAuth() {
-            document.getElementById('clerkAuthContainer').style.display = 'flex';
-            document.getElementById('mainContent').style.display = 'none';
-
-            // Update loading message
-            const loadingDiv = document.querySelector('.clerk-loading');
-            loadingDiv.innerHTML = `
-                <h2>מערכת מעקב הוצאות בניה</h2>
-                <div style="margin: 30px 0;">
-                    <button class="btn-primary" onclick="ClerkAuth.showSignIn()" style="margin: 10px;">
-                        <i class="fas fa-sign-in-alt"></i> התחברות
-                    </button>
-                    <button class="btn-primary" onclick="ClerkAuth.showSignUp()" style="margin: 10px;">
-                        <i class="fas fa-user-plus"></i> הרשמה
-                    </button>
-                </div>
-                <p style="color: white; margin-top: 20px;">מערכת מאובטחת עם Clerk Authentication</p>
-            `;
-        }
-
-        // Initialize Application
-        async function initializeApp() {
-            try {
-                // Hide auth container
-                document.getElementById('clerkAuthContainer').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
-
-                // Get auth token
-                authToken = await ClerkAuth.getAuthToken();
-
-                // Get user info
-                currentUser = window.currentUser;
-                if (currentUser) {
-                    document.getElementById('userName').textContent = currentUser.name || currentUser.email;
-
-                    // Get organization info
-                    const orgs = await ClerkAuth.getUserOrganizations();
-                    if (orgs && orgs.length > 0) {
-                        currentOrganization = orgs[0];
-                        document.getElementById('companyName').textContent = currentOrganization.name;
-                    } else {
-                        document.getElementById('companyName').textContent = 'ללא חברה';
-                    }
-                }
-
-                // Load application data
-                await loadAppData();
-
-                // Show initial tab only if not already on a tab (initial load)
-                if (!currentTab) {
-                    console.log('[INIT] First load - showing expenses tab');
-                    showTab('expenses');
-                } else {
-                    console.log('[INIT] Re-authentication - staying on current tab:', currentTab);
-                    // Refresh the current tab to update data
-                    refreshCurrentTab();
-                }
-
-            } catch (error) {
-                console.error('Failed to initialize app:', error);
-                showError('Failed to initialize application');
-            }
-        }
-
-        // Load Application Data
-        async function loadAppData() {
-            try {
-                // Load all data in parallel
-                const [expensesResp, projectsResp, contractorsResp, worksResp] = await Promise.all([
-                    apiCall('/expenses'),
-                    apiCall('/projects'),
-                    apiCall('/contractors'),
-                    apiCall('/works')
-                ]);
-
-                appData.expenses = expensesResp.expenses || [];
-                appData.projects = projectsResp.projects || [];
-                appData.contractors = contractorsResp.contractors || [];
-                appData.works = worksResp.works || [];
-
-                updateDashboard();
-
-            } catch (error) {
-                console.error('Failed to load data:', error);
-                showError('Failed to load application data');
-            }
-        }
-
-        // API Call Helper with Clerk Authentication
-        async function apiCall(endpoint, method = 'GET', data = null) {
-            try {
-                // Ensure we have a valid token
-                const token = await ClerkAuth.ensureValidToken();
-
-                const response = await fetch(`${API_CONFIG.endpoint}${endpoint}`, {
-                    method,
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: data ? JSON.stringify(data) : null
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API call failed: ${response.statusText}`);
-                }
-
-                return await response.json();
-
-            } catch (error) {
-                console.error('API call error:', error);
-                throw error;
-            }
-        }
-
-        // Update Dashboard
-        function updateDashboard() {
-            // Calculate totals
-            const totalExpenses = appData.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
-            const activeProjects = appData.projects.length;
-            const totalContractors = appData.contractors.length;
-
-            // Calculate monthly expenses
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            const monthlyExpenses = appData.expenses
-                .filter(exp => {
-                    const date = new Date(exp.date);
-                    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-                })
-                .reduce((sum, exp) => sum + (exp.amount || 0), 0);
-
-            // Update UI
-            document.getElementById('totalExpenses').textContent = `₪${totalExpenses.toLocaleString('he-IL')}`;
-            document.getElementById('activeProjects').textContent = activeProjects;
-            document.getElementById('totalContractors').textContent = totalContractors;
-            document.getElementById('monthlyExpenses').textContent = `₪${monthlyExpenses.toLocaleString('he-IL')}`;
-        }
-
-        // Show Tab
-        function showTab(tabName) {
-            console.log('[TAB DEBUG] showTab called with:', tabName);
-            console.log('[TAB DEBUG] Current tab before change:', currentTab);
-
-            // Store current tab
-            currentTab = tabName;
-
-            // Update active tab
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            // Find and activate the button for this tab
-            const activeButton = Array.from(document.querySelectorAll('.tab-button')).find(btn =>
-                btn.textContent.includes(tabName) || btn.onclick?.toString().includes(`'${tabName}'`)
-            );
-            if (activeButton) {
-                activeButton.classList.add('active');
-                console.log('[TAB DEBUG] Activated button:', activeButton.textContent.trim());
-            } else {
-                console.warn('[TAB DEBUG] No button found for tab:', tabName);
-            }
-
-            // Load tab content
-            const tabContent = document.getElementById('tabContent');
-
-            try {
-                switch(tabName) {
-                    case 'expenses':
-                        showExpensesTab(tabContent);
-                        break;
-                    case 'projects':
-                        showProjectsTab(tabContent);
-                        break;
-                    case 'contractors':
-                        showContractorsTab(tabContent);
-                        break;
-                    case 'works':
-                        showWorksTab(tabContent);
-                        break;
-                    case 'reports':
-                        showReportsTab(tabContent);
-                        break;
-                    case 'billing':
-                        showBillingTab(tabContent);
-                        break;
-                    default:
-                        console.error('[TAB DEBUG] Unknown tab:', tabName);
-                }
-                console.log('[TAB DEBUG] Tab content loaded successfully for:', tabName);
-            } catch (error) {
-                console.error('[TAB DEBUG] Error loading tab content:', error);
-            }
-        }
-
-        // Refresh current tab (used after data updates)
-        function refreshCurrentTab() {
-            showTab(currentTab);
-        }
-
-        // Show Expenses Tab
-        function showExpensesTab(container) {
-            container.innerHTML = `
-                <h2>הוצאות</h2>
-                <button class="btn-primary" onclick="showAddExpenseForm()">
-                    <i class="fas fa-plus"></i> הוסף הוצאה
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>תאריך</th>
-                            <th>תיאור</th>
-                            <th>סכום</th>
-                            <th>עבודה</th>
-                            <th>פרויקט</th>
-                            <th>קבלן</th>
-                            <th>קבלה</th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${appData.expenses.map(expense => `
-                            <tr>
-                                <td>${new Date(expense.date).toLocaleDateString('he-IL')}</td>
-                                <td>${expense.description}</td>
-                                <td>₪${expense.amount.toLocaleString('he-IL')}</td>
-                                <td>${expense.workName || '-'}</td>
-                                <td>${expense.projectName || '-'}</td>
-                                <td>${expense.contractorName || '-'}</td>
-                                <td>
-                                    ${expense.receiptUrl ? `<a href="${expense.receiptUrl}" target="_blank" class="btn-secondary" style="display: inline-block; padding: 6px 12px; text-decoration: none;"><i class="fas fa-file-image"></i> צפה</a>` : '-'}
-                                </td>
-                                <td>
-                                    <button class="btn-edit" onclick="editExpense('${expense.expenseId}')">ערוך</button>
-                                    <button class="btn-delete" onclick="deleteExpense('${expense.expenseId}')">מחק</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        // Show Projects Tab
-        function showProjectsTab(container) {
-            container.innerHTML = `
-                <h2>פרויקטים</h2>
-                <button class="btn-primary" onclick="showAddProjectForm()">
-                    <i class="fas fa-plus"></i> הוסף פרויקט
-                </button>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-                    ${appData.projects.map(project => `
-                        <div class="card">
-                            <h3>${project.name}</h3>
-                            <p>${project.description || 'אין תיאור'}</p>
-                            <div style="margin-top: 10px;">
-                                <strong>תקציב:</strong> ₪${(project.budget || 0).toLocaleString('he-IL')}
-                            </div>
-                            <div style="margin-top: 10px;">
-                                <button class="btn-edit" onclick="editProject('${project.projectId}')">ערוך</button>
-                                <button class="btn-delete" onclick="deleteProject('${project.projectId}')">מחק</button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        // Delete Functions using Clerk Auth
-        async function deleteProject(projectId) {
-            if (!confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) {
-                return;
-            }
-
-            try {
-                await apiCall(`/projects/${projectId}`, 'DELETE');
-                showSuccess('הפרויקט נמחק בהצלחה');
-                await loadAppData();
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה במחיקת הפרויקט');
-            }
-        }
-
-        async function deleteExpense(expenseId) {
-            if (!confirm('האם אתה בטוח שברצונך למחוק הוצאה זו?')) {
-                return;
-            }
-
-            try {
-                await apiCall(`/expenses/${expenseId}`, 'DELETE');
-                showSuccess('ההוצאה נמחקה בהצלחה');
-                await loadAppData();
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה במחיקת ההוצאה');
-            }
-        }
-
-        // Show Contractors Tab
-        function showContractorsTab(container) {
-            container.innerHTML = `
-                <h2>קבלנים</h2>
-                <button class="btn-primary" onclick="showAddContractorForm()">
-                    <i class="fas fa-plus"></i> הוסף קבלן
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>שם</th>
-                            <th>טלפון</th>
-                            <th>התמחות</th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${appData.contractors.map(contractor => `
-                            <tr>
-                                <td>${contractor.name}</td>
-                                <td>${contractor.phone || '-'}</td>
-                                <td>${contractor.specialty || contractor.speciality || '-'}</td>
-                                <td>
-                                    <button class="btn-edit" onclick="editContractor('${contractor.contractorId}')">ערוך</button>
-                                    <button class="btn-delete" onclick="deleteContractor('${contractor.contractorId}')">מחק</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        async function deleteContractor(contractorId) {
-            if (!confirm('האם אתה בטוח שברצונך למחוק קבלן זה?')) {
-                return;
-            }
-
-            try {
-                await apiCall(`/contractors/${contractorId}`, 'DELETE');
-                showSuccess('הקבלן נמחק בהצלחה');
-                await loadAppData();
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה במחיקת הקבלן');
-            }
-        }
-
-        // Show Works Tab
-        function showWorksTab(container) {
-            container.innerHTML = `
-                <h2>עבודות</h2>
-                <button class="btn-primary" onclick="showAddWorkForm()">
-                    <i class="fas fa-plus"></i> הוסף עבודה
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>שם העבודה</th>
-                            <th>פרויקט</th>
-                            <th>קבלן</th>
-                            <th>תאריך התחלה</th>
-                            <th>סטטוס</th>
-                            <th>פעולות</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${appData.works.map(work => `
-                            <tr>
-                                <td>${work.workName || '-'}</td>
-                                <td>${work.projectName || '-'}</td>
-                                <td>${work.contractorName || '-'}</td>
-                                <td>${work.startDate ? new Date(work.startDate).toLocaleDateString('he-IL') : '-'}</td>
-                                <td>${work.status || 'planned'}</td>
-                                <td>
-                                    <button class="btn-edit" onclick="editWork('${work.workId}')">ערוך</button>
-                                    <button class="btn-delete" onclick="deleteWork('${work.workId}')">מחק</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        async function deleteWork(workId) {
-            if (!confirm('האם אתה בטוח שברצונך למחוק עבודה זו?')) {
-                return;
-            }
-
-            try {
-                await apiCall(`/works/${workId}`, 'DELETE');
-                showSuccess('העבודה נמחקה בהצלחה');
-                await loadAppData();
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה במחיקת העבודה');
-            }
-        }
-
-        // Show Reports Tab
-        function showReportsTab(container) {
-            container.innerHTML = `
-                <h2>דוחות וניתוחים</h2>
-
-                <!-- Key Metrics -->
-                <div class="dashboard-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon blue">
-                            <i class="fas fa-coins"></i>
-                        </div>
-                        <div class="metric-value" id="report-total-expenses">₪0</div>
-                        <div class="metric-label">סה"כ הוצאות</div>
-                        <div class="metric-change positive" id="report-expense-change"></div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon green">
-                            <i class="fas fa-project-diagram"></i>
-                        </div>
-                        <div class="metric-value" id="report-active-projects">0</div>
-                        <div class="metric-label">פרויקטים פעילים</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon purple">
-                            <i class="fas fa-calendar"></i>
-                        </div>
-                        <div class="metric-value" id="report-monthly-expenses">₪0</div>
-                        <div class="metric-label">הוצאות החודש</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon orange">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="metric-value" id="report-avg-expense">₪0</div>
-                        <div class="metric-label">ממוצע הוצאה</div>
-                    </div>
-                </div>
-
-                <!-- Charts Row -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <div class="chart-title">מגמת הוצאות (6 חודשים אחרונים)</div>
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="expenseTrendChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <div class="chart-title">התפלגות הוצאות לפי פרויקט</div>
-                        </div>
-                        <div class="chart-canvas">
-                            <canvas id="projectDistributionChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Report Categories -->
-                <h3 style="margin: 32px 0 16px 0;">דוחות מפורטים</h3>
-                <div class="reports-grid">
-                    <div class="report-card" onclick="showProjectBudgetReport()">
-                        <div class="report-icon">
-                            <i class="fas fa-chart-bar"></i>
-                        </div>
-                        <div class="report-title">תקציב פרויקטים</div>
-                        <div class="report-description">השוואת תקציב מול הוצאות בפועל לכל פרויקט</div>
-                    </div>
-                    <div class="report-card" onclick="showContractorReport()">
-                        <div class="report-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="report-title">ניתוח קבלנים</div>
-                        <div class="report-description">סיכום הוצאות לפי קבלן ופרטי ביצועים</div>
-                    </div>
-                    <div class="report-card" onclick="showMonthlyReport()">
-                        <div class="report-icon">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <div class="report-title">סיכום חודשי</div>
-                        <div class="report-description">דוח הוצאות חודשי עם השוואה לחודש הקודם</div>
-                    </div>
-                    <div class="report-card" onclick="showMissingReceiptsReport()">
-                        <div class="report-icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="report-title">קבלות חסרות</div>
-                        <div class="report-description">רשימת הוצאות ללא תמונת קבלה</div>
-                    </div>
-                </div>
-            `;
-
-            // Initialize dashboard data
-            initializeReportsDashboard();
-        }
-
-        // Show Billing Tab (Clerk Billing)
-        function showBillingTab(container) {
-            container.innerHTML = `
-                <h2>חיוב ומנוי</h2>
-                <div class="card">
-                    <h3>המנוי שלך</h3>
-                    <p>מערכת החיוב החדשה של Clerk תהיה זמינה בקרוב</p>
-                    <p>במקום Paddle, נשתמש במערכת החיוב המובנית של Clerk</p>
-                    <div style="margin-top: 20px;">
-                        <button class="btn-primary" onclick="alert('Clerk Billing - בקרוב!')">
-                            <i class="fas fa-credit-card"></i> נהל מנוי
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Sign Out
-        async function signOut() {
-            if (confirm('האם אתה בטוח שברצונך לצאת מהמערכת?')) {
-                await ClerkAuth.signOut();
-            }
-        }
-
-        // Message Functions
-        function showSuccess(message) {
-            showMessage(message, 'success');
-        }
-
-        // Modal Control Functions
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-                // Clear form inputs
-                const form = modal.querySelector('form');
-                if (form) form.reset();
-
-                // Reset editing states and modal titles
-                if (modalId === 'projectModal') {
-                    editingProjectId = null;
-                    document.querySelector('#projectModal h2').textContent = 'הוסף פרויקט חדש';
-                } else if (modalId === 'contractorModal') {
-                    editingContractorId = null;
-                    document.querySelector('#contractorModal h2').textContent = 'הוסף קבלן חדש';
-                } else if (modalId === 'workModal') {
-                    editingWorkId = null;
-                    document.querySelector('#workModal h2').textContent = 'הוסף עבודה חדשה';
-                } else if (modalId === 'expenseModal') {
-                    editingExpenseId = null;
-                    document.querySelector('#expenseModal h2').textContent = 'הוסף הוצאה חדשה';
-                    // Clear receipt preview
-                    const preview = document.getElementById('receiptPreview');
-                    if (preview) {
-                        preview.style.display = 'none';
-                        preview.innerHTML = '';
-                    }
-                }
-            }
-        }
-
-        // Form Display Functions - Open Modals
-        function showAddProjectForm() {
-            document.getElementById('projectModal').style.display = 'block';
-        }
-
-        function showAddContractorForm() {
-            document.getElementById('contractorModal').style.display = 'block';
-        }
-
-        async function showAddWorkForm() {
-            // Load projects and contractors for dropdowns
-            try {
-                const projects = await apiCall('/projects', 'GET');
-                const contractors = await apiCall('/contractors', 'GET');
-
-                if (!projects.projects || projects.projects.length === 0) {
-                    showError('אין פרויקטים. צור פרויקט תחילה.');
-                    return;
-                }
-                if (!contractors.contractors || contractors.contractors.length === 0) {
-                    showError('אין קבלנים. צור קבלן תחילה.');
-                    return;
-                }
-
-                // Populate project dropdown
-                const projectSelect = document.getElementById('workProjectId');
-                projectSelect.innerHTML = '<option value="">בחר פרויקט *</option>';
-                projects.projects.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.projectId;
-                    option.textContent = p.name;
-                    projectSelect.appendChild(option);
-                });
-
-                // Populate contractor dropdown
-                const contractorSelect = document.getElementById('workContractorId');
-                contractorSelect.innerHTML = '<option value="">בחר קבלן *</option>';
-                contractors.contractors.forEach(c => {
-                    const option = document.createElement('option');
-                    option.value = c.contractorId;
-                    option.textContent = c.name;
-                    contractorSelect.appendChild(option);
-                });
-
-                document.getElementById('workModal').style.display = 'block';
-            } catch (error) {
-                showError('שגיאה בטעינת נתונים: ' + error.message);
-            }
-        }
-
-        // Global variable to store works data for expense form
-        let expenseFormWorks = [];
-
-        async function showAddExpenseForm() {
-            // Load projects, contractors, and works for dropdowns
-            try {
-                const projects = await apiCall('/projects', 'GET');
-                const contractors = await apiCall('/contractors', 'GET');
-                const works = await apiCall('/works', 'GET');
-
-                // Store works data globally for onWorkSelected function
-                expenseFormWorks = works.works || [];
-
-                // Populate works dropdown
-                const workSelect = document.getElementById('expenseWorkId');
-                workSelect.innerHTML = '<option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>';
-                if (works.works) {
-                    works.works.forEach(w => {
-                        const option = document.createElement('option');
-                        option.value = w.workId;
-                        option.textContent = w.workName;
-                        workSelect.appendChild(option);
-                    });
-                }
-
-                // Populate project dropdown (optional)
-                const projectSelect = document.getElementById('expenseProjectId');
-                projectSelect.innerHTML = '<option value="">בחר פרויקט (אופציונלי)</option>';
-                if (projects.projects) {
-                    projects.projects.forEach(p => {
-                        const option = document.createElement('option');
-                        option.value = p.projectId;
-                        option.textContent = p.name;
-                        projectSelect.appendChild(option);
-                    });
-                }
-
-                // Populate contractor dropdown (optional)
-                const contractorSelect = document.getElementById('expenseContractorId');
-                contractorSelect.innerHTML = '<option value="">בחר קבלן (אופציונלי)</option>';
-                if (contractors.contractors) {
-                    contractors.contractors.forEach(c => {
-                        const option = document.createElement('option');
-                        option.value = c.contractorId;
-                        option.textContent = c.name;
-                        contractorSelect.appendChild(option);
-                    });
-                }
-
-                document.getElementById('expenseModal').style.display = 'block';
-            } catch (error) {
-                showError('שגיאה בטעינת נתונים: ' + error.message);
-            }
-        }
-
-        // Auto-fill project and contractor when work is selected
-        function onWorkSelected() {
-            const workId = document.getElementById('expenseWorkId').value;
-
-            if (!workId) {
-                // Clear selections if no work selected
-                document.getElementById('expenseProjectId').value = '';
-                document.getElementById('expenseContractorId').value = '';
-                return;
-            }
-
-            // Find the selected work
-            const selectedWork = expenseFormWorks.find(w => w.workId === workId);
-
-            if (selectedWork) {
-                // Auto-fill project and contractor
-                document.getElementById('expenseProjectId').value = selectedWork.projectId || '';
-                document.getElementById('expenseContractorId').value = selectedWork.contractorId || '';
-            }
-        }
-
-        // Form Submission Functions
-        async function submitProject(event) {
-            event.preventDefault();
-
-            try {
-                const project = {
-                    name: document.getElementById('projectName').value,
-                    description: document.getElementById('projectDescription').value || '',
-                    startDate: document.getElementById('projectStartDate').value,
-                    endDate: document.getElementById('projectEndDate').value || undefined,
-                    budget: parseFloat(document.getElementById('projectBudget').value) || 0,
-                    location: document.getElementById('projectLocation').value || '',
-                    clientName: document.getElementById('projectClient').value || ''
-                };
-
-                if (editingProjectId) {
-                    // Update existing project
-                    project.projectId = editingProjectId;
-                    await apiCall('/projects', 'PUT', project);
-                    showSuccess('פרויקט עודכן בהצלחה');
-                    editingProjectId = null;
-                } else {
-                    // Create new project
-                    await apiCall('/projects', 'POST', project);
-                    showSuccess('פרויקט נוסף בהצלחה');
-                }
-
-                closeModal('projectModal');
-                await loadAppData();
-                // Always stay on current tab after creating/updating
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה בעדכון פרויקט: ' + error.message);
-            }
-        }
-
-        async function submitContractor(event) {
-            event.preventDefault();
-
-            try {
-                const contractor = {
-                    name: document.getElementById('contractorName').value,
-                    phone: document.getElementById('contractorPhone').value || '',
-                    specialty: document.getElementById('contractorSpecialty').value || ''
-                };
-
-                if (editingContractorId) {
-                    // Update existing contractor
-                    contractor.contractorId = editingContractorId;
-                    await apiCall('/contractors', 'PUT', contractor);
-                    showSuccess('קבלן עודכן בהצלחה');
-                    editingContractorId = null;
-                } else {
-                    // Create new contractor
-                    await apiCall('/contractors', 'POST', contractor);
-                    showSuccess('קבלן נוסף בהצלחה');
-                }
-
-                closeModal('contractorModal');
-                await loadAppData();
-                // Always stay on current tab after creating/updating
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה בעדכון קבלן: ' + error.message);
-            }
-        }
-
-        async function submitWork(event) {
-            event.preventDefault();
-
-            try {
-                const work = {
-                    workName: document.getElementById('workName').value,
-                    projectId: document.getElementById('workProjectId').value,
-                    contractorId: document.getElementById('workContractorId').value,
-                    startDate: document.getElementById('workStartDate').value || null,
-                    totalWorkCost: parseFloat(document.getElementById('workCost').value) || 0,
-                    status: 'planned'
-                };
-
-                if (editingWorkId) {
-                    // Update existing work
-                    work.workId = editingWorkId;
-                    await apiCall('/works', 'PUT', work);
-                    showSuccess('עבודה עודכנה בהצלחה');
-                    editingWorkId = null;
-                } else {
-                    // Create new work
-                    await apiCall('/works', 'POST', work);
-                    showSuccess('עבודה נוספה בהצלחה');
-                }
-
-                closeModal('workModal');
-                await loadAppData();
-                // Always stay on current tab after creating/updating
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה בעדכון עבודה: ' + error.message);
-            }
-        }
-
-        async function submitExpense(event) {
-            event.preventDefault();
-
-            try {
-                let receiptUrl = '';
-
-                // If editing, get existing receipt URL
-                if (editingExpenseId) {
-                    const existingExpense = appData.expenses.find(e => e.expenseId === editingExpenseId);
-                    receiptUrl = existingExpense?.receiptUrl || '';
-                }
-
-                // Check if a new receipt file was selected
-                const fileInput = document.getElementById('expenseReceipt');
-                if (fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
-
-                    // Show uploading message
-                    const preview = document.getElementById('receiptPreview');
-                    preview.textContent = 'מעלה קבלה...';
-                    preview.style.display = 'block';
-
-                    // Get presigned URL from Lambda
-                    const uploadData = await apiCall('/upload-receipt', 'POST', {
-                        fileName: file.name,
-                        fileType: file.type
-                    });
-
-                    // Upload file to S3 using presigned URL
-                    const uploadResponse = await fetch(uploadData.data.uploadUrl, {
-                        method: 'PUT',
-                        body: file,
-                        headers: {
-                            'Content-Type': file.type
-                        }
-                    });
-
-                    if (!uploadResponse.ok) {
-                        throw new Error('Failed to upload receipt to S3');
-                    }
-
-                    receiptUrl = uploadData.data.receiptUrl;
-                    preview.textContent = '✓ קבלה הועלתה בהצלחה';
-                }
-
-                const expense = {
-                    description: document.getElementById('expenseDescription').value,
-                    amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
-                    date: document.getElementById('expenseDate').value,
-                    invoiceNum: document.getElementById('expenseInvoice').value || 'N/A',
-                    paymentMethod: document.getElementById('expensePayment').value || 'Cash',
-                    workId: document.getElementById('expenseWorkId').value || '',
-                    projectId: document.getElementById('expenseProjectId').value || '',
-                    contractorId: document.getElementById('expenseContractorId').value || '',
-                    receiptUrl: receiptUrl,
-                    category: 'General'
-                };
-
-                if (editingExpenseId) {
-                    // Update existing expense
-                    expense.expenseId = editingExpenseId;
-                    await apiCall('/expenses', 'PUT', expense);
-                    showSuccess('הוצאה עודכנה בהצלחה');
-                    editingExpenseId = null;
-                } else {
-                    // Create new expense
-                    await apiCall('/expenses', 'POST', expense);
-                    showSuccess('הוצאה נוספה בהצלחה');
-                }
-
-                closeModal('expenseModal');
-                await loadAppData();
-                // Always stay on current tab after creating/updating
-                refreshCurrentTab();
-            } catch (error) {
-                showError('שגיאה בעדכון הוצאה: ' + error.message);
-            }
-        }
-
-        // ===== EDIT FUNCTIONS =====
-
-        // Track if we're editing (stores entity ID being edited)
-        let editingProjectId = null;
-        let editingContractorId = null;
-        let editingWorkId = null;
-        let editingExpenseId = null;
-
-        function editProject(projectId) {
-            const project = appData.projects.find(p => p.projectId === projectId);
-            if (!project) {
-                showError('פרויקט לא נמצא');
-                return;
-            }
-
-            // Store that we're editing
-            editingProjectId = projectId;
-
-            // Populate form
-            document.getElementById('projectName').value = project.name || '';
-            document.getElementById('projectDescription').value = project.description || '';
-            document.getElementById('projectStartDate').value = project.startDate || '';
-            document.getElementById('projectEndDate').value = project.endDate || '';
-            document.getElementById('projectBudget').value = project.budget || '';
-            document.getElementById('projectLocation').value = project.location || '';
-            document.getElementById('projectClient').value = project.clientName || '';
-
-            // Change modal title
-            document.querySelector('#projectModal h2').textContent = 'ערוך פרויקט';
-
-            // Show modal
-            document.getElementById('projectModal').style.display = 'block';
-        }
-
-        function editContractor(contractorId) {
-            const contractor = appData.contractors.find(c => c.contractorId === contractorId);
-            if (!contractor) {
-                showError('קבלן לא נמצא');
-                return;
-            }
-
-            console.log('[EDIT CONTRACTOR] Full contractor object:', contractor);
-            console.log('[EDIT CONTRACTOR] contractor.specialty:', contractor.specialty);
-            console.log('[EDIT CONTRACTOR] contractor.speciality:', contractor.speciality);
-
-            // Store that we're editing
-            editingContractorId = contractorId;
-
-            // Populate form
-            document.getElementById('contractorName').value = contractor.name || '';
-            document.getElementById('contractorPhone').value = contractor.phone || '';
-            // Support both spellings for backwards compatibility
-            const specialtyValue = contractor.specialty || contractor.speciality || '';
-            console.log('[EDIT CONTRACTOR] Using specialty value:', specialtyValue);
-            document.getElementById('contractorSpecialty').value = specialtyValue;
-
-            // Change modal title
-            document.querySelector('#contractorModal h2').textContent = 'ערוך קבלן';
-
-            // Show modal
-            document.getElementById('contractorModal').style.display = 'block';
-        }
-
-        async function editWork(workId) {
-            console.log('[EDIT WORK] Starting edit for workId:', workId);
-            const work = appData.works.find(w => w.workId === workId);
-            if (!work) {
-                showError('עבודה לא נמצאה');
-                return;
-            }
-            console.log('[EDIT WORK] Found work:', work);
-
-            // Store that we're editing
-            editingWorkId = workId;
-
-            // Load projects and contractors for dropdowns
-            try {
-                console.log('[EDIT WORK] Loading projects and contractors...');
-                const projects = await apiCall('/projects', 'GET');
-                const contractors = await apiCall('/contractors', 'GET');
-                console.log('[EDIT WORK] Loaded projects:', projects.projects?.length, 'contractors:', contractors.contractors?.length);
-
-                // Populate project dropdown
-                const projectSelect = document.getElementById('workProjectId');
-                if (!projectSelect) {
-                    console.error('[EDIT WORK] ERROR: workProjectId element not found!');
-                    showError('שגיאה: שדה פרויקט לא נמצא');
-                    return;
-                }
-                projectSelect.innerHTML = '<option value="">בחר פרויקט *</option>';
-                if (projects.projects) {
-                    projects.projects.forEach(p => {
-                        const option = document.createElement('option');
-                        option.value = p.projectId;
-                        option.textContent = p.name;
-                        if (p.projectId === work.projectId) option.selected = true;
-                        projectSelect.appendChild(option);
-                    });
-                }
-                console.log('[EDIT WORK] Populated project dropdown, selected:', work.projectId);
-
-                // Populate contractor dropdown
-                const contractorSelect = document.getElementById('workContractorId');
-                if (!contractorSelect) {
-                    console.error('[EDIT WORK] ERROR: workContractorId element not found!');
-                    showError('שגיאה: שדה קבלן לא נמצא');
-                    return;
-                }
-                contractorSelect.innerHTML = '<option value="">בחר קבלן *</option>';
-                if (contractors.contractors) {
-                    contractors.contractors.forEach(c => {
-                        const option = document.createElement('option');
-                        option.value = c.contractorId;
-                        option.textContent = c.name;
-                        if (c.contractorId === work.contractorId) option.selected = true;
-                        contractorSelect.appendChild(option);
-                    });
-                }
-                console.log('[EDIT WORK] Populated contractor dropdown, selected:', work.contractorId);
-
-                // Populate form fields
-                const workNameField = document.getElementById('workName');
-                const workStartDateField = document.getElementById('workStartDate');
-                const workCostField = document.getElementById('workCost');
-
-                if (!workNameField || !workStartDateField || !workCostField) {
-                    console.error('[EDIT WORK] ERROR: Missing form fields!', {
-                        workName: !!workNameField,
-                        workStartDate: !!workStartDateField,
-                        workCost: !!workCostField
-                    });
-                    showError('שגיאה: שדות טופס חסרים');
-                    return;
-                }
-
-                workNameField.value = work.workName || '';
-                workStartDateField.value = work.startDate || '';
-                workCostField.value = work.totalWorkCost || '';
-                console.log('[EDIT WORK] Populated form fields');
-
-                // Change modal title
-                document.querySelector('#workModal h2').textContent = 'ערוך עבודה';
-
-                // Show modal
-                document.getElementById('workModal').style.display = 'block';
-                console.log('[EDIT WORK] Modal displayed');
-
-            } catch (error) {
-                console.error('[EDIT WORK] ERROR:', error);
-                showError('שגיאה בטעינת נתונים: ' + error.message);
-            }
-        }
-
-        async function editExpense(expenseId) {
-            const expense = appData.expenses.find(e => e.expenseId === expenseId);
-            if (!expense) {
-                showError('הוצאה לא נמצאה');
-                return;
-            }
-
-            // Store that we're editing
-            editingExpenseId = expenseId;
-
-            // Load projects, contractors, and works for dropdowns
-            try {
-                const projects = await apiCall('/projects', 'GET');
-                const contractors = await apiCall('/contractors', 'GET');
-                const works = await apiCall('/works', 'GET');
-
-                // Store works data globally for onWorkSelected function
-                expenseFormWorks = works.works || [];
-
-                // Populate works dropdown
-                const workSelect = document.getElementById('expenseWorkId');
-                workSelect.innerHTML = '<option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>';
-                if (works.works) {
-                    works.works.forEach(w => {
-                        const option = document.createElement('option');
-                        option.value = w.workId;
-                        option.textContent = w.workName;
-                        if (w.workId === expense.workId) option.selected = true;
-                        workSelect.appendChild(option);
-                    });
-                }
-
-                // Populate project dropdown
-                const projectSelect = document.getElementById('expenseProjectId');
-                projectSelect.innerHTML = '<option value="">בחר פרויקט *</option>';
-                if (projects.projects) {
-                    projects.projects.forEach(p => {
-                        const option = document.createElement('option');
-                        option.value = p.projectId;
-                        option.textContent = p.name;
-                        if (p.projectId === expense.projectId) option.selected = true;
-                        projectSelect.appendChild(option);
-                    });
-                }
-
-                // Populate contractor dropdown
-                const contractorSelect = document.getElementById('expenseContractorId');
-                contractorSelect.innerHTML = '<option value="">בחר קבלן *</option>';
-                if (contractors.contractors) {
-                    contractors.contractors.forEach(c => {
-                        const option = document.createElement('option');
-                        option.value = c.contractorId;
-                        option.textContent = c.name;
-                        if (c.contractorId === expense.contractorId) option.selected = true;
-                        contractorSelect.appendChild(option);
-                    });
-                }
-
-                // Populate form fields
-                document.getElementById('expenseDescription').value = expense.description || '';
-                document.getElementById('expenseAmount').value = expense.amount || '';
-                document.getElementById('expenseDate').value = expense.date || '';
-                document.getElementById('expenseInvoice').value = expense.invoiceNum || '';
-                document.getElementById('expensePayment').value = expense.paymentMethod || 'Cash';
-
-                // Note: File input cannot be pre-populated for security reasons
-                // Show existing receipt if available
-                if (expense.receiptUrl) {
-                    const preview = document.getElementById('receiptPreview');
-                    preview.innerHTML = `<a href="${expense.receiptUrl}" target="_blank">קבלה קיימת</a>`;
-                    preview.style.display = 'block';
-                }
-
-                // Change modal title
-                document.querySelector('#expenseModal h2').textContent = 'ערוך הוצאה';
-
-                // Show modal
-                document.getElementById('expenseModal').style.display = 'block';
-
-            } catch (error) {
-                showError('שגיאה בטעינת נתונים: ' + error.message);
-            }
-        }
-
-        function showError(message) {
-            showMessage(message, 'error');
-        }
-
-        function showMessage(message, type) {
-            const messageArea = document.getElementById('messageArea');
-            messageArea.className = `message ${type}`;
-            messageArea.textContent = message;
-            messageArea.style.display = 'block';
-
-            setTimeout(() => {
-                messageArea.style.display = 'none';
-            }, 5000);
-        }
-
-        // ===== REPORTS AND ANALYTICS FUNCTIONS =====
-
-        let expenseTrendChartInstance = null;
-        let projectDistributionChartInstance = null;
-
-        function initializeReportsDashboard() {
-            // Calculate key metrics
-            const totalExpenses = appData.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
-            const activeProjects = appData.projects.length;
-
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            const monthlyExpenses = appData.expenses
-                .filter(exp => {
-                    const date = new Date(exp.date);
-                    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-                })
-                .reduce((sum, exp) => sum + (exp.amount || 0), 0);
-
-            const avgExpense = appData.expenses.length > 0 ? totalExpenses / appData.expenses.length : 0;
-
-            // Calculate previous month for comparison
-            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-            const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-            const lastMonthExpenses = appData.expenses
-                .filter(exp => {
-                    const date = new Date(exp.date);
-                    return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
-                })
-                .reduce((sum, exp) => sum + (exp.amount || 0), 0);
-
-            const change = lastMonthExpenses > 0
-                ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1)
-                : 0;
-
-            // Update UI
-            document.getElementById('report-total-expenses').textContent = `₪${totalExpenses.toLocaleString('he-IL')}`;
-            document.getElementById('report-active-projects').textContent = activeProjects;
-            document.getElementById('report-monthly-expenses').textContent = `₪${monthlyExpenses.toLocaleString('he-IL')}`;
-            document.getElementById('report-avg-expense').textContent = `₪${Math.round(avgExpense).toLocaleString('he-IL')}`;
-
-            const changeEl = document.getElementById('report-expense-change');
-            if (change > 0) {
-                changeEl.textContent = `↑ ${change}% מהחודש הקודם`;
-                changeEl.className = 'metric-change negative';
-            } else if (change < 0) {
-                changeEl.textContent = `↓ ${Math.abs(change)}% מהחודש הקודם`;
-                changeEl.className = 'metric-change positive';
-            } else {
-                changeEl.textContent = 'ללא שינוי';
-                changeEl.className = 'metric-change';
-            }
-
-            // Initialize charts
-            createExpenseTrendChart();
-            createProjectDistributionChart();
-        }
-
-        function createExpenseTrendChart() {
-            const canvas = document.getElementById('expenseTrendChart');
-            if (!canvas) return;
-
-            // Destroy existing chart
-            if (expenseTrendChartInstance) {
-                expenseTrendChartInstance.destroy();
-            }
-
-            // Get last 6 months data
-            const monthsData = [];
-            const today = new Date();
-
-            for (let i = 5; i >= 0; i--) {
-                const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                const monthExpenses = appData.expenses
-                    .filter(exp => {
-                        const expDate = new Date(exp.date);
-                        return expDate.getMonth() === month.getMonth() &&
-                               expDate.getFullYear() === month.getFullYear();
-                    })
-                    .reduce((sum, exp) => sum + (exp.amount || 0), 0);
-
-                monthsData.push({
-                    label: month.toLocaleDateString('he-IL', { month: 'short', year: 'numeric' }),
-                    value: monthExpenses
-                });
-            }
-
-            const ctx = canvas.getContext('2d');
-            expenseTrendChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: monthsData.map(d => d.label),
-                    datasets: [{
-                        label: 'הוצאות',
-                        data: monthsData.map(d => d.value),
-                        borderColor: '#3182ce',
-                        backgroundColor: 'rgba(49, 130, 206, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '₪' + value.toLocaleString('he-IL');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createProjectDistributionChart() {
-            const canvas = document.getElementById('projectDistributionChart');
-            if (!canvas) return;
-
-            // Destroy existing chart
-            if (projectDistributionChartInstance) {
-                projectDistributionChartInstance.destroy();
-            }
-
-            // Calculate expenses per project
-            const projectExpenses = {};
-            appData.expenses.forEach(exp => {
-                const projectName = exp.projectName || 'ללא פרויקט';
-                projectExpenses[projectName] = (projectExpenses[projectName] || 0) + exp.amount;
-            });
-
-            // Sort and get top 5
-            const sorted = Object.entries(projectExpenses)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-
-            const colors = ['#3182ce', '#10b981', '#f97316', '#9333ea', '#ef4444'];
-
-            const ctx = canvas.getContext('2d');
-            projectDistributionChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: sorted.map(d => d[0]),
-                    datasets: [{
-                        data: sorted.map(d => d[1]),
-                        backgroundColor: colors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-
-        function showProjectBudgetReport() {
-            const container = document.getElementById('tabContent');
-
-            // Calculate budget vs actual for each project
-            const projectData = appData.projects.map(project => {
-                const spent = appData.expenses
-                    .filter(exp => exp.projectId === project.projectId)
-                    .reduce((sum, exp) => sum + exp.amount, 0);
-
-                const budget = project.budget || 0;
-                const remaining = budget - spent;
-                const percentage = budget > 0 ? (spent / budget * 100).toFixed(1) : 0;
-
-                let status = 'success';
-                if (percentage > 100) status = 'danger';
-                else if (percentage > 80) status = 'warning';
-
-                return {
-                    name: project.name,
-                    budget,
-                    spent,
-                    remaining,
-                    percentage,
-                    status
-                };
-            });
-
-            container.innerHTML = `
-                <h2>דוח תקציב פרויקטים</h2>
-                <button class="btn-primary" onclick="showTab('reports')" style="margin-bottom: 20px;">
-                    <i class="fas fa-arrow-right"></i> חזרה לדוחות
-                </button>
-
-                <table class="budget-table">
-                    <thead>
-                        <tr>
-                            <th>פרויקט</th>
-                            <th>תקציב</th>
-                            <th>בוצע</th>
-                            <th>נותר</th>
-                            <th>% ביצוע</th>
-                            <th>סטטוס</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${projectData.map(p => `
-                            <tr>
-                                <td><strong>${p.name}</strong></td>
-                                <td>₪${p.budget.toLocaleString('he-IL')}</td>
-                                <td>₪${p.spent.toLocaleString('he-IL')}</td>
-                                <td>₪${p.remaining.toLocaleString('he-IL')}</td>
-                                <td>
-                                    <div>${p.percentage}%</div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill ${p.status}" style="width: ${Math.min(p.percentage, 100)}%"></div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="alert-badge ${p.status}">
-                                        ${p.status === 'success' ? 'תקין' : p.status === 'warning' ? 'התראה' : 'חריגה'}
-                                    </span>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function showContractorReport() {
-            const container = document.getElementById('tabContent');
-
-            // Calculate data per contractor
-            const contractorData = appData.contractors.map(contractor => {
-                const expenses = appData.expenses.filter(exp => exp.contractorId === contractor.contractorId);
-                const totalPaid = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-                const transactionCount = expenses.length;
-                const avgTransaction = transactionCount > 0 ? totalPaid / transactionCount : 0;
-
-                return {
-                    name: contractor.name,
-                    specialty: contractor.speciality || '-',
-                    totalPaid,
-                    transactionCount,
-                    avgTransaction
-                };
-            }).sort((a, b) => b.totalPaid - a.totalPaid);
-
-            container.innerHTML = `
-                <h2>דוח ניתוח קבלנים</h2>
-                <button class="btn-primary" onclick="showTab('reports')" style="margin-bottom: 20px;">
-                    <i class="fas fa-arrow-right"></i> חזרה לדוחות
-                </button>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>קבלן</th>
-                            <th>התמחות</th>
-                            <th>סה"כ שולם</th>
-                            <th>מס' עסקאות</th>
-                            <th>ממוצע לעסקה</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${contractorData.map(c => `
-                            <tr>
-                                <td><strong>${c.name}</strong></td>
-                                <td>${c.specialty}</td>
-                                <td>₪${c.totalPaid.toLocaleString('he-IL')}</td>
-                                <td>${c.transactionCount}</td>
-                                <td>₪${Math.round(c.avgTransaction).toLocaleString('he-IL')}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function showMonthlyReport() {
-            const container = document.getElementById('tabContent');
-
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth();
-            const currentYear = currentDate.getFullYear();
-
-            const currentMonthExpenses = appData.expenses.filter(exp => {
-                const date = new Date(exp.date);
-                return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-            });
-
-            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-            const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-            const lastMonthExpenses = appData.expenses.filter(exp => {
-                const date = new Date(exp.date);
-                return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
-            });
-
-            const currentTotal = currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-            const lastTotal = lastMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-            const change = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal * 100).toFixed(1) : 0;
-
-            container.innerHTML = `
-                <h2>סיכום חודשי - ${currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}</h2>
-                <button class="btn-primary" onclick="showTab('reports')" style="margin-bottom: 20px;">
-                    <i class="fas fa-arrow-right"></i> חזרה לדוחות
-                </button>
-
-                <div class="dashboard-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon blue">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
-                        <div class="metric-value">₪${currentTotal.toLocaleString('he-IL')}</div>
-                        <div class="metric-label">החודש הנוכחי</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon purple">
-                            <i class="fas fa-calendar"></i>
-                        </div>
-                        <div class="metric-value">₪${lastTotal.toLocaleString('he-IL')}</div>
-                        <div class="metric-label">החודש הקודם</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon ${change > 0 ? 'orange' : 'green'}">
-                            <i class="fas fa-${change > 0 ? 'arrow-up' : 'arrow-down'}"></i>
-                        </div>
-                        <div class="metric-value">${Math.abs(change)}%</div>
-                        <div class="metric-label">${change > 0 ? 'עלייה' : 'ירידה'}</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon green">
-                            <i class="fas fa-receipt"></i>
-                        </div>
-                        <div class="metric-value">${currentMonthExpenses.length}</div>
-                        <div class="metric-label">הוצאות החודש</div>
-                    </div>
-                </div>
-
-                <h3 style="margin-top: 32px;">הוצאות החודש</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>תאריך</th>
-                            <th>תיאור</th>
-                            <th>סכום</th>
-                            <th>פרויקט</th>
-                            <th>קבלן</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${currentMonthExpenses.map(exp => `
-                            <tr>
-                                <td>${new Date(exp.date).toLocaleDateString('he-IL')}</td>
-                                <td>${exp.description}</td>
-                                <td>₪${exp.amount.toLocaleString('he-IL')}</td>
-                                <td>${exp.projectName || '-'}</td>
-                                <td>${exp.contractorName || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function showMissingReceiptsReport() {
-            const container = document.getElementById('tabContent');
-
-            const missingReceipts = appData.expenses.filter(exp => !exp.receiptUrl || exp.receiptUrl === '');
-            const total = missingReceipts.reduce((sum, exp) => sum + exp.amount, 0);
-
-            container.innerHTML = `
-                <h2>דוח קבלות חסרות</h2>
-                <button class="btn-primary" onclick="showTab('reports')" style="margin-bottom: 20px;">
-                    <i class="fas fa-arrow-right"></i> חזרה לדוחות
-                </button>
-
-                <div class="chart-container" style="margin-bottom: 24px;">
-                    <h3>סיכום</h3>
-                    <p><strong>${missingReceipts.length}</strong> הוצאות ללא קבלה</p>
-                    <p>סך הכל: <strong>₪${total.toLocaleString('he-IL')}</strong></p>
-                </div>
-
-                ${missingReceipts.length > 0 ? `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>תאריך</th>
-                                <th>תיאור</th>
-                                <th>סכום</th>
-                                <th>פרויקט</th>
-                                <th>קבלן</th>
-                                <th>פעולות</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${missingReceipts.map(exp => `
-                                <tr>
-                                    <td>${new Date(exp.date).toLocaleDateString('he-IL')}</td>
-                                    <td>${exp.description}</td>
-                                    <td>₪${exp.amount.toLocaleString('he-IL')}</td>
-                                    <td>${exp.projectName || '-'}</td>
-                                    <td>${exp.contractorName || '-'}</td>
-                                    <td>
-                                        <button class="btn-edit" onclick="editExpense('${exp.expenseId}')">העלה קבלה</button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                ` : '<p style="text-align: center; padding: 40px; color: #10b981;"><i class="fas fa-check-circle"></i> כל ההוצאות כוללות קבלות!</p>'}
-            `;
-        }
     </script>
 </body>
 </html>
