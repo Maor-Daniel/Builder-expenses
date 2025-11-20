@@ -12,6 +12,12 @@ const {
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
 
+const {
+  checkExpenseLimit,
+  incrementExpenseCounter,
+  decrementExpenseCounter
+} = require('./shared/limit-checker');
+
 exports.handler = async (event) => {
 
   // Handle CORS preflight
@@ -53,11 +59,52 @@ async function getExpenses(companyId, userId) {
 
   const result = await dynamoOperation('query', params);
 
-  // Filter out deprecated fields (signature and paymentTerms)
+  // Fetch projects, contractors, and works to get names
+  const [projectsResult, contractorsResult, worksResult] = await Promise.all([
+    dynamoOperation('query', {
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      KeyConditionExpression: 'companyId = :companyId',
+      ExpressionAttributeValues: { ':companyId': companyId }
+    }),
+    dynamoOperation('query', {
+      TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+      KeyConditionExpression: 'companyId = :companyId',
+      ExpressionAttributeValues: { ':companyId': companyId }
+    }),
+    dynamoOperation('query', {
+      TableName: COMPANY_TABLE_NAMES.WORKS,
+      KeyConditionExpression: 'companyId = :companyId',
+      ExpressionAttributeValues: { ':companyId': companyId }
+    })
+  ]);
+
+  // Create lookup maps
+  const projectsMap = {};
+  (projectsResult.Items || []).forEach(p => {
+    projectsMap[p.projectId] = p.name;
+  });
+
+  const contractorsMap = {};
+  (contractorsResult.Items || []).forEach(c => {
+    contractorsMap[c.contractorId] = c.name;
+  });
+
+  const worksMap = {};
+  (worksResult.Items || []).forEach(w => {
+    worksMap[w.workId] = w.name;
+  });
+
+  // Filter out deprecated fields and add names
   const cleanedExpenses = (result.Items || []).map(expense => {
     const cleaned = { ...expense };
     delete cleaned.contractorSignature;
     delete cleaned.paymentTerms;
+
+    // Add names from lookup maps
+    cleaned.projectName = projectsMap[expense.projectId] || '';
+    cleaned.contractorName = contractorsMap[expense.contractorId] || '';
+    cleaned.workName = worksMap[expense.workId] || '';
+
     return cleaned;
   });
 
@@ -71,12 +118,26 @@ async function getExpenses(companyId, userId) {
 
 // Create a new expense
 async function createExpense(event, companyId, userId) {
+  // Check if company can create new expense (tier limit check)
+  const limitCheck = await checkExpenseLimit(companyId);
+
+  if (!limitCheck.allowed) {
+    return createErrorResponse(403, limitCheck.message, {
+      reason: limitCheck.reason,
+      currentUsage: limitCheck.currentUsage,
+      limit: limitCheck.limit,
+      suggestedTier: limitCheck.suggestedTier,
+      upgradeUrl: limitCheck.upgradeUrl
+    });
+  }
+
   const requestBody = JSON.parse(event.body || '{}');
 
   const expense = {
     companyId,
     expenseId: generateExpenseId(),
     userId, // User who created the expense
+    workId: requestBody.workId || '',
     projectId: requestBody.projectId,
     contractorId: requestBody.contractorId,
     invoiceNum: requestBody.invoiceNum,
@@ -84,6 +145,7 @@ async function createExpense(event, companyId, userId) {
     paymentMethod: requestBody.paymentMethod,
     date: requestBody.date,
     description: requestBody.description || '',
+    receiptUrl: requestBody.receiptUrl || '', // URL to uploaded receipt image
     status: requestBody.status || 'pending',
     createdAt: getCurrentTimestamp(),
     updatedAt: getCurrentTimestamp()
@@ -110,6 +172,8 @@ async function createExpense(event, companyId, userId) {
 
   await dynamoOperation('put', params);
 
+  // Increment expense counter for tier tracking
+  await incrementExpenseCounter(companyId);
 
   // Clean deprecated fields before returning
   const cleaned = { ...expense };
@@ -200,6 +264,8 @@ async function deleteExpense(event, companyId, userId) {
 
   const result = await dynamoOperation('delete', params);
 
+  // Decrement expense counter for tier tracking
+  await decrementExpenseCounter(companyId);
 
   // Clean deprecated fields before returning
   const cleaned = { ...result.Attributes };

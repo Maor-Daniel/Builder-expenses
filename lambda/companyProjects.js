@@ -12,6 +12,12 @@ const {
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
 
+const {
+  checkProjectLimit,
+  incrementProjectCounter,
+  decrementProjectCounter
+} = require('./shared/limit-checker');
+
 exports.handler = async (event) => {
 
   // Handle CORS preflight
@@ -63,6 +69,19 @@ async function getProjects(companyId, userId) {
 
 // Create a new project
 async function createProject(event, companyId, userId) {
+  // Check if company can create new project (tier limit check)
+  const limitCheck = await checkProjectLimit(companyId);
+
+  if (!limitCheck.allowed) {
+    return createErrorResponse(403, limitCheck.message, {
+      reason: limitCheck.reason,
+      currentUsage: limitCheck.currentUsage,
+      limit: limitCheck.limit,
+      suggestedTier: limitCheck.suggestedTier,
+      upgradeUrl: limitCheck.upgradeUrl
+    });
+  }
+
   const requestBody = JSON.parse(event.body || '{}');
 
   const project = {
@@ -107,8 +126,10 @@ async function createProject(event, companyId, userId) {
   };
 
   await dynamoOperation('put', params);
-  
-  
+
+  // Increment project counter for tier tracking
+  await incrementProjectCounter(companyId);
+
   return createResponse(201, {
     success: true,
     message: 'Project created successfully',
@@ -193,8 +214,10 @@ async function deleteProject(event, companyId, userId) {
   };
 
   const result = await dynamoOperation('delete', params);
-  
-  
+
+  // Decrement project counter for tier tracking
+  await decrementProjectCounter(companyId);
+
   return createResponse(200, {
     success: true,
     message: 'Project deleted successfully',

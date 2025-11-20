@@ -11,6 +11,10 @@ const {
   cognito
 } = require('./shared/company-utils');
 
+const {
+  incrementUserCounter
+} = require('./shared/limit-checker');
+
 async function validateInvitationToken(token) {
   const scanResult = await dynamoOperation('scan', {
     TableName: COMPANY_TABLE_NAMES.INVITATIONS,
@@ -164,6 +168,9 @@ exports.handler = async (event) => {
         Item: companyUser,
         ConditionExpression: 'attribute_not_exists(userId)'
       });
+
+      // Increment user counter for tier tracking
+      await incrementUserCounter(invitation.companyId);
 
       await dynamoOperation('update', {
         TableName: COMPANY_TABLE_NAMES.INVITATIONS,

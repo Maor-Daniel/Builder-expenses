@@ -471,14 +471,29 @@ async function validateInvitationToken(token) {
 async function createCompanyWithAdmin(companyData, adminData) {
   const companyId = generateCompanyId();
   const timestamp = getCurrentTimestamp();
-  
-  // Create company record
+  const now = new Date();
+  const trialEndDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days from now
+
+  // Create company record with subscription fields
   const company = {
     companyId,
     name: companyData.name,
     description: companyData.description || '',
     industry: companyData.industry || '',
     adminUserId: adminData.userId,
+
+    // Subscription fields
+    subscriptionTier: 'trial',
+    subscriptionStatus: 'trial',
+    trialStartDate: timestamp,
+    trialEndDate: trialEndDate.toISOString(),
+
+    // Usage counters
+    currentUsers: 1, // Admin user
+    currentProjects: 0,
+    currentMonthExpenses: 0,
+    expenseCounterResetDate: timestamp,
+
     createdAt: timestamp,
     updatedAt: timestamp
   };

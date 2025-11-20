@@ -18,6 +18,10 @@ const {
   INVITATION_STATUS
 } = require('./shared/company-utils');
 
+const {
+  checkUserLimit
+} = require('./shared/limit-checker');
+
 const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
 
 exports.handler = async (event) => {
@@ -37,6 +41,19 @@ exports.handler = async (event) => {
     
     // Validate user is admin (only admins can send invitations)
     await validateCompanyUser(companyId, userId, USER_ROLES.ADMIN);
+
+    // Check if company can add new user (tier limit check)
+    const limitCheck = await checkUserLimit(companyId);
+
+    if (!limitCheck.allowed) {
+      return createErrorResponse(403, limitCheck.message, {
+        reason: limitCheck.reason,
+        currentUsage: limitCheck.currentUsage,
+        limit: limitCheck.limit,
+        suggestedTier: limitCheck.suggestedTier,
+        upgradeUrl: limitCheck.upgradeUrl
+      });
+    }
 
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
