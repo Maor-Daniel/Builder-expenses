@@ -12,6 +12,10 @@ const {
   USER_ROLES
 } = require('./shared/company-utils');
 
+const {
+  decrementUserCounter
+} = require('./shared/limit-checker');
+
 const AWS = require('aws-sdk');
 const cognito = new AWS.CognitoIdentityServiceProvider();
 
@@ -190,6 +194,9 @@ exports.handler = async (event) => {
         }
       });
 
+      // Decrement user counter for tier tracking
+      await decrementUserCounter(companyId);
+
       // Optionally delete Cognito user (commented out for safety)
       // await cognito.adminDeleteUser({
       //   UserPoolId: process.env.USER_POOL_ID,
@@ -228,6 +235,9 @@ exports.handler = async (event) => {
         },
         ReturnValues: 'ALL_NEW'
       });
+
+      // Decrement user counter for tier tracking
+      await decrementUserCounter(companyId);
 
       // Disable user in Cognito (they can't login anymore)
       try {
