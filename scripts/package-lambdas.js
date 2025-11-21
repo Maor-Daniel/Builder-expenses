@@ -21,19 +21,29 @@ function log(message, color = 'reset') {
 }
 
 const LAMBDA_FUNCTIONS = [
+  // Authentication
+  'clerk-authorizer',  // Clerk JWT authorizer for API Gateway
+  // Expenses
   'getExpenses',
   'addExpense',
   'updateExpense',
   'deleteExpense',
+  // Projects
   'getProjects',
   'addProject',
   'deleteProject',
+  'deleteProjectClerk',  // Clerk version
+  // Contractors
   'getContractors',
   'addContractor',
   'deleteContractor',
+  'deleteContractorClerk',  // Clerk version
+  // Works
   'getWorks',
   'addWork',
   'deleteWork',
+  'deleteWorkClerk',  // Clerk version
+  // Billing
   'subscriptionManager',
   'paddleWebhook',
   // User Management Functions
@@ -46,9 +56,13 @@ const LAMBDA_FUNCTIONS = [
   'acceptInvitation',
   'resendInvitation',
   'cancelInvitation',
+  // Company Management
   'getCompany',
+  'getCompanyUsage',
   'updateCompany',
   'uploadCompanyLogo',
+  'uploadReceipt',
+  'registerCompany',
   // Company expense management
   'companyExpenses',
   'companyProjects',
@@ -102,26 +116,17 @@ function createZipFile(functionName) {
     }
 
     // Add node_modules (production dependencies)
-    const nodeModulesPath = path.join(__dirname, '..', 'node_modules');
+    const lambdaNodeModulesPath = path.join(__dirname, '..', 'lambda', 'node_modules');
+    const rootNodeModulesPath = path.join(__dirname, '..', 'node_modules');
+
+    // Try lambda/node_modules first (where we installed @clerk/backend)
+    const nodeModulesPath = fs.existsSync(lambdaNodeModulesPath) ? lambdaNodeModulesPath : rootNodeModulesPath;
+
     if (fs.existsSync(nodeModulesPath)) {
-      // Include all AWS SDK dependencies
-      const dependencies = [
-        'aws-sdk',
-        'jmespath',
-        'uuid',
-        'xml2js',
-        'sax',
-        'xmlbuilder',
-        'dotenv'
-      ];
-      
-      dependencies.forEach(dep => {
-        const depPath = path.join(nodeModulesPath, dep);
-        if (fs.existsSync(depPath)) {
-          log(`📦 Including dependency: ${dep}`, 'cyan');
-          archive.directory(depPath, `node_modules/${dep}`);
-        }
-      });
+      // Include ALL node_modules (production dependencies only)
+      // This ensures all transitive dependencies are included
+      log(`📦 Including all production dependencies from node_modules`, 'cyan');
+      archive.directory(nodeModulesPath, 'node_modules');
     }
 
     archive.finalize();
