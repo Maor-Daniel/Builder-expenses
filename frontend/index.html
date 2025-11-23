@@ -75,25 +75,31 @@
         }
 
         .btn-primary {
-            background: #34495e;
+            background: #f39c12;
             color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         .btn-primary:hover {
-            background: #2c3e50;
+            background: #e67e22;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 73, 94, 0.3);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.5);
         }
 
         .btn-secondary {
-            background: transparent;
-            color: #34495e;
-            border: 2px solid #34495e;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid white;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
         }
 
         .btn-secondary:hover {
-            background: #34495e;
+            background: rgba(255, 255, 255, 0.25);
             color: white;
+            border-color: white;
+            transform: translateY(-2px);
         }
 
         /* Hero Section */
@@ -496,7 +502,7 @@
                 <a href="#how-it-works">איך זה עובד</a>
                 <a href="#pricing">תמחור</a>
                 <a href="#faq">שאלות נפוצות</a>
-                <a href="app.html" class="btn btn-primary">התחבר</a>
+                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחבר</button>
             </nav>
         </div>
     </header>
@@ -507,7 +513,7 @@
             <h1>נהל את הוצאות הבניה שלך בקלות ובמקצועיות</h1>
             <p>מערכת מתקדמת למעקב אחר כל הוצאה, פרויקט וקבלן. חסוך זמן, שמור על תקציב ושלוט במלוא המידע.</p>
             <div class="hero-buttons">
-                <a href="app.html" class="btn btn-primary btn-large">התחל עכשיו בחינם</a>
+                <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל עכשיו בחינם</button>
                 <a href="#how-it-works" class="btn btn-secondary btn-large">גלה איך זה עובד</a>
             </div>
         </div>
@@ -617,7 +623,7 @@
                     <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
                     <li><i class="fas fa-check"></i> תמיכה בסיסית</li>
                 </ul>
-                <a href="app.html" class="btn btn-secondary">התחל ניסיון חינם</a>
+                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
             </div>
 
             <div class="pricing-card featured">
@@ -636,7 +642,7 @@
                     <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
                     <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
                 </ul>
-                <a href="app.html" class="btn btn-primary">התחל ניסיון חינם</a>
+                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחל ניסיון חינם</button>
             </div>
 
             <div class="pricing-card">
@@ -655,7 +661,7 @@
                     <li><i class="fas fa-check"></i> גיבויים אוטומטיים</li>
                     <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
                 </ul>
-                <a href="app.html" class="btn btn-secondary">התחל ניסיון חינם</a>
+                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
             </div>
         </div>
         <div style="text-align: center; margin-top: 2rem;">
@@ -736,7 +742,7 @@
     <section class="cta">
         <h2>מוכנים להתחיל?</h2>
         <p>הצטרפו עכשיו ותתחילו לנהל את הוצאות הבניה שלכם בצורה מקצועית</p>
-        <a href="app.html" class="btn btn-primary btn-large">התחל בחינם עכשיו</a>
+        <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל בחינם עכשיו</button>
     </section>
 
     <!-- Footer -->
@@ -801,6 +807,73 @@
                     });
                 }
             });
+        });
+
+        // Clerk authentication handling
+        let clerk = null;
+        let isClerkReady = false;
+
+        // Initialize Clerk on page load
+        async function initializeClerk() {
+            try {
+                console.log('[LANDING PAGE] Initializing Clerk...');
+                const CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+                // Import Clerk using ESM
+                const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
+
+                // Initialize Clerk instance
+                clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
+                await clerk.load();
+
+                isClerkReady = true;
+                console.log('[LANDING PAGE] Clerk initialized successfully');
+
+                // Set up listener for authentication changes
+                clerk.addListener((clerkInstance) => {
+                    if (clerkInstance.session && clerkInstance.user) {
+                        console.log('[LANDING PAGE] User authenticated, redirecting to app.html');
+                        window.location.href = 'app.html';
+                    }
+                });
+
+            } catch (error) {
+                console.error('[LANDING PAGE] Failed to initialize Clerk:', error);
+            }
+        }
+
+        // Handle login button click
+        async function handleLogin() {
+            try {
+                console.log('[LANDING PAGE] Login button clicked');
+
+                // Initialize Clerk if not already done
+                if (!isClerkReady || !clerk) {
+                    await initializeClerk();
+                }
+
+                // Show Clerk sign-in modal
+                console.log('[LANDING PAGE] Opening Clerk sign-in modal');
+                clerk.openSignIn({
+                    appearance: {
+                        variables: {
+                            colorPrimary: '#f39c12',
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                        }
+                    },
+                    routing: 'virtual'
+                });
+
+            } catch (error) {
+                console.error('[LANDING PAGE] Error handling login:', error);
+                alert('שגיאה בפתיחת חלון ההתחברות. אנא נסה שוב.');
+            }
+        }
+
+        // Initialize Clerk when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[LANDING PAGE] Page loaded, pre-initializing Clerk...');
+            initializeClerk();
         });
     </script>
 </body>
