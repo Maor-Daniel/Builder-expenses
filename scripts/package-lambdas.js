@@ -46,6 +46,11 @@ const LAMBDA_FUNCTIONS = [
   // Billing
   'subscriptionManager',
   'paddleWebhook',
+  'createPaddleCheckout',  // Create Paddle checkout sessions for subscription
+  'updatePaddleSubscription',  // Update existing Paddle subscriptions (upgrade/downgrade)
+  // Webhooks
+  'webhookPaddle',  // Paddle subscription/payment webhooks
+  'webhookClerk',   // Clerk user authentication webhooks
   // User Management Functions
   'listUsers',
   'updateUser',
@@ -63,6 +68,7 @@ const LAMBDA_FUNCTIONS = [
   'uploadCompanyLogo',
   'uploadReceipt',
   'registerCompany',
+  'registerCompanyClerk',  // Clerk version
   // Company expense management
   'companyExpenses',
   'companyProjects',
