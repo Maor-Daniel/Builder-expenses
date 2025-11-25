@@ -6,9 +6,10 @@
  * Aligned with pricing page specifications
  */
 const TIER_LIMITS = {
-  basic: {
-    name: 'בסיסי',
-    price: 100,
+  starter: {
+    name: 'Starter',
+    price: 100, // ILS per month
+    currency: 'ILS',
     maxUsers: 1,
     maxProjects: 3,
     maxExpensesPerMonth: 50,
@@ -23,8 +24,9 @@ const TIER_LIMITS = {
     }
   },
   professional: {
-    name: 'מקצועי',
-    price: 200,
+    name: 'Professional',
+    price: 200, // ILS per month
+    currency: 'ILS',
     maxUsers: 3,
     maxProjects: 10,
     maxExpensesPerMonth: -1, // unlimited
@@ -39,8 +41,9 @@ const TIER_LIMITS = {
     }
   },
   enterprise: {
-    name: 'ארגוני',
-    price: 300,
+    name: 'Enterprise',
+    price: 300, // ILS per month
+    currency: 'ILS',
     maxUsers: 10,
     maxProjects: -1, // unlimited
     maxExpensesPerMonth: -1,
@@ -53,33 +56,17 @@ const TIER_LIMITS = {
       autoBackups: true,
       prioritySupport: true
     }
-  },
-  trial: {
-    name: 'ניסיון',
-    price: 0,
-    maxUsers: 1,
-    maxProjects: 3,
-    maxExpensesPerMonth: 50,
-    maxSuppliers: -1,
-    maxWorks: -1,
-    features: {
-      dashboard: true,
-      pdfExport: true,
-      advancedPdfExport: false,
-      autoBackups: false,
-      prioritySupport: false
-    }
   }
 };
 
 /**
  * Get tier limits configuration
- * @param {string} tier - Tier name (basic|professional|enterprise|trial)
+ * @param {string} tier - Tier name (starter|professional|enterprise)
  * @returns {object} Tier configuration
  */
 function getTierLimits(tier) {
-  const normalizedTier = (tier || 'trial').toLowerCase();
-  return TIER_LIMITS[normalizedTier] || TIER_LIMITS.trial;
+  const normalizedTier = (tier || 'starter').toLowerCase();
+  return TIER_LIMITS[normalizedTier] || TIER_LIMITS.starter;
 }
 
 /**
@@ -108,9 +95,9 @@ function hasFeature(tier, feature) {
  * @returns {string|null} Suggested tier or null if already at max
  */
 function getSuggestedUpgrade(currentTier) {
-  const normalizedTier = (currentTier || 'trial').toLowerCase();
+  const normalizedTier = (currentTier || 'starter').toLowerCase();
 
-  if (normalizedTier === 'trial' || normalizedTier === 'basic') {
+  if (normalizedTier === 'starter') {
     return 'professional';
   }
 

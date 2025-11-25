@@ -10,47 +10,56 @@ const PADDLE_CONFIG = {
   webhookSecret: process.env.PADDLE_WEBHOOK_SECRET
 };
 
-// Subscription plans configuration
+// Subscription plans configuration - Updated to match Paddle pricing (ILS)
 const SUBSCRIPTION_PLANS = {
   STARTER: {
     name: "Starter",
-    priceId: process.env.PADDLE_STARTER_PRICE_ID || 'pri_starter',
-    monthlyPrice: 29,
-    yearlyPrice: 290, // 17% discount
-    currency: 'USD',
+    priceId: 'pri_01k9f1wq2ffpb9abm3kcr9t77f', // Paddle Price ID
+    monthlyPrice: 100,
+    currency: 'ILS',
+    trialDays: 30, // 30-day trial for all tiers
     limits: {
-      maxUsers: 5,
-      maxProjects: 10,
+      maxUsers: 1,
+      maxProjects: 3,
+      maxExpensesPerMonth: 50,
+      maxSuppliers: -1, // unlimited
+      maxWorks: -1, // unlimited
       storage: 1024, // 1GB in MB
-      features: ['basic_reporting', 'mobile_app', 'email_support']
+      features: ['basic_dashboard', 'pdf_export', 'receipt_upload', 'basic_support']
     }
   },
-  
+
   PROFESSIONAL: {
-    name: "Professional", 
-    priceId: process.env.PADDLE_PRO_PRICE_ID || 'pri_professional',
-    monthlyPrice: 79,
-    yearlyPrice: 790, // 17% discount
-    currency: 'USD',
+    name: "Professional",
+    priceId: 'pri_01k9f1y03zd5f3cxwnnza118r2', // Paddle Price ID
+    monthlyPrice: 200,
+    currency: 'ILS',
+    trialDays: 30,
     limits: {
-      maxUsers: 25,
-      maxProjects: -1, // unlimited
+      maxUsers: 3,
+      maxProjects: 10,
+      maxExpensesPerMonth: -1, // unlimited
+      maxSuppliers: -1,
+      maxWorks: -1,
       storage: 10240, // 10GB in MB
-      features: ['advanced_reporting', 'contractor_management', 'receipt_scanning', 'priority_support']
+      features: ['advanced_dashboard', 'advanced_pdf_export', 'contractor_management', 'priority_support']
     }
   },
-  
+
   ENTERPRISE: {
     name: "Enterprise",
-    priceId: process.env.PADDLE_ENTERPRISE_PRICE_ID || 'pri_enterprise', 
-    monthlyPrice: 199,
-    yearlyPrice: 1990, // 17% discount
-    currency: 'USD',
+    priceId: 'pri_01k9f1yt0hm9767jh0htqbp6t1', // Paddle Price ID
+    monthlyPrice: 300,
+    currency: 'ILS',
+    trialDays: 30,
     limits: {
-      maxUsers: -1, // unlimited
+      maxUsers: 10,
       maxProjects: -1, // unlimited
+      maxExpensesPerMonth: -1, // unlimited
+      maxSuppliers: -1,
+      maxWorks: -1,
       storage: 102400, // 100GB in MB
-      features: ['all_features', 'white_label', 'custom_integrations', 'dedicated_support']
+      features: ['all_features', 'auto_backups', 'custom_integrations', 'dedicated_support']
     }
   }
 };
@@ -123,7 +132,7 @@ async function paddleApiCall(endpoint, method = 'GET', data = null) {
   const options = {
     hostname: baseUrl,
     port: 443,
-    path: `/v1/${endpoint}`,
+    path: `/${endpoint}`,
     method: method,
     headers: {
       'Authorization': `Bearer ${PADDLE_CONFIG.apiKey}`,
@@ -150,9 +159,12 @@ async function paddleApiCall(endpoint, method = 'GET', data = null) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(response);
           } else {
+            // Log full error response from Paddle for debugging
+            console.error('Paddle API Error Response:', JSON.stringify(response));
             reject(new Error(response.error?.message || `API error: ${res.statusCode}`));
           }
         } catch (error) {
+          console.error('Error parsing Paddle response:', error.message, 'Raw response:', responseData);
           reject(error);
         }
       });
@@ -191,7 +203,7 @@ async function createPaddleCustomer(customerData) {
     // Create transaction/checkout
     const transactionData = {
       items: [{
-        price_id: customerData.priceId,
+        price_id: customerData.priceId, // Using Price ID (pri_*)
         quantity: 1
       }],
       customer: customer ? { id: customer.data.id } : { email: customerData.email },

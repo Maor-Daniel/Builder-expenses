@@ -1,0 +1,219 @@
+/* Import Google Fonts - Rubik for Hebrew support */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Base Styles */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply text-content-text bg-content-bg antialiased;
+  }
+
+  /* RTL Support */
+  [dir="rtl"] {
+    font-family: 'Rubik', system-ui, sans-serif;
+  }
+}
+
+/* Custom Component Styles */
+@layer components {
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded hover:bg-gray-500;
+  }
+
+  /* Card Hover Effects */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* Glass Effect */
+  .glass-effect {
+    @apply bg-white bg-opacity-90 backdrop-blur-md;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent;
+  }
+}
+
+/* Custom Utilities */
+@layer utilities {
+  /* Animations */
+  .animate-in {
+    animation-name: animate-in;
+    animation-duration: 0.5s;
+    animation-fill-mode: both;
+  }
+
+  @keyframes animate-in {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Stagger Animation */
+  .stagger-children > * {
+    @apply animate-in;
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+
+  /* Shimmer Loading Effect */
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .shimmer::before {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
+
+/* RTL Specific Styles */
+[dir="rtl"] {
+  /* Flip specific properties for RTL */
+  .sidebar {
+    @apply right-0 left-auto;
+  }
+
+  /* Text alignment */
+  .text-start {
+    @apply text-right;
+  }
+
+  .text-end {
+    @apply text-left;
+  }
+
+  /* Margins and Paddings */
+  .pr-64 {
+    @apply pl-64 pr-0;
+  }
+
+  .ml-auto {
+    @apply mr-auto ml-0;
+  }
+
+  /* Borders */
+  .border-l {
+    @apply border-r border-l-0;
+  }
+
+  .rounded-l-lg {
+    @apply rounded-r-lg rounded-l-none;
+  }
+
+  /* Transform for animations */
+  .translate-x-full {
+    transform: translateX(-100%);
+  }
+
+  .-translate-x-full {
+    transform: translateX(100%);
+  }
+}
+
+/* Custom Focus Styles */
+*:focus {
+  @apply outline-none;
+}
+
+*:focus-visible {
+  @apply ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* Loading Spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  @apply animate-spin h-5 w-5 text-primary-500;
+}
+
+/* Page Transitions */
+.page-enter {
+  @apply opacity-0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  @apply opacity-100;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-exit {
+  @apply opacity-100;
+}
+
+.page-exit-active {
+  @apply opacity-0;
+  transition: opacity 200ms;
+}
+
+/* Custom Chart Styles */
+.apexcharts-canvas {
+  @apply font-sans;
+}
+
+.apexcharts-tooltip {
+  @apply bg-white shadow-lg rounded-lg border-0;
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+}

@@ -13,6 +13,10 @@ const {
 } = require('./shared/multi-table-utils');
 
 exports.handler = async (event) => {
+  // Handle CORS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return createResponse(200, { message: 'CORS preflight' });
+  }
 
   try {
     // Get user ID from event context

@@ -1,0 +1,101 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - heading " מערכת מעקב הוצאות בניה" [level=1] [ref=e4]:
+      - generic [ref=e5]: 
+      - text: מערכת מעקב הוצאות בניה
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: Test User
+        - generic [ref=e9]: ללא חברה
+      - generic [ref=e10]:
+        - button " פרופיל" [ref=e11] [cursor=pointer]:
+          - generic [ref=e12]: 
+          - text: פרופיל
+        - button " החלף חברה" [ref=e13] [cursor=pointer]:
+          - generic [ref=e14]: 
+          - text: החלף חברה
+        - button " יציאה" [ref=e15] [cursor=pointer]:
+          - generic [ref=e16]: 
+          - text: יציאה
+  - generic [ref=e17]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: 💰
+        - generic [ref=e21]: סה"כ הוצאות
+        - generic [ref=e22]: ₪48,000
+      - generic [ref=e23]:
+        - generic [ref=e24]: 🏗️
+        - generic [ref=e25]: פרויקטים פעילים
+        - generic [ref=e26]: "6"
+      - generic [ref=e27]:
+        - generic [ref=e28]: 👷
+        - generic [ref=e29]: קבלנים
+        - generic [ref=e30]: "2"
+      - generic [ref=e31]:
+        - generic [ref=e32]: 📊
+        - generic [ref=e33]: הוצאות החודש
+        - generic [ref=e34]: ₪48,000
+    - generic [ref=e35]:
+      - button " הוצאות" [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]: 
+        - text: הוצאות
+      - button " פרויקטים" [ref=e38] [cursor=pointer]:
+        - generic [ref=e39]: 
+        - text: פרויקטים
+      - button " קבלנים" [ref=e40] [cursor=pointer]:
+        - generic [ref=e41]: 
+        - text: קבלנים
+      - button " עבודות" [ref=e42] [cursor=pointer]:
+        - generic [ref=e43]: 
+        - text: עבודות
+      - button " דוחות" [active] [ref=e44] [cursor=pointer]:
+        - generic [ref=e45]: 
+        - text: דוחות
+      - button " חיוב ומנוי" [ref=e46] [cursor=pointer]:
+        - generic [ref=e47]: 
+        - text: חיוב ומנוי
+    - generic [ref=e49]:
+      - heading "דוחות וניתוחים" [level=2] [ref=e50]
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: ₪48,000
+          - generic [ref=e56]: סה"כ הוצאות
+          - generic [ref=e57]: ללא שינוי
+        - generic [ref=e58]:
+          - generic [ref=e60]: 
+          - generic [ref=e61]: "6"
+          - generic [ref=e62]: פרויקטים פעילים
+        - generic [ref=e63]:
+          - generic [ref=e65]: 
+          - generic [ref=e66]: ₪48,000
+          - generic [ref=e67]: הוצאות החודש
+        - generic [ref=e68]:
+          - generic [ref=e70]: 
+          - generic [ref=e71]: ₪24,000
+          - generic [ref=e72]: ממוצע הוצאה
+      - generic [ref=e73]:
+        - generic [ref=e76]: מגמת הוצאות (6 חודשים אחרונים)
+        - generic [ref=e81]: התפלגות הוצאות לפי פרויקט
+      - heading "דוחות מפורטים" [level=3] [ref=e84]
+      - generic [ref=e85]:
+        - generic [ref=e86] [cursor=pointer]:
+          - generic [ref=e88]: 
+          - generic [ref=e89]: תקציב פרויקטים
+          - generic [ref=e90]: השוואת תקציב מול הוצאות בפועל לכל פרויקט
+        - generic [ref=e91] [cursor=pointer]:
+          - generic [ref=e93]: 
+          - generic [ref=e94]: ניתוח קבלנים
+          - generic [ref=e95]: סיכום הוצאות לפי קבלן ופרטי ביצועים
+        - generic [ref=e96] [cursor=pointer]:
+          - generic [ref=e98]: 
+          - generic [ref=e99]: סיכום חודשי
+          - generic [ref=e100]: דוח הוצאות חודשי עם השוואה לחודש הקודם
+        - generic [ref=e101] [cursor=pointer]:
+          - generic [ref=e103]: 
+          - generic [ref=e104]: קבלות חסרות
+          - generic [ref=e105]: רשימת הוצאות ללא תמונת קבלה
+```

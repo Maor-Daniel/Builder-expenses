@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clerk Test - מערכת מעקב הוצאות בניה</title>
+
+    <!-- Load Clerk from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ מערכת מעקב הוצאות בניה</h1>
+        <p>Clerk Authentication Test Page</p>
+
+        <div id="status">מאתחל Clerk...</div>
+
+        <div id="buttons" style="display: none;">
+            <button class="btn" onclick="signIn()">התחברות</button>
+            <button class="btn" onclick="signUp()">הרשמה</button>
+            <button class="btn" onclick="testAuth()">בדוק אימות</button>
+        </div>
+
+        <div id="user-info" style="display: none; margin-top: 20px;">
+            <h3>משתמש מחובר:</h3>
+            <p id="user-details"></p>
+            <button class="btn" onclick="signOut()">יציאה</button>
+        </div>
+    </div>
+
+    <script>
+        // Your Clerk configuration
+        const CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+        let clerk;
+
+        // Initialize Clerk when page loads
+        window.addEventListener('load', async () => {
+            const statusDiv = document.getElementById('status');
+
+            try {
+                console.log('Initializing Clerk with key:', CLERK_PUBLISHABLE_KEY);
+
+                // Initialize Clerk
+                clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
+                await clerk.load();
+
+                console.log('Clerk initialized successfully');
+
+                // Check if user is signed in
+                if (clerk.user) {
+                    statusDiv.innerHTML = '✅ Clerk פועל - משתמש מחובר';
+                    statusDiv.className = 'success';
+                    showUserInfo();
+                } else {
+                    statusDiv.innerHTML = '✅ Clerk פועל - אין משתמש מחובר';
+                    statusDiv.className = 'success';
+                    document.getElementById('buttons').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Clerk initialization error:', error);
+                statusDiv.innerHTML = '❌ שגיאה באתחול Clerk: ' + error.message;
+                statusDiv.className = 'error';
+            }
+        });
+
+        function showUserInfo() {
+            document.getElementById('buttons').style.display = 'none';
+            document.getElementById('user-info').style.display = 'block';
+
+            if (clerk.user) {
+                document.getElementById('user-details').innerHTML = `
+                    Email: ${clerk.user.primaryEmailAddress?.emailAddress || 'N/A'}<br>
+                    ID: ${clerk.user.id}
+                `;
+            }
+        }
+
+        async function signIn() {
+            try {
+                await clerk.openSignIn({
+                    afterSignInUrl: window.location.href
+                });
+            } catch (error) {
+                console.error('Sign in error:', error);
+                alert('Error opening sign in: ' + error.message);
+            }
+        }
+
+        async function signUp() {
+            try {
+                await clerk.openSignUp({
+                    afterSignUpUrl: window.location.href
+                });
+            } catch (error) {
+                console.error('Sign up error:', error);
+                alert('Error opening sign up: ' + error.message);
+            }
+        }
+
+        async function signOut() {
+            try {
+                await clerk.signOut();
+                window.location.reload();
+            } catch (error) {
+                console.error('Sign out error:', error);
+                alert('Error signing out: ' + error.message);
+            }
+        }
+
+        async function testAuth() {
+            try {
+                const token = await clerk.session?.getToken();
+                if (token) {
+                    alert('Token received:\n' + token.substring(0, 50) + '...');
+                } else {
+                    alert('No token - user not authenticated');
+                }
+            } catch (error) {
+                console.error('Token error:', error);
+                alert('Error getting token: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

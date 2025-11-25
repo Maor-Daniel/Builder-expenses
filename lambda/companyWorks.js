@@ -52,12 +52,43 @@ async function getWorks(companyId, userId) {
   };
 
   const result = await dynamoOperation('query', params);
-  
-  
+
+  // Fetch projects and contractors to get names
+  const [projectsResult, contractorsResult] = await Promise.all([
+    dynamoOperation('query', {
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      KeyConditionExpression: 'companyId = :companyId',
+      ExpressionAttributeValues: { ':companyId': companyId }
+    }),
+    dynamoOperation('query', {
+      TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+      KeyConditionExpression: 'companyId = :companyId',
+      ExpressionAttributeValues: { ':companyId': companyId }
+    })
+  ]);
+
+  // Create lookup maps
+  const projectsMap = {};
+  (projectsResult.Items || []).forEach(p => {
+    projectsMap[p.projectId] = p.name;
+  });
+
+  const contractorsMap = {};
+  (contractorsResult.Items || []).forEach(c => {
+    contractorsMap[c.contractorId] = c.name;
+  });
+
+  // Add names to works
+  const worksWithNames = (result.Items || []).map(work => ({
+    ...work,
+    projectName: projectsMap[work.projectId] || '',
+    contractorName: contractorsMap[work.contractorId] || ''
+  }));
+
   return createResponse(200, {
     success: true,
-    works: result.Items || [],
-    count: result.Items.length
+    works: worksWithNames,
+    count: worksWithNames.length
   });
 }
 

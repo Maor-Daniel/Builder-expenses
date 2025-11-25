@@ -4,13 +4,13 @@ const { getTierLimits, isUnlimited, getSuggestedUpgrade } = require('./lambda/sh
 console.log('=== Testing Tier Configuration ===\n');
 
 // Test all tiers
-const tiers = ['trial', 'basic', 'professional', 'enterprise'];
+const tiers = ['starter', 'professional', 'enterprise'];
 
 tiers.forEach(tier => {
   console.log(`\n${tier.toUpperCase()} TIER:`);
   const limits = getTierLimits(tier);
   console.log(`  Name: ${limits.name}`);
-  console.log(`  Price: ₪${limits.price}/month`);
+  console.log(`  Price: $${limits.price}/month`);
   console.log(`  Users: ${isUnlimited(limits.maxUsers) ? 'Unlimited' : limits.maxUsers}`);
   console.log(`  Projects: ${isUnlimited(limits.maxProjects) ? 'Unlimited' : limits.maxProjects}`);
   console.log(`  Expenses/month: ${isUnlimited(limits.maxExpensesPerMonth) ? 'Unlimited' : limits.maxExpensesPerMonth}`);
@@ -20,14 +20,14 @@ tiers.forEach(tier => {
 console.log('\n=== Testing Limit Checking Logic ===\n');
 
 // Test limit checking (simulated)
-console.log('TRIAL tier attempting to create 4th project:');
-const trialLimits = getTierLimits('trial');
+console.log('STARTER tier attempting to create 4th project:');
+const starterLimits = getTierLimits('starter');
 const currentProjects = 3;
-if (currentProjects >= trialLimits.maxProjects) {
-  console.log(`  ❌ BLOCKED: Current: ${currentProjects}, Limit: ${trialLimits.maxProjects}`);
-  console.log(`  Suggested upgrade: ${getSuggestedUpgrade('trial')}`);
+if (currentProjects >= starterLimits.maxProjects) {
+  console.log(`  ❌ BLOCKED: Current: ${currentProjects}, Limit: ${starterLimits.maxProjects}`);
+  console.log(`  Suggested upgrade: ${getSuggestedUpgrade('starter')}`);
 } else {
-  console.log(`  ✅ ALLOWED: Current: ${currentProjects}, Limit: ${trialLimits.maxProjects}`);
+  console.log(`  ✅ ALLOWED: Current: ${currentProjects}, Limit: ${starterLimits.maxProjects}`);
 }
 
 console.log('\nPROFESSIONAL tier attempting to create unlimited expenses:');

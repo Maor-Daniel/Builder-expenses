@@ -1945,6 +1945,7 @@
 
                 // Store company data and update header
                 currentCompany = companyResp.company;
+                appData.company = companyResp.company; // Store in appData for billing functionality
                 console.log('[LOAD] Company loaded:', currentCompany.name);
                 document.getElementById('headerCompanyName').textContent = currentCompany.name;
 
@@ -3573,12 +3574,22 @@
                             email: paddleConfig.customerEmail
                         } : undefined,
                         customData: paddleConfig.customData,
-                        successCallback: function(data) {
+                        successCallback: async function(data) {
                             console.log('Paddle checkout success:', data);
-                            showSuccess('התשלום הושלם בהצלחה! המנוי שלך יעודכן בקרוב.');
-                            setTimeout(() => {
-                                loadUserCompany();
-                            }, 2000);
+                            showSuccess('התשלום הושלם בהצלחה! מעדכן את המנוי...');
+
+                            // Wait a bit for webhook to process
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+
+                            // Reload company data
+                            await loadUserCompany();
+
+                            // Refresh the billing tab to show new plan
+                            if (currentTab === 'billing') {
+                                showBillingTab(document.getElementById('app'));
+                            }
+
+                            showSuccess('המנוי עודכן בהצלחה!');
                         },
                         closeCallback: function() {
                             console.log('Paddle checkout closed');
