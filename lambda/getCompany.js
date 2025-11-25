@@ -71,6 +71,7 @@ exports.handler = async (event) => {
       message: 'Company information retrieved successfully',
       company: {
         id: company.companyId,
+        companyId: company.companyId,
         name: company.name,
         description: company.description,
         industry: company.industry,
