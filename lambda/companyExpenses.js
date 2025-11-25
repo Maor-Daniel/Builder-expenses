@@ -42,6 +42,12 @@ exports.handler = async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
+    console.error('ERROR in companyExpenses handler:', {
+      error: error.message,
+      stack: error.stack,
+      httpMethod: event.httpMethod,
+      path: event.path
+    });
     return createErrorResponse(500, 'Internal server error during expenses operation');
   }
 };

@@ -2,7 +2,9 @@
   "name": "lambda-function",
   "version": "1.0.0",
   "dependencies": {
-    "aws-sdk": "^2.1692.0"
+    "aws-sdk": "^2.1692.0",
+    "@clerk/backend": "^1.0.0",
+    "svix": "^1.0.0"
   },
   "description": "",
   "main": "index.js",

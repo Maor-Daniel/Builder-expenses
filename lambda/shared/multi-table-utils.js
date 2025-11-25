@@ -54,27 +54,79 @@ function createErrorResponse(statusCode, message, error = null) {
 
 /**
  * Get user ID from event context
- * Supports both test mode and Cognito authentication
+ * Supports test mode, Cognito authentication, and Clerk authentication
  */
 function getUserIdFromEvent(event) {
-  // Check if Cognito authentication is enabled via environment variable
-  const authEnabled = process.env.COGNITO_AUTH_ENABLED === 'true';
-  
+  // Check if authentication is disabled (test/dev mode)
+  const authEnabled = process.env.COGNITO_AUTH_ENABLED === 'true' || process.env.CLERK_AUTH_ENABLED === 'true';
+
   if (!authEnabled) {
     // Test mode: use hardcoded test user ID
     return 'test-user-123';
   }
-  
-  // Production mode: extract user ID from Cognito JWT token
-  
-  if (event.requestContext?.authorizer?.claims?.sub) {
-    const userId = event.requestContext.authorizer.claims.sub;
-    const userEmail = event.requestContext.authorizer.claims.email;
-    return userId;
+
+  // Production mode: extract user ID from authorizer context
+  const authorizer = event.requestContext?.authorizer;
+
+  // Try Clerk Lambda Authorizer context first (set by clerk-authorizer.js)
+  if (authorizer?.userId) {
+    return authorizer.userId;
   }
-  
+
+  // Fall back to Cognito User Pool Authorizer context
+  if (authorizer?.claims?.sub) {
+    return authorizer.claims.sub;
+  }
+
   // If no valid token found, throw authentication error
   throw new Error('User ID not found in event context - authentication required');
+}
+
+/**
+ * Get full user context from event (including companyId, role, etc.)
+ * Supports both Cognito and Clerk authentication
+ */
+function getUserContextFromEvent(event) {
+  const authEnabled = process.env.COGNITO_AUTH_ENABLED === 'true' || process.env.CLERK_AUTH_ENABLED === 'true';
+
+  if (!authEnabled) {
+    // Test mode
+    return {
+      userId: 'test-user-123',
+      companyId: 'test-company-123',
+      email: 'test@example.com',
+      role: 'ADMIN'
+    };
+  }
+
+  const authorizer = event.requestContext?.authorizer;
+
+  // Clerk Lambda Authorizer context
+  if (authorizer?.userId) {
+    return {
+      userId: authorizer.userId,
+      companyId: authorizer.companyId || `user_${authorizer.userId}`,
+      email: authorizer.email || '',
+      userName: authorizer.userName || '',
+      role: authorizer.role || 'VIEWER',
+      orgId: authorizer.orgId || '',
+      orgRole: authorizer.orgRole || '',
+      plan: authorizer.plan || 'free'
+    };
+  }
+
+  // Cognito User Pool Authorizer context
+  if (authorizer?.claims) {
+    return {
+      userId: authorizer.claims.sub,
+      companyId: authorizer.claims['custom:companyId'] || `user_${authorizer.claims.sub}`,
+      email: authorizer.claims.email || '',
+      userName: authorizer.claims.name || '',
+      role: authorizer.claims['custom:role'] || 'VIEWER'
+    };
+  }
+
+  throw new Error('User context not found in event - authentication required');
 }
 
 /**
@@ -294,6 +346,7 @@ module.exports = {
   createResponse,
   createErrorResponse,
   getUserIdFromEvent,
+  getUserContextFromEvent,
   validateExpense,
   validateProject,
   validateContractor,

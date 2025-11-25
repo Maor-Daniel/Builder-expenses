@@ -7,6 +7,7 @@ const {
   createErrorResponse,
   getCompanyUserFromEvent,
   dynamoOperation,
+  getCurrentTimestamp,
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
 
@@ -86,7 +87,7 @@ exports.handler = async (event) => {
     console.log(`Updating subscription ${paddleSubscriptionId} from ${currentTier} to ${newTier}`);
 
     // Call Paddle API to update subscription plan
-    // This will trigger subscription.updated webhook which updates the company tier
+    // This will trigger subscription.updated webhook which will confirm the update
     try {
       const updatedSubscription = await updateSubscriptionPlan(
         paddleSubscriptionId,
@@ -99,14 +100,44 @@ exports.handler = async (event) => {
         newTier: newTier
       });
 
-      // Return success - the webhook will handle updating DynamoDB
+      const timestamp = getCurrentTimestamp();
+
+      // IMMEDIATELY update company tier in DynamoDB for instant UI feedback
+      // The webhook will confirm/verify this update when it arrives
+      console.log(`Immediately updating company ${companyId} tier to ${newTier}`);
+
+      await dynamoOperation('update', {
+        TableName: COMPANY_TABLE_NAMES.COMPANIES,
+        Key: { companyId },
+        UpdateExpression: 'SET subscriptionTier = :tier, updatedAt = :updated',
+        ExpressionAttributeValues: {
+          ':tier': newTier.toLowerCase(),
+          ':updated': timestamp
+        }
+      });
+
+      // Also update the Paddle subscription record
+      await dynamoOperation('update', {
+        TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
+        Key: { companyId },
+        UpdateExpression: 'SET currentPlan = :plan, nextBillingDate = :nextBilling, updatedAt = :updated',
+        ExpressionAttributeValues: {
+          ':plan': newTier.toLowerCase(),
+          ':nextBilling': updatedSubscription.next_billed_at,
+          ':updated': timestamp
+        }
+      });
+
+      console.log(`Database updated immediately - tier is now ${newTier}`);
+
+      // Return success with updated tier
       return createResponse(200, {
         success: true,
-        message: `Subscription update initiated. Changing from ${currentTier} to ${newTier}.`,
+        message: `Subscription updated successfully. You are now on the ${newPlan.name} plan.`,
         subscription: {
           id: paddleSubscriptionId,
-          currentTier: currentTier,
-          newTier: newTier,
+          currentTier: newTier.toLowerCase(),
+          newTier: newTier.toLowerCase(),
           status: updatedSubscription.status,
           nextBillingDate: updatedSubscription.next_billed_at
         },

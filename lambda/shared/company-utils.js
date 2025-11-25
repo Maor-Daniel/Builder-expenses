@@ -192,77 +192,105 @@ function createErrorResponse(statusCode, message, error = null) {
 }
 
 /**
- * Get company and user info from Cognito JWT token
+ * Get company and user info from authentication context
+ * Supports both Clerk and Cognito authentication
  */
 function getCompanyUserFromEvent(event) {
-  // Check if Cognito authentication is enabled
-  const authEnabled = process.env.COGNITO_AUTH_ENABLED === 'true';
-  
-  if (!authEnabled) {
-    // Test mode: use hardcoded test company and user
-    return {
-      companyId: 'test-company-123',
-      userId: 'test-user-123',
-      userRole: USER_ROLES.ADMIN,
-      userEmail: 'test@company.com'
-    };
-  }
-  
-  // Production mode: extract from Cognito JWT token
-  
-  // First try to get from API Gateway authorizer (if configured)
-  if (event.requestContext?.authorizer?.claims) {
-    const claims = event.requestContext.authorizer.claims;
-    
-    const userId = claims.sub;
-    const userEmail = claims.email;
-    const companyId = claims['custom:companyId'];
-    const userRole = claims['custom:role'] || USER_ROLES.USER;
-    
-    if (!userId || !companyId) {
-      throw new Error('Invalid authentication token - missing company or user information');
+  // Check if Clerk authentication is enabled (priority over Cognito)
+  const clerkEnabled = process.env.CLERK_AUTH_ENABLED === 'true';
+  const cognitoEnabled = process.env.COGNITO_AUTH_ENABLED === 'true';
+
+  // CLERK AUTHENTICATION
+  if (clerkEnabled) {
+    // Extract from Clerk custom authorizer context
+    if (event.requestContext?.authorizer) {
+      const authorizer = event.requestContext.authorizer;
+
+      const companyId = authorizer.companyId;
+      const userId = authorizer.userId;
+      const userEmail = authorizer.userEmail || authorizer.email;
+      const userRole = authorizer.userRole || authorizer.role || USER_ROLES.ADMIN;
+
+      if (!userId || !companyId) {
+        console.error('Clerk authorizer missing required fields:', { companyId, userId });
+        throw new Error('Invalid Clerk authentication - missing company or user information');
+      }
+
+      return {
+        companyId,
+        userId,
+        userRole,
+        userEmail
+      };
     }
-    
-    
-    return {
-      companyId,
-      userId,
-      userRole,
-      userEmail
-    };
+
+    throw new Error('Clerk authentication enabled but no authorizer context found');
   }
-  
-  // Fallback: manually parse JWT token from Authorization header
-  const authHeader = event.headers?.Authorization || event.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Company authentication required - no valid token found');
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  
-  try {
-    // Parse JWT token (without verification for now - in production should verify)
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    
-    const userId = payload.sub;
-    const userEmail = payload.email;
-    const companyId = payload['custom:companyId'];
-    const userRole = payload['custom:role'] || USER_ROLES.USER;
-    
-    if (!userId || !companyId) {
-      throw new Error('Invalid authentication token - missing company or user information');
+
+  // COGNITO AUTHENTICATION
+  if (cognitoEnabled) {
+    // First try to get from API Gateway authorizer (if configured)
+    if (event.requestContext?.authorizer?.claims) {
+      const claims = event.requestContext.authorizer.claims;
+
+      const userId = claims.sub;
+      const userEmail = claims.email;
+      const companyId = claims['custom:companyId'];
+      const userRole = claims['custom:role'] || USER_ROLES.USER;
+
+      if (!userId || !companyId) {
+        throw new Error('Invalid authentication token - missing company or user information');
+      }
+
+      return {
+        companyId,
+        userId,
+        userRole,
+        userEmail
+      };
     }
-    
-    
-    return {
-      companyId,
-      userId,
-      userRole,
-      userEmail
-    };
-  } catch (parseError) {
-    throw new Error('Invalid authentication token format');
+
+    // Fallback: manually parse JWT token from Authorization header
+    const authHeader = event.headers?.Authorization || event.headers?.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('Company authentication required - no valid token found');
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    try {
+      // Parse JWT token (without verification for now - in production should verify)
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+
+      const userId = payload.sub;
+      const userEmail = payload.email;
+      const companyId = payload['custom:companyId'];
+      const userRole = payload['custom:role'] || USER_ROLES.USER;
+
+      if (!userId || !companyId) {
+        throw new Error('Invalid authentication token - missing company or user information');
+      }
+
+      return {
+        companyId,
+        userId,
+        userRole,
+        userEmail
+      };
+    } catch (parseError) {
+      console.error('Failed to parse Cognito JWT token:', parseError);
+      throw new Error('Invalid authentication token format');
+    }
   }
+
+  // NO AUTHENTICATION ENABLED - Test/Development Mode
+  console.warn('WARNING: Both Clerk and Cognito authentication disabled - using test mode');
+  return {
+    companyId: 'test-company-123',
+    userId: 'test-user-123',
+    userRole: USER_ROLES.ADMIN,
+    userEmail: 'test@company.com'
+  };
 }
 
 /**

@@ -1,17 +1,45 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Construction Expenses Tracker - Simplified AWS Infrastructure (No Lambda@Edge)'
+Description: 'Construction Expenses Tracker - Simplified AWS Infrastructure with Clerk Authentication Support'
 
 Parameters:
   StackName:
     Type: String
     Default: 'construction-expenses-production'
     Description: 'Name of the CloudFormation stack'
-  
+
   Environment:
     Type: String
     Default: 'production'
     AllowedValues: ['production', 'staging']
     Description: 'Environment name'
+
+  # Clerk Authentication Parameters
+  ClerkSecretKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: 'Clerk Secret Key for JWT verification (leave empty to disable Clerk auth)'
+
+  ClerkPublishableKey:
+    Type: String
+    Default: ''
+    Description: 'Clerk Publishable Key for frontend (leave empty to disable Clerk auth)'
+
+  ClerkJWTKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: 'Optional: Clerk JWT Key for specific JWT verification'
+
+  ClerkAuthEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: 'Enable Clerk authentication (true) or use Cognito (false)'
+
+Conditions:
+  # Condition to check if Clerk authentication is enabled
+  IsClerkAuthEnabled: !Equals [!Ref ClerkAuthEnabled, 'true']
 
 Resources:
   # DynamoDB Table
@@ -113,6 +141,60 @@ Resources:
                 Resource:
                   - !GetAtt ExpensesTable.Arn
                   - !Sub '${ExpensesTable.Arn}/index/*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+
+  # IAM Role for Clerk Authorizer Lambda
+  ClerkAuthorizerExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: IsClerkAuthEnabled
+    Properties:
+      RoleName: !Sub '${StackName}-clerk-authorizer-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+
+  # Clerk Authorizer Lambda Function
+  ClerkAuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Condition: IsClerkAuthEnabled
+    Properties:
+      FunctionName: !Sub '${StackName}-clerk-authorizer'
+      Runtime: nodejs18.x
+      Handler: clerk-authorizer.handler
+      Role: !GetAtt ClerkAuthorizerExecutionRole.Arn
+      Timeout: 10
+      Environment:
+        Variables:
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          CLERK_JWT_KEY: !Ref ClerkJWTKey
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Placeholder - will be replaced during deployment' })
+            };
+          };
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   # API Gateway
   ApiGateway:
@@ -124,7 +206,57 @@ Resources:
         Types:
           - REGIONAL
 
-  # Lambda Functions
+  # Clerk JWT Authorizer for API Gateway
+  ClerkJWTAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Condition: IsClerkAuthEnabled
+    Properties:
+      Name: !Sub '${StackName}-clerk-authorizer'
+      Type: TOKEN
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ClerkAuthorizerFunction.Arn}/invocations'
+      AuthorizerCredentials: !GetAtt ApiGatewayAuthorizerRole.Arn
+      IdentitySource: method.request.header.Authorization
+      AuthorizerResultTtlInSeconds: 300
+      RestApiId: !Ref ApiGateway
+
+  # IAM Role for API Gateway to invoke Clerk Authorizer
+  ApiGatewayAuthorizerRole:
+    Type: AWS::IAM::Role
+    Condition: IsClerkAuthEnabled
+    Properties:
+      RoleName: !Sub '${StackName}-api-authorizer-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaAuthorizer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ClerkAuthorizerFunction.Arn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+
+  # Lambda Permission for API Gateway to invoke Clerk Authorizer
+  ClerkAuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsClerkAuthEnabled
+    Properties:
+      FunctionName: !Ref ClerkAuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/authorizers/${ClerkJWTAuthorizer}'
+
+  # Lambda Functions with Clerk support
   GetExpensesFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -135,6 +267,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -144,6 +279,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   AddExpenseFunction:
     Type: AWS::Lambda::Function
@@ -155,6 +295,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -164,17 +307,25 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   UpdateExpenseFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${StackName}-update-expense'
+      FunctionName: !Sub '${StackName}-add-expense'
       Runtime: nodejs18.x
       Handler: updateExpense.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -184,6 +335,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   DeleteExpenseFunction:
     Type: AWS::Lambda::Function
@@ -195,6 +351,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -204,6 +363,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   GetProjectsFunction:
     Type: AWS::Lambda::Function
@@ -215,6 +379,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -224,6 +391,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   AddProjectFunction:
     Type: AWS::Lambda::Function
@@ -235,6 +407,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -244,6 +419,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   GetContractorsFunction:
     Type: AWS::Lambda::Function
@@ -255,6 +435,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -264,6 +447,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   AddContractorFunction:
     Type: AWS::Lambda::Function
@@ -275,6 +463,9 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
+          CLERK_AUTH_ENABLED: !Ref ClerkAuthEnabled
+          CLERK_SECRET_KEY: !Ref ClerkSecretKey
+          COGNITO_AUTH_ENABLED: !If [IsClerkAuthEnabled, 'false', 'true']
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -284,6 +475,11 @@ Resources:
             };
           };
       Timeout: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   # S3 Bucket for Frontend
   FrontendBucket:
@@ -298,6 +494,11 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
 
   # S3 Bucket Policy
   FrontendBucketPolicy:
@@ -348,3 +549,30 @@ Outputs:
     Value: !Sub 'http://${FrontendBucket}.s3-website-${AWS::Region}.amazonaws.com'
     Export:
       Name: !Sub '${StackName}-frontend-url'
+
+  ClerkAuthorizerArn:
+    Condition: IsClerkAuthEnabled
+    Description: 'Clerk Authorizer Lambda ARN'
+    Value: !GetAtt ClerkAuthorizerFunction.Arn
+    Export:
+      Name: !Sub '${StackName}-clerk-authorizer-arn'
+
+  ClerkAuthorizerId:
+    Condition: IsClerkAuthEnabled
+    Description: 'Clerk API Gateway Authorizer ID'
+    Value: !Ref ClerkJWTAuthorizer
+    Export:
+      Name: !Sub '${StackName}-clerk-authorizer-id'
+
+  ClerkPublishableKey:
+    Condition: IsClerkAuthEnabled
+    Description: 'Clerk Publishable Key for Frontend'
+    Value: !Ref ClerkPublishableKey
+    Export:
+      Name: !Sub '${StackName}-clerk-publishable-key'
+
+  AuthMode:
+    Description: 'Current Authentication Mode'
+    Value: !If [IsClerkAuthEnabled, 'Clerk', 'Cognito']
+    Export:
+      Name: !Sub '${StackName}-auth-mode'

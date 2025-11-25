@@ -1,0 +1,1 @@
+- for now on, the email for the test user is maordaniel40@gmail.com, and pass: 19735Maor

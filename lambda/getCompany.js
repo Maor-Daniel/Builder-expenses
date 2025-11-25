@@ -4,7 +4,7 @@
 const {
   createResponse,
   createErrorResponse,
-  getCompanyContextFromEvent,
+  getCompanyUserFromEvent,
   getCurrentTimestamp,
   debugLog,
   dynamoOperation,
@@ -23,9 +23,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Get company context from authenticated user
-    const { companyId, userId, userRole } = getCompanyContextFromEvent(event);
-    
+    // Get company context from authenticated user (works with both Clerk and Cognito)
+    const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
+
 
     // Get company information
     const companyResult = await dynamoOperation('get', {
@@ -33,8 +33,15 @@ exports.handler = async (event) => {
       Key: { companyId }
     });
 
+    // For onboarding flow: return empty response if company doesn't exist yet
     if (!companyResult.Item) {
-      return createErrorResponse(404, 'Company not found');
+      return createResponse(200, {
+        success: true,
+        companyExists: false,
+        message: 'No company found - onboarding required',
+        userId,
+        companyId
+      });
     }
 
     const company = companyResult.Item;
@@ -60,25 +67,29 @@ exports.handler = async (event) => {
 
     return createResponse(200, {
       success: true,
+      companyExists: true,
       message: 'Company information retrieved successfully',
-      data: {
-        company: {
-          id: company.companyId,
-          name: company.name,
-          description: company.description,
-          industry: company.industry,
-          companyAddress: company.companyAddress,
-          companyPhone: company.companyPhone,
-          companyEmail: company.companyEmail,
-          logoUrl: company.logoUrl,
-          createdAt: company.createdAt,
-          updatedAt: company.updatedAt
-        },
-        stats,
-        userInfo: {
-          role: userRole,
-          isAdmin: userRole === 'admin'
-        }
+      company: {
+        id: company.companyId,
+        name: company.name,
+        description: company.description,
+        industry: company.industry,
+        companyAddress: company.companyAddress,
+        companyPhone: company.companyPhone,
+        companyEmail: company.companyEmail,
+        logoUrl: company.logoUrl,
+        subscriptionTier: company.subscriptionTier,
+        subscriptionStatus: company.subscriptionStatus,
+        currentProjects: company.currentProjects || 0,
+        currentUsers: company.currentUsers || 0,
+        currentMonthExpenses: company.currentMonthExpenses || 0,
+        createdAt: company.createdAt,
+        updatedAt: company.updatedAt
+      },
+      stats,
+      userInfo: {
+        role: userRole,
+        isAdmin: userRole === 'admin'
       },
       timestamp: getCurrentTimestamp()
     });

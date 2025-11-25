@@ -1,0 +1,526 @@
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@clerk/clerk-react';
+import Chart from 'react-apexcharts';
+import {
+  BanknotesIcon,
+  BuildingOfficeIcon,
+  UserGroupIcon,
+  ClockIcon,
+  ChartBarIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
+
+import expenseService from '../services/expenseService';
+import projectService from '../services/projectService';
+import contractorService from '../services/contractorService';
+import workService from '../services/workService';
+
+/**
+ * Reports Page Component
+ *
+ * Comprehensive analytics dashboard showing:
+ * - Financial summaries (total expenses, project costs, contractor costs)
+ * - Expense trends over time (line chart)
+ * - Costs by project (bar chart)
+ * - Costs by contractor (pie chart)
+ * - Work status distribution (donut chart)
+ * - Budget utilization metrics
+ * - Top spending projects/contractors tables
+ */
+export default function Reports() {
+  const { getToken } = useAuth();
+
+  // Fetch all data
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: async () => {
+      const token = await getToken();
+      return expenseService.getExpenses(token);
+    }
+  });
+
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const token = await getToken();
+      return projectService.getProjects(token);
+    }
+  });
+
+  const { data: contractors = [], isLoading: contractorsLoading } = useQuery({
+    queryKey: ['contractors'],
+    queryFn: async () => {
+      const token = await getToken();
+      return contractorService.getContractors(token);
+    }
+  });
+
+  const { data: works = [], isLoading: worksLoading } = useQuery({
+    queryKey: ['works'],
+    queryFn: async () => {
+      const token = await getToken();
+      return workService.getWorks(token);
+    }
+  });
+
+  const isLoading = expensesLoading || projectsLoading || contractorsLoading || worksLoading;
+
+  // Calculate metrics
+  const metrics = useMemo(() => {
+    // Total expenses
+    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+
+    // Total work costs
+    const totalWorkCosts = works.reduce((sum, work) => sum + Number(work.cost || 0), 0);
+
+    // Total costs (expenses + works)
+    const totalCosts = totalExpenses + totalWorkCosts;
+
+    // Total budget
+    const totalBudget = projects.reduce((sum, proj) => sum + Number(proj.budget || 0), 0);
+
+    // Budget utilization
+    const budgetUtilization = totalBudget > 0 ? (totalCosts / totalBudget) * 100 : 0;
+
+    // Total hours worked
+    const totalHours = works.reduce((sum, work) => sum + Number(work.hours || 0), 0);
+
+    // Active projects
+    const activeProjects = projects.filter(p => p.status === 'active').length;
+
+    // Costs by project
+    const costsByProject = {};
+    projects.forEach(project => {
+      costsByProject[project.projectId] = {
+        name: project.name,
+        expenses: 0,
+        works: 0,
+        budget: Number(project.budget || 0)
+      };
+    });
+
+    expenses.forEach(exp => {
+      if (exp.projectId && costsByProject[exp.projectId]) {
+        costsByProject[exp.projectId].expenses += Number(exp.amount || 0);
+      }
+    });
+
+    works.forEach(work => {
+      if (work.projectId && costsByProject[work.projectId]) {
+        costsByProject[work.projectId].works += Number(work.cost || 0);
+      }
+    });
+
+    // Costs by contractor
+    const costsByContractor = {};
+    contractors.forEach(contractor => {
+      costsByContractor[contractor.contractorId] = {
+        name: contractor.name,
+        totalCost: 0,
+        totalHours: 0
+      };
+    });
+
+    works.forEach(work => {
+      if (work.contractorId && costsByContractor[work.contractorId]) {
+        costsByContractor[work.contractorId].totalCost += Number(work.cost || 0);
+        costsByContractor[work.contractorId].totalHours += Number(work.hours || 0);
+      }
+    });
+
+    // Work status distribution
+    const workStatusDistribution = {
+      pending: works.filter(w => w.status === 'pending').length,
+      'in-progress': works.filter(w => w.status === 'in-progress').length,
+      completed: works.filter(w => w.status === 'completed').length,
+      approved: works.filter(w => w.status === 'approved').length
+    };
+
+    // Expense trends (group by month)
+    const expenseTrends = {};
+    [...expenses, ...works].forEach(item => {
+      const date = new Date(item.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!expenseTrends[monthKey]) {
+        expenseTrends[monthKey] = 0;
+      }
+
+      expenseTrends[monthKey] += Number(item.amount || item.cost || 0);
+    });
+
+    return {
+      totalExpenses,
+      totalWorkCosts,
+      totalCosts,
+      totalBudget,
+      budgetUtilization,
+      totalHours,
+      activeProjects,
+      costsByProject: Object.values(costsByProject),
+      costsByContractor: Object.values(costsByContractor),
+      workStatusDistribution,
+      expenseTrends
+    };
+  }, [expenses, projects, contractors, works]);
+
+  // Charts configuration
+  const expenseTrendChartOptions = {
+    chart: {
+      type: 'area',
+      toolbar: { show: false },
+      fontFamily: 'inherit'
+    },
+    colors: ['#3b82f6'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.4,
+        opacityTo: 0.1
+      }
+    },
+    xaxis: {
+      categories: Object.keys(metrics.expenseTrends).sort(),
+      labels: {
+        formatter: (value) => {
+          const [year, month] = value.split('-');
+          return `${month}/${year.slice(2)}`;
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        formatter: (value) => `₪${value.toLocaleString('he-IL')}`
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => `₪${value.toLocaleString('he-IL')}`
+      }
+    }
+  };
+
+  const expenseTrendChartSeries = [{
+    name: 'הוצאות',
+    data: Object.keys(metrics.expenseTrends).sort().map(key => metrics.expenseTrends[key])
+  }];
+
+  const projectCostsChartOptions = {
+    chart: {
+      type: 'bar',
+      toolbar: { show: false }
+    },
+    colors: ['#3b82f6', '#ef4444'],
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        dataLabels: { position: 'top' }
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (value) => `₪${value.toLocaleString('he-IL')}`,
+      offsetX: -6,
+      style: {
+        fontSize: '10px',
+        colors: ['#fff']
+      }
+    },
+    xaxis: {
+      categories: metrics.costsByProject.map(p => p.name),
+      labels: {
+        formatter: (value) => `₪${value.toLocaleString('he-IL')}`
+      }
+    },
+    legend: {
+      position: 'top'
+    }
+  };
+
+  const projectCostsChartSeries = [
+    {
+      name: 'עלות בפועל',
+      data: metrics.costsByProject.map(p => p.expenses + p.works)
+    },
+    {
+      name: 'תקציב',
+      data: metrics.costsByProject.map(p => p.budget)
+    }
+  ];
+
+  const contractorCostsChartOptions = {
+    chart: {
+      type: 'pie'
+    },
+    labels: metrics.costsByContractor.map(c => c.name),
+    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'],
+    legend: {
+      position: 'bottom'
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => `₪${value.toLocaleString('he-IL')}`
+      }
+    }
+  };
+
+  const contractorCostsChartSeries = metrics.costsByContractor.map(c => c.totalCost);
+
+  const workStatusChartOptions = {
+    chart: {
+      type: 'donut'
+    },
+    labels: ['ממתין', 'בביצוע', 'הושלם', 'אושר'],
+    colors: ['#fbbf24', '#3b82f6', '#10b981', '#8b5cf6'],
+    legend: {
+      position: 'bottom'
+    }
+  };
+
+  const workStatusChartSeries = [
+    metrics.workStatusDistribution.pending,
+    metrics.workStatusDistribution['in-progress'],
+    metrics.workStatusDistribution.completed,
+    metrics.workStatusDistribution.approved
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="animate-in flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">טוען נתונים...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-content-text flex items-center gap-2">
+          <ChartBarIcon className="w-8 h-8" />
+          דוחות ואנליטיקה
+        </h1>
+        <p className="text-gray-600 mt-1">סיכום מקיף של הוצאות, פרויקטים ועבודות</p>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPICard
+          title="סך כל ההוצאות"
+          value={`₪${metrics.totalCosts.toLocaleString('he-IL')}`}
+          icon={BanknotesIcon}
+          color="blue"
+          subtitle={`הוצאות: ₪${metrics.totalExpenses.toLocaleString('he-IL')} | עבודות: ₪${metrics.totalWorkCosts.toLocaleString('he-IL')}`}
+        />
+        <KPICard
+          title="ניצול תקציב"
+          value={`${metrics.budgetUtilization.toFixed(1)}%`}
+          icon={CalendarIcon}
+          color={metrics.budgetUtilization > 100 ? 'red' : metrics.budgetUtilization > 80 ? 'yellow' : 'green'}
+          subtitle={`תקציב כולל: ₪${metrics.totalBudget.toLocaleString('he-IL')}`}
+        />
+        <KPICard
+          title="פרויקטים פעילים"
+          value={metrics.activeProjects}
+          icon={BuildingOfficeIcon}
+          color="purple"
+          subtitle={`מתוך ${projects.length} פרויקטים`}
+        />
+        <KPICard
+          title="סה״כ שעות עבודה"
+          value={metrics.totalHours.toLocaleString('he-IL')}
+          icon={ClockIcon}
+          color="green"
+          subtitle={`${works.length} רשומות עבודה`}
+        />
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expense Trends */}
+        <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+          <h2 className="text-xl font-bold text-content-text mb-4">מגמת הוצאות לאורך זמן</h2>
+          <Chart
+            options={expenseTrendChartOptions}
+            series={expenseTrendChartSeries}
+            type="area"
+            height={300}
+          />
+        </div>
+
+        {/* Work Status Distribution */}
+        <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+          <h2 className="text-xl font-bold text-content-text mb-4">התפלגות סטטוס עבודות</h2>
+          <Chart
+            options={workStatusChartOptions}
+            series={workStatusChartSeries}
+            type="donut"
+            height={300}
+          />
+        </div>
+
+        {/* Project Costs */}
+        <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+          <h2 className="text-xl font-bold text-content-text mb-4">עלויות לפי פרויקט</h2>
+          {metrics.costsByProject.length > 0 ? (
+            <Chart
+              options={projectCostsChartOptions}
+              series={projectCostsChartSeries}
+              type="bar"
+              height={300}
+            />
+          ) : (
+            <p className="text-gray-500 text-center py-12">אין נתונים להצגה</p>
+          )}
+        </div>
+
+        {/* Contractor Costs */}
+        <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+          <h2 className="text-xl font-bold text-content-text mb-4">עלויות לפי קבלן</h2>
+          {metrics.costsByContractor.length > 0 && contractorCostsChartSeries.some(val => val > 0) ? (
+            <Chart
+              options={contractorCostsChartOptions}
+              series={contractorCostsChartSeries}
+              type="pie"
+              height={300}
+            />
+          ) : (
+            <p className="text-gray-500 text-center py-12">אין נתונים להצגה</p>
+          )}
+        </div>
+      </div>
+
+      {/* Top Projects Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+        <h2 className="text-xl font-bold text-content-text mb-4">סיכום פרויקטים</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פרויקט</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">תקציב</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">הוצאות</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">עבודות</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">סה״כ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">יתרה</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {metrics.costsByProject
+                .sort((a, b) => (b.expenses + b.works) - (a.expenses + a.works))
+                .map((project, index) => {
+                  const totalCost = project.expenses + project.works;
+                  const remaining = project.budget - totalCost;
+                  const overBudget = remaining < 0;
+
+                  return (
+                    <tr key={index} className={overBudget ? 'bg-red-50' : ''}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {project.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        ₪{project.budget.toLocaleString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        ₪{project.expenses.toLocaleString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        ₪{project.works.toLocaleString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        ₪{totalCost.toLocaleString('he-IL')}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${overBudget ? 'text-red-600' : 'text-green-600'}`}>
+                        ₪{remaining.toLocaleString('he-IL')}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Top Contractors Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+        <h2 className="text-xl font-bold text-content-text mb-4">סיכום קבלנים</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">קבלן</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">שעות עבודה</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">עלות כוללת</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">ממוצע לשעה</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {metrics.costsByContractor
+                .sort((a, b) => b.totalCost - a.totalCost)
+                .filter(c => c.totalCost > 0)
+                .map((contractor, index) => {
+                  const avgHourlyRate = contractor.totalHours > 0
+                    ? contractor.totalCost / contractor.totalHours
+                    : 0;
+
+                  return (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {contractor.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {contractor.totalHours.toLocaleString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        ₪{contractor.totalCost.toLocaleString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        ₪{avgHourlyRate.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * KPI Card Component
+ */
+function KPICard({ title, value, icon: Icon, color, subtitle }) {
+  const colorClasses = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    yellow: 'bg-yellow-500',
+    red: 'bg-red-500',
+    purple: 'bg-purple-500'
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-content-border p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-content-text mt-1">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+          )}
+        </div>
+        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+}

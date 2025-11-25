@@ -14,6 +14,8 @@ const {
   USER_ROLES
 } = require('./shared/company-utils');
 
+const { sendWelcomeEmail } = require('./shared/email-utils');
+
 exports.handler = async (event) => {
 
   // Handle CORS preflight
@@ -117,7 +119,7 @@ exports.handler = async (event) => {
 
     try {
       const { company: createdCompany, adminUser } = await createCompanyWithAdmin(companyData, adminData);
-      
+
       // Update Cognito user with custom attributes (company and role)
       await cognito.adminUpdateUserAttributes({
         UserPoolId: process.env.COGNITO_USER_POOL_ID || 'us-east-1_OBAlNkRnG',
@@ -134,6 +136,13 @@ exports.handler = async (event) => {
         ]
       }).promise();
 
+      // Send welcome email to the new admin user
+      try {
+        await sendWelcomeEmail(admin.email, admin.name, company.name);
+      } catch (emailError) {
+        // Log email error but don't fail the registration
+        console.warn('[REGISTRATION] Welcome email failed to send:', emailError.message);
+      }
 
       return createResponse(200, {
         success: true,
