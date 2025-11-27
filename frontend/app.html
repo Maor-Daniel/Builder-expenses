@@ -353,6 +353,27 @@
             border-left: 4px solid #f56565;
         }
 
+        /* Role Badges */
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .role-admin {
+            background: #3182ce;
+            color: white;
+        }
+        .role-editor {
+            background: #48bb78;
+            color: white;
+        }
+        .role-viewer {
+            background: #718096;
+            color: white;
+        }
+
         /* Table */
         table {
             width: 100%;
@@ -1427,6 +1448,9 @@
                 <button class="tab-button" onclick="showTab('billing')">
                     <i class="fas fa-credit-card"></i> חיוב ומנוי
                 </button>
+                <button class="tab-button" onclick="showTab('users')">
+                    <i class="fas fa-user-friends"></i> משתמשים
+                </button>
             </div>
 
             <!-- Content Area -->
@@ -1585,6 +1609,31 @@
                 <button onclick="viewPricing()" class="btn-primary" style="padding: 12px 30px; font-size: 16px;">צפה בכל התוכניות</button>
                 <button onclick="closeModal('upgradeModal')" class="btn-secondary" style="padding: 12px 30px; font-size: 16px; margin-right: 10px;">סגור</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Invite User Modal -->
+    <div id="inviteUserModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('inviteUserModal')">&times;</span>
+            <h2>הזמן משתמש חדש</h2>
+            <form onsubmit="sendInvitation(event)">
+                <label>אימייל *</label>
+                <input type="email" id="inviteEmail" required placeholder="user@example.com">
+                <label>שם מלא *</label>
+                <input type="text" id="inviteName" required placeholder="שם מלא">
+                <label>טלפון *</label>
+                <input type="tel" id="invitePhone" required placeholder="050-1234567" pattern="[0-9\-]{9,12}">
+                <label>תפקיד *</label>
+                <select id="inviteRole" required>
+                    <option value="">בחר תפקיד</option>
+                    <option value="admin">מנהל</option>
+                    <option value="editor">עורך</option>
+                    <option value="viewer">צופה</option>
+                </select>
+                <button type="submit" class="btn-primary">שלח הזמנה</button>
+                <button type="button" class="btn-secondary" onclick="closeModal('inviteUserModal')">ביטול</button>
+            </form>
         </div>
     </div>
 
@@ -1779,10 +1828,63 @@
                 const subscriptionTier = sessionStorage.getItem('paddle_tier');
 
                 if (!companyName || !subscriptionTier) {
-                    // This checkout.completed event is not for new company registration
-                    // (probably from an upgrade/downgrade which uses API, not checkout)
-                    // Just ignore it silently
-                    console.log('Paddle checkout.completed event does not have sessionStorage data - ignoring (probably not for new registration)');
+                    // This checkout.completed event is for an UPGRADE (or downgrade), not new registration
+                    console.log('[CHECKOUT] No sessionStorage - this is an upgrade/tier change for existing customer');
+
+                    // Check if user is logged in
+                    if (currentUser && appData.company) {
+                        console.log('[CHECKOUT] User is logged in. Refreshing company data after upgrade...');
+
+                        const oldTier = appData.company.subscriptionTier;
+                        console.log('[CHECKOUT] Current tier before webhook:', oldTier);
+
+                        showSuccess('התשלום הושלם בהצלחה! מחכה לאישור מהשרת...');
+
+                        // Poll for tier update (webhook processing can take 5-15 seconds)
+                        let tierUpdated = false;
+                        const maxRetries = 15; // 15 attempts = up to 15 seconds
+
+                        for (let i = 0; i < maxRetries; i++) {
+                            console.log(`[CHECKOUT] Polling attempt ${i + 1}/${maxRetries}`);
+
+                            // Wait 1 second before each check
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+
+                            // Reload company data
+                            await loadAppData();
+
+                            // Check if tier changed
+                            const newTier = appData.company?.subscriptionTier;
+                            console.log(`[CHECKOUT] Tier check: ${oldTier} -> ${newTier}`);
+
+                            if (newTier && newTier !== oldTier) {
+                                tierUpdated = true;
+                                console.log('[CHECKOUT] ✅ Tier updated successfully!');
+                                break;
+                            }
+                        }
+
+                        if (tierUpdated) {
+                            console.log('[CHECKOUT] Final tier:', appData.company?.subscriptionTier);
+
+                            // Refresh the billing tab if we're on it AND the container exists
+                            const appContainer = document.getElementById('app');
+                            if (currentTab === 'billing' && appContainer) {
+                                console.log('[CHECKOUT] Refreshing billing tab...');
+                                showBillingTab(appContainer);
+                            } else {
+                                console.log('[CHECKOUT] Not on billing tab. User will see updated tier when they navigate to billing.');
+                            }
+
+                            showSuccess('המנוי עודכן בהצלחה!');
+                        } else {
+                            console.warn('[CHECKOUT] Timeout waiting for tier update. Webhook may still be processing.');
+                            showSuccess('התשלום התקבל! המנוי מתעדכן ברקע. רענן את הדף תוך מספר שניות.');
+                        }
+                    } else {
+                        console.log('[CHECKOUT] User not logged in or no company - ignoring checkout event');
+                    }
+
                     return;
                 }
 
@@ -2099,6 +2201,9 @@
                         break;
                     case 'billing':
                         showBillingTab(tabContent);
+                        break;
+                    case 'users':
+                        showUsersTab(tabContent);
                         break;
                     default:
                         console.error('[TAB DEBUG] Unknown tab:', tabName);
@@ -3244,8 +3349,8 @@
                             </div>
                         </div>
                         <div style="text-align: left;">
-                            <div style="background: ${subscriptionStatus === 'active' ? '#27ae60' : '#e74c3c'}; color: white; padding: 8px 20px; border-radius: 20px; font-weight: 600; margin-bottom: 10px;">
-                                ${subscriptionStatus === 'active' ? '✓ פעיל' : '✗ לא פעיל'}
+                            <div style="background: ${['active', 'trialing'].includes(subscriptionStatus) ? '#27ae60' : '#e74c3c'}; color: white; padding: 8px 20px; border-radius: 20px; font-weight: 600; margin-bottom: 10px;">
+                                ${['active', 'trialing'].includes(subscriptionStatus) ? '✓ פעיל' : '✗ לא פעיל'}
                             </div>
                             <button class="btn-secondary" onclick="managePaddleBilling()" style="white-space: nowrap;">
                                 <i class="fas fa-cog"></i> נהל פרטי תשלום
@@ -3507,15 +3612,20 @@
             }
 
             try {
-                // Check if company already has an active subscription
-                // (company exists with companyId and subscriptionStatus is 'active' or 'trialing')
-                const hasExistingSubscription = appData.company?.companyId &&
-                    (appData.company?.subscriptionStatus === 'active' ||
-                     appData.company?.subscriptionStatus === 'trialing');
+                // If company exists, ALWAYS use API update path for tier changes
+                // Never create new subscriptions for existing companies (prevents duplicate subscriptions)
+                const hasExistingCompany = appData.company?.companyId;
 
-                if (hasExistingSubscription) {
-                    // EXISTING CUSTOMER: Update subscription via Paddle API
-                    console.log('Updating existing subscription to:', newPlan);
+                console.log('[TIER CHANGE] Decision factors:', {
+                    hasCompany: hasExistingCompany,
+                    currentTier: currentTier,
+                    targetTier: newPlan,
+                    companyId: appData.company?.companyId
+                });
+
+                if (hasExistingCompany) {
+                    // EXISTING COMPANY: Always use API update path (upgrade/downgrade existing subscription)
+                    console.log('[TIER CHANGE] Company exists - using API update path for:', newPlan);
 
                     const updateData = {
                         newTier: newPlan
@@ -3524,20 +3634,28 @@
                     const response = await apiCall('/update-paddle-subscription', 'POST', updateData);
 
                     if (response.success) {
+                        // Update the appData immediately for instant UI feedback
+                        if (appData.company && response.subscription) {
+                            appData.company.subscriptionTier = response.subscription.currentTier;
+                            console.log('[UPGRADE] Updated tier immediately to:', response.subscription.currentTier);
+                        }
+
                         showSuccess(`המנוי עודכן בהצלחה ל-${planNames[newPlan]}!`);
 
-                        // Refresh company data to show new tier
-                        setTimeout(() => {
-                            loadUserCompany();
-                            showBillingTab(document.getElementById('app'));
+                        // Refresh company data and billing tab to show new tier
+                        setTimeout(async () => {
+                            await loadAppData(); // Wait for data to load
+                            showTab('billing'); // This will trigger a full billing tab re-render
+                            console.log('[TIER CHANGE] Page refreshed with new tier');
                         }, 1500);
                     } else {
                         throw new Error(response.message || 'Failed to update subscription');
                     }
 
                 } else {
-                    // NEW CUSTOMER: Open Paddle checkout for first-time subscription
-                    console.log('Opening Paddle checkout for new subscription:', newPlan);
+                    // NO COMPANY EXISTS: Open Paddle checkout for NEW customer onboarding
+                    // This should ONLY happen during initial registration/onboarding
+                    console.log('[TIER CHANGE] No company exists - opening checkout for new customer onboarding:', newPlan);
 
                     const companyName = appData.company?.companyName || 'החברה שלי';
                     const checkoutData = {
@@ -3565,6 +3683,8 @@
                         }
                     });
 
+                    console.log('[UPGRADE FLOW] Opening Paddle checkout with successCallback registered');
+
                     Paddle.Checkout.open({
                         items: [{
                             priceId: paddleConfig.priceId,
@@ -3574,27 +3694,16 @@
                             email: paddleConfig.customerEmail
                         } : undefined,
                         customData: paddleConfig.customData,
-                        successCallback: async function(data) {
-                            console.log('Paddle checkout success:', data);
-                            showSuccess('התשלום הושלם בהצלחה! מעדכן את המנוי...');
-
-                            // Wait a bit for webhook to process
-                            await new Promise(resolve => setTimeout(resolve, 3000));
-
-                            // Reload company data
-                            await loadUserCompany();
-
-                            // Refresh the billing tab to show new plan
-                            if (currentTab === 'billing') {
-                                showBillingTab(document.getElementById('app'));
-                            }
-
-                            showSuccess('המנוי עודכן בהצלחה!');
-                        },
-                        closeCallback: function() {
-                            console.log('Paddle checkout closed');
+                        settings: {
+                            displayMode: "overlay",
+                            theme: "light",
+                            locale: "he"
                         }
                     });
+
+                    // ALTERNATIVE APPROACH: Listen to global checkout.completed event
+                    // and handle it THERE since successCallback isn't firing
+                    console.log('[UPGRADE FLOW] Checkout opened. Will handle completion via global eventCallback.');
                 }
 
             } catch (error) {
@@ -3606,30 +3715,443 @@
         // Manage billing info via Paddle
         async function managePaddleBilling() {
             try {
-                // Get company subscription data
-                const subscriptionId = appData.company?.paddleSubscriptionId;
+                // Get company subscription data from the correct location
+                const subscriptionId = appData.paddleSubscription?.info?.subscriptionId;
+                const paddleCustomerId = appData.paddleSubscription?.info?.paddleCustomerId;
 
                 if (!subscriptionId) {
                     showError('לא נמצא מנוי פעיל. אנא פנה לתמיכה לקבלת עזרה.');
                     return;
                 }
 
-                // For Paddle billing management, we can:
-                // 1. Use Paddle's customer portal (requires backend API to generate URL)
-                // 2. Direct users to paddle.com to manage their subscription
-                // For now, show informative message with actions they can take
+                // Paddle Billing doesn't provide a direct customer portal URL
+                // Redirect to email support with subscription details
+                const subject = encodeURIComponent('בקשה לניהול מנוי והתשלומים');
+                const body = encodeURIComponent(
+                    `שלום,\n\n` +
+                    `אני מעוניין לנהל את המנוי שלי:\n` +
+                    `מספר מנוי: ${subscriptionId}\n` +
+                    `מספר לקוח Paddle: ${paddleCustomerId}\n\n` +
+                    `אשמח לקבל עזרה בנושאים הבאים:\n` +
+                    `☐ עדכון פרטי כרטיס אשראי\n` +
+                    `☐ הורדת קבלות\n` +
+                    `☐ שינוי תוכנית מנוי\n` +
+                    `☐ ביטול מנוי\n` +
+                    `☐ אחר: _______\n\n` +
+                    `תודה רבה!`
+                );
 
-                const message = `ניהול מנוי והתשלומים\n\n` +
-                    `מספר מנוי: ${subscriptionId}\n\n` +
-                    `כדי לנהל את המנוי שלך (עדכון פרטי כרטיס אשראי, הורדת קבלות, ביטול מנוי), ` +
-                    `אנא צור קשר עם התמיכה שלנו במייל: maordaniel40@gmail.com\n\n` +
-                    `או התקשר: 0545712252`;
-
-                alert(message);
+                // Open default email client with pre-filled message
+                window.location.href = `mailto:maordaniel40@gmail.com?subject=${subject}&body=${body}`;
 
             } catch (error) {
                 console.error('Error opening billing portal:', error);
                 showError('שגיאה בפתיחת דף ניהול התשלום');
+            }
+        }
+
+        // Show Users Tab
+        async function showUsersTab(container) {
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">ניהול משתמשים</h2>
+                    <button class="btn-primary" onclick="showInviteUserModal()">
+                        <i class="fas fa-user-plus"></i> שלח הזמנה
+                    </button>
+                </div>
+
+                <!-- Tab Switcher -->
+                <div style="background: white; padding: 8px; border-radius: 8px; margin-bottom: 20px; display: inline-flex; gap: 4px; border: 1px solid #e2e8f0;">
+                    <button id="activeUsersBtn" class="btn-secondary" onclick="switchUsersView('active')" style="padding: 8px 16px;">
+                        <i class="fas fa-user-check"></i> משתמשים פעילים
+                    </button>
+                    <button id="pendingInvitationsBtn" class="btn-secondary" onclick="switchUsersView('pending')" style="padding: 8px 16px;">
+                        <i class="fas fa-envelope"></i> הזמנות ממתינות
+                    </button>
+                </div>
+
+                <!-- Active Users Table -->
+                <div id="activeUsersView" style="display: block;">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>שם</th>
+                                <th>אימייל</th>
+                                <th>טלפון</th>
+                                <th>תפקיד</th>
+                                <th>תאריך הצטרפות</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 20px; color: #666;">
+                                    <i class="fas fa-spinner fa-spin"></i> טוען משתמשים...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pending Invitations Table -->
+                <div id="pendingInvitationsView" style="display: none;">
+                    <table id="invitationsTable">
+                        <thead>
+                            <tr>
+                                <th>אימייל</th>
+                                <th>שם</th>
+                                <th>טלפון</th>
+                                <th>תפקיד</th>
+                                <th>תאריך שליחה</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 20px; color: #666;">
+                                    <i class="fas fa-spinner fa-spin"></i> טוען הזמנות...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Load initial data
+            await loadActiveUsers();
+            await loadPendingInvitations();
+            switchUsersView('active');
+        }
+
+        // Switch between active users and pending invitations
+        function switchUsersView(view) {
+            const activeBtn = document.getElementById('activeUsersBtn');
+            const pendingBtn = document.getElementById('pendingInvitationsBtn');
+            const activeView = document.getElementById('activeUsersView');
+            const pendingView = document.getElementById('pendingInvitationsView');
+
+            if (view === 'active') {
+                activeBtn.style.background = '#3182ce';
+                activeBtn.style.color = 'white';
+                pendingBtn.style.background = 'white';
+                pendingBtn.style.color = '#3182ce';
+                activeView.style.display = 'block';
+                pendingView.style.display = 'none';
+            } else {
+                activeBtn.style.background = 'white';
+                activeBtn.style.color = '#3182ce';
+                pendingBtn.style.background = '#3182ce';
+                pendingBtn.style.color = 'white';
+                activeView.style.display = 'none';
+                pendingView.style.display = 'block';
+            }
+        }
+
+        // Show invite user modal with tier limit check
+        async function showInviteUserModal() {
+            // Check tier limits
+            const currentTier = appData.company?.subscriptionTier || 'starter';
+            const tierLimits = {
+                starter: { maxUsers: 1 },
+                professional: { maxUsers: 3 },
+                enterprise: { maxUsers: 10 }
+            };
+
+            const currentUsers = appData.users?.length || 1;
+            const maxUsers = tierLimits[currentTier].maxUsers;
+
+            if (currentUsers >= maxUsers) {
+                showUpgradeModal({
+                    resource: 'users',
+                    current: currentUsers,
+                    max: maxUsers,
+                    tier: currentTier
+                });
+                return;
+            }
+
+            // Show modal
+            document.getElementById('inviteUserModal').style.display = 'block';
+        }
+
+        // Send invitation
+        async function sendInvitation(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('inviteEmail').value.trim();
+            const name = document.getElementById('inviteName').value.trim();
+            const phone = document.getElementById('invitePhone').value.trim();
+            const role = document.getElementById('inviteRole').value;
+
+            if (!email || !name || !phone || !role) {
+                showError('נא למלא את כל השדות');
+                return;
+            }
+
+            // Validate phone format (Israeli format)
+            const phoneRegex = /^0\d{1,2}-?\d{7}$/;
+            if (!phoneRegex.test(phone)) {
+                showError('מספר טלפון לא תקין. נא להזין מספר ישראלי תקני (למשל: 050-1234567)');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/send-invitation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    },
+                    body: JSON.stringify({ email, name, phone, role })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בשליחת ההזמנה');
+                }
+
+                showSuccess('ההזמנה נשלחה בהצלחה!');
+                closeModal('inviteUserModal');
+                await loadPendingInvitations();
+                switchUsersView('pending');
+
+            } catch (error) {
+                console.error('Error sending invitation:', error);
+                showError(error.message || 'שגיאה בשליחת ההזמנה');
+            }
+        }
+
+        // Load active users
+        async function loadActiveUsers() {
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/list-users`, {
+                    headers: {
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בטעינת משתמשים');
+                }
+
+                const tbody = document.querySelector('#usersTable tbody');
+                if (!tbody) return;
+
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
+                                <i class="fas fa-users" style="font-size: 48px; opacity: 0.3; margin-bottom: 15px; display: block;"></i>
+                                <p style="margin: 0;">אין משתמשים פעילים</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = data.users.map(user => {
+                    const roleClass = `role-${user.role || 'viewer'}`;
+                    const roleText = {
+                        admin: 'מנהל',
+                        editor: 'עורך',
+                        viewer: 'צופה'
+                    }[user.role] || 'צופה';
+
+                    return `
+                        <tr>
+                            <td>${user.name || '-'}</td>
+                            <td>${user.email}</td>
+                            <td>${user.phone || '-'}</td>
+                            <td><span class="role-badge ${roleClass}">${roleText}</span></td>
+                            <td>${user.joinedAt ? new Date(user.joinedAt).toLocaleDateString('he-IL') : '-'}</td>
+                            <td>
+                                ${user.userId !== appData.company?.ownerId ?
+                                    `<button class="btn-delete" onclick="removeUser('${user.userId}', '${user.email}')">הסר</button>` :
+                                    '<span style="color: #718096; font-size: 0.875rem;">בעלים</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Update appData
+                appData.users = data.users;
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+                const tbody = document.querySelector('#usersTable tbody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 20px; color: #e74c3c;">
+                                שגיאה בטעינת משתמשים: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+        }
+
+        // Load pending invitations
+        async function loadPendingInvitations() {
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/list-invitations`, {
+                    headers: {
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בטעינת הזמנות');
+                }
+
+                const tbody = document.querySelector('#invitationsTable tbody');
+                if (!tbody) return;
+
+                if (!data.invitations || data.invitations.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
+                                <i class="fas fa-envelope-open" style="font-size: 48px; opacity: 0.3; margin-bottom: 15px; display: block;"></i>
+                                <p style="margin: 0;">אין הזמנות ממתינות</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = data.invitations.map(invitation => {
+                    const roleClass = `role-${invitation.role || 'viewer'}`;
+                    const roleText = {
+                        admin: 'מנהל',
+                        editor: 'עורך',
+                        viewer: 'צופה'
+                    }[invitation.role] || 'צופה';
+
+                    return `
+                        <tr>
+                            <td>${invitation.email}</td>
+                            <td>${invitation.name || '-'}</td>
+                            <td>${invitation.phone || '-'}</td>
+                            <td><span class="role-badge ${roleClass}">${roleText}</span></td>
+                            <td>${invitation.sentAt ? new Date(invitation.sentAt).toLocaleDateString('he-IL') : '-'}</td>
+                            <td>
+                                <button class="btn-secondary" onclick="resendInvitation('${invitation.invitationId}', '${invitation.email}')" style="padding: 6px 12px; margin-left: 5px;">
+                                    <i class="fas fa-redo"></i> שלח שוב
+                                </button>
+                                <button class="btn-delete" onclick="cancelInvitation('${invitation.invitationId}', '${invitation.email}')">
+                                    <i class="fas fa-times"></i> בטל
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading invitations:', error);
+                const tbody = document.querySelector('#invitationsTable tbody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 20px; color: #e74c3c;">
+                                שגיאה בטעינת הזמנות: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+        }
+
+        // Remove user
+        async function removeUser(userId, email) {
+            if (!confirm(`האם אתה בטוח שברצונך להסיר את המשתמש ${email}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/remove-user`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    },
+                    body: JSON.stringify({ userId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בהסרת משתמש');
+                }
+
+                showSuccess('המשתמש הוסר בהצלחה');
+                await loadActiveUsers();
+
+            } catch (error) {
+                console.error('Error removing user:', error);
+                showError(error.message || 'שגיאה בהסרת משתמש');
+            }
+        }
+
+        // Resend invitation
+        async function resendInvitation(invitationId, email) {
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/resend-invitation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    },
+                    body: JSON.stringify({ invitationId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בשליחת ההזמנה מחדש');
+                }
+
+                showSuccess(`ההזמנה נשלחה מחדש ל-${email}`);
+                await loadPendingInvitations();
+
+            } catch (error) {
+                console.error('Error resending invitation:', error);
+                showError(error.message || 'שגיאה בשליחת ההזמנה מחדש');
+            }
+        }
+
+        // Cancel invitation
+        async function cancelInvitation(invitationId, email) {
+            if (!confirm(`האם אתה בטוח שברצונך לבטל את ההזמנה ל-${email}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/cancel-invitation`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                    },
+                    body: JSON.stringify({ invitationId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'שגיאה בביטול ההזמנה');
+                }
+
+                showSuccess('ההזמנה בוטלה בהצלחה');
+                await loadPendingInvitations();
+
+            } catch (error) {
+                console.error('Error canceling invitation:', error);
+                showError(error.message || 'שגיאה בביטול ההזמנה');
             }
         }
 
