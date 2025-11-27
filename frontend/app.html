@@ -3900,7 +3900,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     },
                     body: JSON.stringify({ email, name, phone, role })
                 });
@@ -3927,7 +3927,7 @@
             try {
                 const response = await fetch(`${window.API_BASE_URL}/list-users`, {
                     headers: {
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     }
                 });
 
@@ -3999,7 +3999,7 @@
             try {
                 const response = await fetch(`${window.API_BASE_URL}/list-invitations`, {
                     headers: {
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     }
                 });
 
@@ -4077,7 +4077,7 @@
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     },
                     body: JSON.stringify({ userId })
                 });
@@ -4104,7 +4104,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     },
                     body: JSON.stringify({ invitationId })
                 });
@@ -4135,7 +4135,7 @@
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${await ClerkAuth.getToken()}`
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     },
                     body: JSON.stringify({ invitationId })
                 });
