@@ -1731,6 +1731,9 @@
             endpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod'
         };
 
+        // Set global API_BASE_URL for use throughout the app
+        window.API_BASE_URL = API_CONFIG.endpoint;
+
         // Application State
         let currentUser = null;
         let currentOrganization = null;
