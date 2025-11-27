@@ -58,7 +58,7 @@ exports.handler = async (event) => {
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
 
-    const { email, role, name } = requestBody;
+    const { email, role, name, phone } = requestBody;
 
     // Validate invitation data
     validateInvitation({ email, role });
@@ -129,6 +129,7 @@ exports.handler = async (event) => {
       invitationId,
       email,
       name: name || '',
+      phone: phone || '',
       role,
       token,
       status: INVITATION_STATUS.PENDING,

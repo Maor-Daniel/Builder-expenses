@@ -89,8 +89,8 @@ exports.handler = async (event) => {
       return createErrorResponse(400, 'Invitation token is required');
     }
 
-    if (!userDetails || !userDetails.name || !userDetails.password) {
-      return createErrorResponse(400, 'User details (name, password) are required');
+    if (!userDetails || !userDetails.name || !userDetails.phone || !userDetails.password) {
+      return createErrorResponse(400, 'User details (name, phone, password) are required');
     }
 
     if (userDetails.password.length < 8) {
@@ -123,6 +123,7 @@ exports.handler = async (event) => {
         { Name: 'email', Value: invitation.email },
         { Name: 'email_verified', Value: 'true' },
         { Name: 'name', Value: userDetails.name },
+        { Name: 'phone_number', Value: userDetails.phone },
         { Name: 'custom:companyId', Value: invitation.companyId },
         { Name: 'custom:role', Value: invitation.role }
       ]
@@ -154,6 +155,7 @@ exports.handler = async (event) => {
         userId: cognitoUser.User.Username,
         email: invitation.email,
         name: userDetails.name,
+        phone: userDetails.phone,
         role: invitation.role,
         status: 'active',
         invitedBy: invitation.invitedBy,
