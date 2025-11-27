@@ -3899,7 +3899,7 @@
             }
 
             try {
-                const response = await fetch(`${window.API_BASE_URL}/send-invitation`, {
+                const response = await fetch(`${window.API_BASE_URL}/sendInvitation`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3928,7 +3928,7 @@
         // Load active users
         async function loadActiveUsers() {
             try {
-                const response = await fetch(`${window.API_BASE_URL}/list-users`, {
+                const response = await fetch(`${window.API_BASE_URL}/listUsers`, {
                     headers: {
                         'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     }
@@ -4000,7 +4000,7 @@
         // Load pending invitations
         async function loadPendingInvitations() {
             try {
-                const response = await fetch(`${window.API_BASE_URL}/list-invitations`, {
+                const response = await fetch(`${window.API_BASE_URL}/listInvitations`, {
                     headers: {
                         'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
                     }
@@ -4076,7 +4076,7 @@
             }
 
             try {
-                const response = await fetch(`${window.API_BASE_URL}/remove-user`, {
+                const response = await fetch(`${window.API_BASE_URL}/removeUser`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -4103,7 +4103,7 @@
         // Resend invitation
         async function resendInvitation(invitationId, email) {
             try {
-                const response = await fetch(`${window.API_BASE_URL}/resend-invitation`, {
+                const response = await fetch(`${window.API_BASE_URL}/resendInvitation`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -4134,7 +4134,7 @@
             }
 
             try {
-                const response = await fetch(`${window.API_BASE_URL}/cancel-invitation`, {
+                const response = await fetch(`${window.API_BASE_URL}/cancelInvitation`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
