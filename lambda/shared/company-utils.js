@@ -12,6 +12,53 @@ const dynamoConfig = {
 const dynamodb = new AWS.DynamoDB.DocumentClient(dynamoConfig);
 const cognito = new AWS.CognitoIdentityServiceProvider(dynamoConfig);
 
+/**
+ * Determine if running in production environment
+ * Checks multiple indicators to ensure robust production detection
+ */
+function isProductionEnvironment() {
+  // Check NODE_ENV
+  if (process.env.NODE_ENV === 'production') {
+    return true;
+  }
+
+  // Check explicit ENVIRONMENT variable
+  if (process.env.ENVIRONMENT === 'production') {
+    return true;
+  }
+
+  // Check if AWS region is production region (us-east-1 is typical production)
+  // This is a safety check - if neither auth is enabled and we're in us-east-1,
+  // assume production and block test mode
+  const awsRegion = process.env.AWS_REGION;
+  if (awsRegion === 'us-east-1' && !process.env.IS_LOCAL_DEVELOPMENT) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Log critical security event in CloudWatch-compatible format
+ */
+function logSecurityEvent(eventType, severity, message, additionalData = {}) {
+  const securityEvent = {
+    eventType,
+    severity,
+    message,
+    environment: process.env.NODE_ENV || 'unknown',
+    awsRegion: process.env.AWS_REGION || 'unknown',
+    timestamp: new Date().toISOString(),
+    ...additionalData
+  };
+
+  // Log as JSON for CloudWatch Insights parsing
+  console.error(JSON.stringify(securityEvent));
+
+  // Also log human-readable version for immediate visibility
+  console.error(`[SECURITY ${severity}] ${eventType}: ${message}`);
+}
+
 // Company-scoped table names
 const COMPANY_TABLE_NAMES = {
   COMPANIES: 'construction-expenses-companies',
@@ -284,7 +331,34 @@ function getCompanyUserFromEvent(event) {
   }
 
   // NO AUTHENTICATION ENABLED - Test/Development Mode
-  console.warn('WARNING: Both Clerk and Cognito authentication disabled - using test mode');
+  // CRITICAL SECURITY CHECK: Never allow test mode in production
+  if (isProductionEnvironment()) {
+    // Log critical security event for CloudWatch monitoring
+    logSecurityEvent(
+      'AUTHENTICATION_BYPASS_ATTEMPT',
+      'CRITICAL',
+      'Test authentication mode attempted in production environment',
+      {
+        clerkEnabled,
+        cognitoEnabled,
+        nodeEnv: process.env.NODE_ENV,
+        awsRegion: process.env.AWS_REGION,
+        hasAuthHeader: !!(event.headers?.Authorization || event.headers?.authorization)
+      }
+    );
+
+    // Block the request - NEVER grant access in production without authentication
+    throw new Error('Authentication is required in production environment. Both Clerk and Cognito authentication are disabled.');
+  }
+
+  // Development/Test Environment Only - Allow test mode
+  console.warn('WARNING: Test authentication mode active - DEVELOPMENT ONLY');
+  console.warn('Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    AWS_REGION: process.env.AWS_REGION,
+    IS_LOCAL_DEVELOPMENT: process.env.IS_LOCAL_DEVELOPMENT
+  });
+
   return {
     companyId: 'test-company-123',
     userId: 'test-user-123',
