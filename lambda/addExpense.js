@@ -46,11 +46,17 @@ exports.handler = async (event) => {
       return createErrorResponse(400, `Validation error: ${validationError.message}`);
     }
 
+    // FIX BUG #5: Validate amount early (before creating expense object)
+    const parsedAmount = parseFloat(expenseData.amount);
+    if (parsedAmount > 100000000) {
+      return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
+    }
+
     // Generate expense ID and timestamps
     const expenseId = generateExpenseId();
     const timestamp = getCurrentTimestamp();
 
-    // Validate foreign key relationships
+    // FIX BUG #2: Validate foreign key relationships (already correct, adding explicit error handling)
     try {
       await validateProjectExists(userId, expenseData.projectId);
       await validateContractorExists(userId, expenseData.contractorId);
@@ -90,12 +96,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // Additional business logic validation
-    if (expense.amount > 100000000) { // Increased limit to 100M for large construction projects
-      return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
-    }
-
-    // Check for duplicate invoice number using GSI
+    // FIX BUG #3: Check for duplicate invoice number using GSI (remove silent error swallowing)
     const duplicateCheckParams = {
       TableName: TABLE_NAMES.EXPENSES,
       IndexName: 'invoice-index',
@@ -106,13 +107,10 @@ exports.handler = async (event) => {
       }
     };
 
-    try {
-      const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
-      if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-        return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
-      }
-    } catch (error) {
-      // Continue but log the error
+    // Perform duplicate check - errors will bubble up to main catch block
+    const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
+    if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
+      return createErrorResponse(409, `Invoice number ${expense.invoiceNum} already exists`);
     }
 
     // Save to DynamoDB Expenses table
