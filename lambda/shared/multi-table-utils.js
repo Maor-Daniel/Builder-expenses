@@ -11,13 +11,13 @@ const dynamoConfig = {
 // Initialize DynamoDB client - always real AWS
 const dynamodb = new AWS.DynamoDB.DocumentClient(dynamoConfig);
 
-// Table names - always production tables
+// Table names - production company-scoped tables
 const TABLE_NAMES = {
-  USERS: 'construction-expenses-multi-table-users',
-  PROJECTS: 'construction-expenses-multi-table-projects',
-  CONTRACTORS: 'construction-expenses-multi-table-contractors',
-  EXPENSES: 'construction-expenses-multi-table-expenses',
-  WORKS: 'construction-expenses-multi-table-works'
+  USERS: 'construction-expenses-company-users',
+  PROJECTS: 'construction-expenses-company-projects',
+  CONTRACTORS: 'construction-expenses-company-contractors',
+  EXPENSES: 'construction-expenses-company-expenses',
+  WORKS: 'construction-expenses-company-works'
 };
 
 /**
@@ -130,28 +130,49 @@ function getUserContextFromEvent(event) {
 }
 
 /**
+ * Valid payment methods
+ */
+const VALID_PAYMENT_METHODS = [
+  'העברה בנקאית',  // Bank transfer
+  'צ\'ק',           // Check
+  'מזומן',          // Cash
+  'כרטיס אשראי'     // Credit card
+];
+
+/**
  * Validate expense data (updated for multi-table - removed paymentTerms)
  */
 function validateExpense(expense) {
   const required = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
   const missing = required.filter(field => !expense[field]);
-  
+
   if (missing.length > 0) {
     throw new Error(`Missing required fields: ${missing.join(', ')}`);
   }
-  
+
   // Validate amount is a positive number
   const amount = parseFloat(expense.amount);
   if (isNaN(amount) || amount <= 0) {
     throw new Error('Amount must be a positive number');
   }
-  
-  // Validate date format
+
+  // FIX BUG #4: Validate payment method against allowed values
+  if (!VALID_PAYMENT_METHODS.includes(expense.paymentMethod.trim())) {
+    throw new Error(`Invalid payment method. Must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+  }
+
+  // FIX BUG #1: Strengthen date format validation
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(expense.date)) {
     throw new Error('Date must be in YYYY-MM-DD format');
   }
-  
+
+  // Additional date validation: ensure it's a valid date
+  const dateObj = new Date(expense.date);
+  if (isNaN(dateObj.getTime())) {
+    throw new Error('Invalid date value');
+  }
+
   return true;
 }
 
