@@ -26,7 +26,10 @@ exports.handler = async (event) => {
   try {
     // Get company context from authenticated user
     const { companyId, userId, userRole } = getCompanyContextFromEvent(event);
-    
+
+    console.log('listInvitations - context:', { companyId, userId, userRole });
+    console.log('listInvitations - authorizer context:', JSON.stringify(event.requestContext?.authorizer));
+
     // Check if user has admin permissions to view invitations
     if (userRole !== USER_ROLES.ADMIN) {
       return createErrorResponse(403, 'Admin privileges required to view invitations');

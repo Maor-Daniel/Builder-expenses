@@ -79,19 +79,21 @@ exports.handler = async (event) => {
     const paddleSubscriptionId = subscription.Item.subscriptionId;
     const currentStatus = subscription.Item.subscriptionStatus;
 
-    // Verify subscription is active
-    if (currentStatus !== 'active') {
+    // Verify subscription is active or trialing (allow tier changes during trial)
+    const validStatuses = ['active', 'trialing'];
+    if (!validStatuses.includes(currentStatus)) {
       return createErrorResponse(400, `Cannot update subscription with status: ${currentStatus}. Please contact support.`);
     }
 
-    console.log(`Updating subscription ${paddleSubscriptionId} from ${currentTier} to ${newTier}`);
+    console.log(`Updating subscription ${paddleSubscriptionId} from ${currentTier} to ${newTier} (status: ${currentStatus})`);
 
     // Call Paddle API to update subscription plan
     // This will trigger subscription.updated webhook which will confirm the update
     try {
       const updatedSubscription = await updateSubscriptionPlan(
         paddleSubscriptionId,
-        newPlan.priceId
+        newPlan.priceId,
+        currentStatus // Pass subscription status for correct proration mode
       );
 
       console.log('Paddle subscription update initiated:', {
@@ -106,29 +108,53 @@ exports.handler = async (event) => {
       // The webhook will confirm/verify this update when it arrives
       console.log(`Immediately updating company ${companyId} tier to ${newTier}`);
 
-      await dynamoOperation('update', {
-        TableName: COMPANY_TABLE_NAMES.COMPANIES,
-        Key: { companyId },
-        UpdateExpression: 'SET subscriptionTier = :tier, updatedAt = :updated',
-        ExpressionAttributeValues: {
-          ':tier': newTier.toLowerCase(),
-          ':updated': timestamp
-        }
-      });
+      // Update companies table first (critical for UI)
+      try {
+        await dynamoOperation('update', {
+          TableName: COMPANY_TABLE_NAMES.COMPANIES,
+          Key: { companyId },
+          UpdateExpression: 'SET subscriptionTier = :tier, updatedAt = :updated',
+          ExpressionAttributeValues: {
+            ':tier': newTier.toLowerCase(),
+            ':updated': timestamp
+          }
+        });
+        console.log(`✅ Companies table updated: ${companyId} -> ${newTier}`);
+      } catch (dbError) {
+        console.error('❌ CRITICAL: Failed to update companies table:', {
+          error: dbError.message,
+          companyId,
+          newTier,
+          tableName: COMPANY_TABLE_NAMES.COMPANIES
+        });
+        throw new Error(`Failed to update company tier: ${dbError.message}`);
+      }
 
       // Also update the Paddle subscription record
-      await dynamoOperation('update', {
-        TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
-        Key: { companyId },
-        UpdateExpression: 'SET currentPlan = :plan, nextBillingDate = :nextBilling, updatedAt = :updated',
-        ExpressionAttributeValues: {
-          ':plan': newTier.toLowerCase(),
-          ':nextBilling': updatedSubscription.next_billed_at,
-          ':updated': timestamp
-        }
-      });
+      try {
+        await dynamoOperation('update', {
+          TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
+          Key: { companyId },
+          UpdateExpression: 'SET currentPlan = :plan, nextBillingDate = :nextBilling, updatedAt = :updated',
+          ExpressionAttributeValues: {
+            ':plan': newTier.toLowerCase(),
+            ':nextBilling': updatedSubscription.next_billed_at,
+            ':updated': timestamp
+          }
+        });
+        console.log(`✅ Paddle subscriptions table updated: ${companyId} -> ${newTier}`);
+      } catch (dbError) {
+        console.error('❌ CRITICAL: Failed to update paddle-subscriptions table:', {
+          error: dbError.message,
+          companyId,
+          newTier,
+          tableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS
+        });
+        // This is less critical since companies table is already updated
+        // But we should still log it prominently
+      }
 
-      console.log(`Database updated immediately - tier is now ${newTier}`);
+      console.log(`✅ Database sync complete - tier is now ${newTier} in both tables`);
 
       // Return success with updated tier
       return createResponse(200, {

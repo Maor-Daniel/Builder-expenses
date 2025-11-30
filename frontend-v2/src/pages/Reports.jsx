@@ -1,20 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
 import Chart from 'react-apexcharts';
+import { pdf } from '@react-pdf/renderer';
 import {
   BanknotesIcon,
   BuildingOfficeIcon,
   UserGroupIcon,
   ClockIcon,
   ChartBarIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
 import expenseService from '../services/expenseService';
 import projectService from '../services/projectService';
 import contractorService from '../services/contractorService';
 import workService from '../services/workService';
+import ExpenseReportPDF from '../components/reports/ExpenseReportPDF';
 
 /**
  * Reports Page Component
@@ -30,6 +34,7 @@ import workService from '../services/workService';
  */
 export default function Reports() {
   const { getToken } = useAuth();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch all data
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
@@ -164,6 +169,45 @@ export default function Reports() {
       expenseTrends
     };
   }, [expenses, projects, contractors, works]);
+
+  // Export to PDF function
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      toast.loading('מייצא דוח לPDF...', { id: 'pdf-export' });
+
+      // Generate PDF document
+      const doc = (
+        <ExpenseReportPDF
+          expenses={expenses}
+          projects={projects}
+          contractors={contractors}
+          works={works}
+          filters={null}
+        />
+      );
+
+      // Generate PDF blob
+      const blob = await pdf(doc).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `דוח_הוצאות_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`דוח PDF עם ${expenses.length} הוצאות יוצא בהצלחה`, { id: 'pdf-export' });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('שגיאה בייצוא הדוח', { id: 'pdf-export' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Charts configuration
   const expenseTrendChartOptions = {
@@ -302,12 +346,22 @@ export default function Reports() {
   return (
     <div className="animate-in space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-content-text flex items-center gap-2">
-          <ChartBarIcon className="w-8 h-8" />
-          דוחות ואנליטיקה
-        </h1>
-        <p className="text-gray-600 mt-1">סיכום מקיף של הוצאות, פרויקטים ועבודות</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-content-text flex items-center gap-2">
+            <ChartBarIcon className="w-8 h-8" />
+            דוחות ואנליטיקה
+          </h1>
+          <p className="text-gray-600 mt-1">סיכום מקיף של הוצאות, פרויקטים ועבודות</p>
+        </div>
+        <button
+          onClick={handleExportPDF}
+          disabled={isExporting || isLoading || expenses.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          <ArrowDownTrayIcon className="w-5 h-5" />
+          <span>{isExporting ? 'מייצא...' : 'ייצוא לPDF'}</span>
+        </button>
       </div>
 
       {/* Summary KPIs */}

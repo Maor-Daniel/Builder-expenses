@@ -11,6 +11,8 @@ const {
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
 
+const { PADDLE_TABLE_NAMES } = require('./shared/paddle-utils');
+
 exports.handler = async (event) => {
 
   // Handle CORS preflight
@@ -58,6 +60,30 @@ exports.handler = async (event) => {
 
     const userCount = usersResult.Count || 0;
 
+    // Check if company has a Paddle subscription
+    let hasPaddleSubscription = false;
+    let paddleSubscriptionInfo = null;
+
+    try {
+      const paddleResult = await dynamoOperation('get', {
+        TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
+        Key: { companyId }
+      });
+
+      if (paddleResult.Item) {
+        hasPaddleSubscription = true;
+        paddleSubscriptionInfo = {
+          subscriptionId: paddleResult.Item.subscriptionId,
+          paddleCustomerId: paddleResult.Item.paddleCustomerId,
+          status: paddleResult.Item.subscriptionStatus,
+          nextBillingDate: paddleResult.Item.nextBillingDate
+        };
+      }
+    } catch (error) {
+      console.error('Error checking Paddle subscription:', error);
+      // Non-fatal error, continue without Paddle info
+    }
+
     // Get company stats (can be expanded later)
     const stats = {
       totalUsers: userCount,
@@ -91,6 +117,10 @@ exports.handler = async (event) => {
       userInfo: {
         role: userRole,
         isAdmin: userRole === 'admin'
+      },
+      paddleSubscription: {
+        exists: hasPaddleSubscription,
+        info: paddleSubscriptionInfo
       },
       timestamp: getCurrentTimestamp()
     });

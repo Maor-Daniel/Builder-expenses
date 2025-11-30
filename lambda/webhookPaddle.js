@@ -152,6 +152,8 @@ function getCompanyIdFromSubscription(subscriptionData) {
 /**
  * Handle subscription.created event
  * Occurs when a new subscription is created
+ * For trial subscriptions, this is where we update the company record
+ * (subscription.activated is only sent after trial ends)
  */
 async function handleSubscriptionCreated(subscriptionData) {
   const companyId = getCompanyIdFromSubscription(subscriptionData);
@@ -166,6 +168,7 @@ async function handleSubscriptionCreated(subscriptionData) {
   // Determine tier from price ID
   const priceId = subscriptionData.items[0]?.price?.id;
   const tier = determineTierFromPriceId(priceId);
+  const timestamp = getCurrentTimestamp();
 
   // Store subscription record
   await storeSubscription({
@@ -179,6 +182,27 @@ async function handleSubscriptionCreated(subscriptionData) {
   });
 
   console.log(`Subscription record created for company: ${companyId}`);
+
+  // Also update the companies table with subscription info
+  // This is critical for trial subscriptions where subscription.activated isn't sent
+  try {
+    await dynamoOperation('update', {
+      TableName: COMPANY_TABLE_NAMES.COMPANIES,
+      Key: { companyId },
+      UpdateExpression: 'SET subscriptionTier = :tier, subscriptionStatus = :status, subscriptionId = :subId, paddleCustomerId = :custId, nextBillingDate = :nextBilling, updatedAt = :updated',
+      ExpressionAttributeValues: {
+        ':tier': tier,
+        ':status': subscriptionData.status, // 'trialing' or 'active'
+        ':subId': subscriptionData.id,
+        ':custId': subscriptionData.customer_id,
+        ':nextBilling': subscriptionData.next_billed_at,
+        ':updated': timestamp
+      }
+    });
+    console.log(`Company ${companyId} updated with subscription tier: ${tier}, status: ${subscriptionData.status}`);
+  } catch (updateError) {
+    console.error(`Failed to update company ${companyId}:`, updateError.message);
+  }
 }
 
 /**

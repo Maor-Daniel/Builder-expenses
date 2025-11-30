@@ -1,0 +1,76 @@
+{
+  "timestamp": "2025-11-30T00:00:00.000Z",
+  "testUser": {
+    "email": "maordaniel40@gmail.com",
+    "userId": "user_35IvSrgIwsi33cLFULPoiQHAnk9",
+    "companyId": "user_35IvSrgIwsi33cLFULPoiQHAnk9"
+  },
+  "database": {
+    "note": "System uses multi-table architecture",
+    "tables": {
+      "expenses": "construction-expenses-multi-table-expenses",
+      "projects": "construction-expenses-multi-table-projects",
+      "contractors": "construction-expenses-multi-table-contractors"
+    },
+    "keyStructure": {
+      "expenses": "PK: userId, SK: expenseId",
+      "projects": "PK: userId, SK: projectId",
+      "contractors": "PK: userId, SK: contractorId"
+    }
+  },
+  "initialCounts": {
+    "expenses": 0,
+    "projects": 8,
+    "contractors": 11,
+    "note": "User has NO expenses in multi-table system (recent migration was to company-expenses table, not multi-table)"
+  },
+  "legacyData": {
+    "note": "7 expenses exist in construction-expenses-company-expenses table with companyId=user_35IvSrgIwsi33cLFULPoiQHAnk9",
+    "legacyTable": "construction-expenses-company-expenses",
+    "expenses": [
+      {
+        "expenseId": "exp_1762549369858_jvv78i47r",
+        "projectId": "proj_1762124959757_ld1y0j7j8",
+        "amount": "25000",
+        "date": "2025-11-07"
+      },
+      {
+        "expenseId": "exp_1762550110673_lnnl0spfr",
+        "projectId": "proj_1762124959757_ld1y0j7j8",
+        "amount": "2222222",
+        "date": "2025-11-07"
+      },
+      {
+        "expenseId": "exp_1762612349015_gj4u1l2hw",
+        "projectId": "proj_1762612203727_bt9q8dtcn",
+        "amount": "50000",
+        "date": "2025-11-08"
+      },
+      {
+        "expenseId": "exp_1762716313680_3c6ifwh1r",
+        "projectId": "proj_1762707100189_kui8rmm4d",
+        "amount": "2000",
+        "date": "2025-11-09"
+      },
+      {
+        "expenseId": "exp_1762716349021_736hbee3p",
+        "projectId": "proj_1762707100189_kui8rmm4d",
+        "amount": "2002",
+        "date": "2025-11-09"
+      },
+      {
+        "expenseId": "exp_1762759100521_ine63ndvn",
+        "projectId": "proj_1762124959757_ld1y0j7j8",
+        "amount": "5000",
+        "date": "2025-11-10"
+      },
+      {
+        "expenseId": "exp_1763745431372_lzgosrntr",
+        "projectId": "proj_1763744356599_3lhaqi0qa",
+        "amount": "20000",
+        "date": "2025-02-20"
+      }
+    ]
+  },
+  "testDataCreated": []
+}
