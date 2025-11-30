@@ -254,15 +254,23 @@ async function cancelSubscription(subscriptionId) {
 
 /**
  * Update subscription plan
+ * @param {string} subscriptionId - Paddle subscription ID
+ * @param {string} newPriceId - New price ID to update to
+ * @param {string} currentStatus - Current subscription status ('active', 'trialing', etc.)
  */
-async function updateSubscriptionPlan(subscriptionId, newPriceId) {
+async function updateSubscriptionPlan(subscriptionId, newPriceId, currentStatus = 'active') {
   try {
+    // Paddle requires 'do_not_bill' for trial subscriptions, 'prorated_immediately' for active
+    const prorationMode = currentStatus === 'trialing' ? 'do_not_bill' : 'prorated_immediately';
+
+    console.log(`Updating subscription with proration mode: ${prorationMode} (status: ${currentStatus})`);
+
     const response = await paddleApiCall(`subscriptions/${subscriptionId}`, 'PATCH', {
       items: [{
         price_id: newPriceId,
         quantity: 1
       }],
-      proration_billing_mode: 'prorated_immediately'
+      proration_billing_mode: prorationMode
     });
     return response.data;
   } catch (error) {

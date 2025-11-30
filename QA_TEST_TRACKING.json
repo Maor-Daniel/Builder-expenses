@@ -1,0 +1,23 @@
+{
+  "testSession": {
+    "sessionId": "qa-add-expense-2025-11-30",
+    "startTime": "2025-11-30T14:55:00Z",
+    "testUser": "maordaniel40@gmail.com",
+    "userId": "user_35IvSrgIwsi33cLFULPoiQHAnk9",
+    "apiEndpoint": "https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod/expenses"
+  },
+  "testPrerequisites": {
+    "projectId": "proj_1764514539895_zs3ufd0qs",
+    "projectName": "QA Test Project",
+    "contractorId": "contr_1764514557856_yx8lrwct4",
+    "contractorName": "QA Test Contractor"
+  },
+  "createdExpenseIds": [],
+  "testResults": [],
+  "cleanup": {
+    "required": true,
+    "expensesToDelete": [],
+    "projectToDelete": "proj_1764514539895_zs3ufd0qs",
+    "contractorToDelete": "contr_1764514557856_yx8lrwct4"
+  }
+}

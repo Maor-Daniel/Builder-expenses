@@ -105,7 +105,7 @@ function getUserContextFromEvent(event) {
   if (authorizer?.userId) {
     return {
       userId: authorizer.userId,
-      companyId: authorizer.companyId || `user_${authorizer.userId}`,
+      companyId: authorizer.companyId || authorizer.userId, // FIX: userId already has 'user_' prefix
       email: authorizer.email || '',
       userName: authorizer.userName || '',
       role: authorizer.role || 'VIEWER',

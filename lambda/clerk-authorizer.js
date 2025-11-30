@@ -42,7 +42,7 @@ exports.handler = async (event) => {
 
     // For backward compatibility, use orgId as companyId
     // If no organization, use user ID as company ID (single-user mode)
-    const companyId = orgId || `user_${userId}`;
+    const companyId = orgId || userId;
 
     // Get actual role from DynamoDB company-users table
     // This is the source of truth for user roles, not Clerk organizations
