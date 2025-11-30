@@ -9,7 +9,10 @@ echo "🚀 Deploying Clerk-enabled Lambda functions..."
 
 # Configuration
 REGION="us-east-1"
-CLERK_SECRET_KEY="sk_test_8NfI6R8Zp1NO1JTTgHz45C4AE53Lt4l9ZEjWpQosb3"
+
+# SECURITY: Secrets are now stored in AWS Secrets Manager
+# Lambda functions fetch secrets automatically using getSecret()
+# No need to pass secrets as environment variables
 
 # Deploy deleteProjectClerk
 echo "📦 Deploying deleteProjectClerk..."
@@ -28,7 +31,6 @@ echo "🔐 Updating environment variables..."
 aws lambda update-function-configuration \
     --function-name "construction-expenses-multi-table-delete-project" \
     --environment "Variables={
-        CLERK_SECRET_KEY=$CLERK_SECRET_KEY,
         ALLOW_DEFAULT_USER=true,
         ALLOW_DEFAULT_COMPANY=true,
         TABLE_NAME=construction-expenses-production-table,
@@ -57,7 +59,6 @@ echo "🔐 Updating environment variables..."
 aws lambda update-function-configuration \
     --function-name "construction-expenses-multi-table-delete-contractor" \
     --environment "Variables={
-        CLERK_SECRET_KEY=$CLERK_SECRET_KEY,
         ALLOW_DEFAULT_USER=true,
         ALLOW_DEFAULT_COMPANY=true,
         TABLE_NAME=construction-expenses-production-table,
@@ -86,7 +87,6 @@ echo "🔐 Updating environment variables..."
 aws lambda update-function-configuration \
     --function-name "construction-expenses-multi-table-delete-work" \
     --environment "Variables={
-        CLERK_SECRET_KEY=$CLERK_SECRET_KEY,
         ALLOW_DEFAULT_USER=true,
         ALLOW_DEFAULT_COMPANY=true,
         TABLE_NAME=construction-expenses-production-table,

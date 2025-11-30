@@ -1,14 +1,36 @@
 // lambda/shared/paddle-utils.js
 // Paddle integration utilities for construction expenses SAAS
+//
+// SECURITY: API keys and webhook secrets now fetched from AWS Secrets Manager
 
 const crypto = require('crypto');
+const { getSecret } = require('./secrets');
 
-// Paddle configuration
-const PADDLE_CONFIG = {
-  environment: process.env.PADDLE_ENVIRONMENT || 'sandbox', // sandbox or production
-  apiKey: process.env.PADDLE_API_KEY,
-  webhookSecret: process.env.PADDLE_WEBHOOK_SECRET
-};
+// Paddle configuration (secrets loaded on-demand)
+let paddleConfigCache = null;
+
+/**
+ * Get Paddle configuration with secrets from AWS Secrets Manager
+ * @returns {Promise<Object>} Paddle configuration object
+ */
+async function getPaddleConfig() {
+  if (paddleConfigCache) {
+    return paddleConfigCache;
+  }
+
+  const [apiKey, webhookSecret] = await Promise.all([
+    getSecret('paddle/api-key'),
+    getSecret('paddle/webhook-secret')
+  ]);
+
+  paddleConfigCache = {
+    environment: process.env.PADDLE_ENVIRONMENT || 'sandbox', // sandbox or production
+    apiKey,
+    webhookSecret
+  };
+
+  return paddleConfigCache;
+}
 
 // Subscription plans configuration - Updated to match Paddle pricing (ILS)
 const SUBSCRIPTION_PLANS = {
@@ -79,42 +101,51 @@ const { dynamoOperation, COMPANY_TABLE_NAMES } = require('./company-utils');
  * Verify Paddle webhook signature using HMAC SHA256
  * Based on Paddle Billing API documentation
  */
-function verifyPaddleWebhook(body, paddleSignature) {
-  if (!PADDLE_CONFIG.webhookSecret || !paddleSignature) {
+async function verifyPaddleWebhook(body, paddleSignature) {
+  if (!paddleSignature) {
     return false;
   }
-  
+
   try {
+    // Get webhook secret from Secrets Manager
+    const config = await getPaddleConfig();
+
+    if (!config.webhookSecret) {
+      console.error('Paddle webhook secret not available');
+      return false;
+    }
+
     // Parse the Paddle-Signature header: "ts=timestamp;h1=signature"
     const sigParts = paddleSignature.split(';');
     let timestamp = null;
     let signature = null;
-    
+
     for (const part of sigParts) {
       const [key, value] = part.split('=');
       if (key === 'ts') timestamp = value;
       if (key === 'h1') signature = value;
     }
-    
+
     if (!timestamp || !signature) {
       return false;
     }
-    
+
     // Create the signed payload: timestamp + ':' + body
     const signedPayload = `${timestamp}:${body}`;
-    
+
     // Calculate expected signature using HMAC SHA256
     const expectedSignature = crypto
-      .createHmac('sha256', PADDLE_CONFIG.webhookSecret)
+      .createHmac('sha256', config.webhookSecret)
       .update(signedPayload)
       .digest('hex');
-    
+
     // Use timing-safe comparison to prevent timing attacks
     return crypto.timingSafeEqual(
       Buffer.from(signature, 'hex'),
       Buffer.from(expectedSignature, 'hex')
     );
   } catch (error) {
+    console.error('Error verifying Paddle webhook:', error);
     return false;
   }
 }
@@ -124,18 +155,21 @@ function verifyPaddleWebhook(body, paddleSignature) {
  */
 async function paddleApiCall(endpoint, method = 'GET', data = null) {
   const https = require('https');
-  
-  const baseUrl = PADDLE_CONFIG.environment === 'production' 
-    ? 'api.paddle.com' 
+
+  // Get Paddle config with API key from Secrets Manager
+  const config = await getPaddleConfig();
+
+  const baseUrl = config.environment === 'production'
+    ? 'api.paddle.com'
     : 'sandbox-api.paddle.com';
-  
+
   const options = {
     hostname: baseUrl,
     port: 443,
     path: `/${endpoint}`,
     method: method,
     headers: {
-      'Authorization': `Bearer ${PADDLE_CONFIG.apiKey}`,
+      'Authorization': `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json'
     }
   };
@@ -427,7 +461,7 @@ function createErrorResponse(statusCode, message, error = null) {
 }
 
 module.exports = {
-  PADDLE_CONFIG,
+  getPaddleConfig, // NEW: Get config with secrets from Secrets Manager
   SUBSCRIPTION_PLANS,
   PADDLE_TABLE_NAMES,
   verifyPaddleWebhook,

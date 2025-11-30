@@ -35,7 +35,8 @@ exports.handler = async (event) => {
 
     // Verify webhook signature
     const signature = event.headers['paddle-signature'] || event.headers['Paddle-Signature'];
-    if (!verifyPaddleWebhook(webhookBody, signature)) {
+    const isValidSignature = await verifyPaddleWebhook(webhookBody, signature);
+    if (!isValidSignature) {
       return createErrorResponse(401, 'Invalid webhook signature');
     }
 

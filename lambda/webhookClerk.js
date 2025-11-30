@@ -1,7 +1,10 @@
 // lambda/webhookClerk.js
 // Clerk webhook handler for user authentication events
+//
+// SECURITY: Webhook secret now fetched from AWS Secrets Manager
 
 const crypto = require('crypto');
+const { getSecret } = require('./shared/secrets');
 
 const {
   dynamoOperation,
@@ -42,7 +45,7 @@ exports.handler = async (event) => {
     }
 
     // Verify webhook signature
-    const isValid = verifySvixSignature(event.body, svixId, svixTimestamp, svixSignature);
+    const isValid = await verifySvixSignature(event.body, svixId, svixTimestamp, svixSignature);
 
     if (!isValid) {
       console.error('Invalid webhook signature');
@@ -100,15 +103,16 @@ exports.handler = async (event) => {
  * Verify Svix webhook signature (Standard Webhooks)
  * Based on https://docs.svix.com/receiving/verifying-payloads/how-manual
  */
-function verifySvixSignature(body, svixId, svixTimestamp, svixSignature) {
-  const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
-
-  if (!webhookSecret) {
-    console.error('CLERK_WEBHOOK_SECRET not configured');
-    return false;
-  }
-
+async function verifySvixSignature(body, svixId, svixTimestamp, svixSignature) {
   try {
+    // Get webhook secret from AWS Secrets Manager
+    const webhookSecret = await getSecret('clerk/webhook-secret');
+
+    if (!webhookSecret) {
+      console.error('CLERK_WEBHOOK_SECRET not available from Secrets Manager');
+      return false;
+    }
+
     // Remove 'whsec_' prefix from secret if present
     const secret = webhookSecret.startsWith('whsec_')
       ? webhookSecret.substring(6)
