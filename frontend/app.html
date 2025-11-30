@@ -1542,10 +1542,10 @@
                 </div>
                 <select id="expensePayment" required>
                     <option value="">אמצעי תשלום *</option>
-                    <option value="Cash">מזומן</option>
-                    <option value="Credit Card">כרטיס אשראי</option>
-                    <option value="Bank Transfer">העברה בנקאית</option>
-                    <option value="Check">המחאה</option>
+                    <option value="מזומן">מזומן</option>
+                    <option value="כרטיס אשראי">כרטיס אשראי</option>
+                    <option value="העברה בנקאית">העברה בנקאית</option>
+                    <option value="צ'ק">צ'ק</option>
                 </select>
                 <select id="expenseWorkId" onchange="onWorkSelected()">
                     <option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>
@@ -4627,7 +4627,7 @@
                     amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
                     date: document.getElementById('expenseDate').value,
                     invoiceNum: document.getElementById('expenseInvoice').value || 'N/A',
-                    paymentMethod: document.getElementById('expensePayment').value || 'Cash',
+                    paymentMethod: document.getElementById('expensePayment').value || 'מזומן',
                     workId: document.getElementById('expenseWorkId').value || '',
                     projectId: document.getElementById('expenseProjectId').value || '',
                     contractorId: document.getElementById('expenseContractorId').value || '',
@@ -4875,7 +4875,7 @@
                 document.getElementById('expenseAmount').value = expense.amount || '';
                 document.getElementById('expenseDate').value = expense.date || '';
                 document.getElementById('expenseInvoice').value = expense.invoiceNum || '';
-                document.getElementById('expensePayment').value = expense.paymentMethod || 'Cash';
+                document.getElementById('expensePayment').value = expense.paymentMethod || 'מזומן';
 
                 // Note: File input cannot be pre-populated for security reasons
                 // Show existing receipt if available
