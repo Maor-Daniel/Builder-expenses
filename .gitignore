@@ -7,12 +7,14 @@ yarn-error.log*
 # Production builds
 dist/
 
-# Environment files
+# Environment files - NEVER commit secrets!
 .env
 .env.local
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
 
 # OS generated files
 .DS_Store

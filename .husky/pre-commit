@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Secret detection pre-commit hook
+# Prevents committing secrets to the repository
+
+echo "🔍 Checking for secrets in staged files..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No staged files to check"
+  exit 0
+fi
+
+# Check each staged file for secret patterns
+SECRETS_FOUND=false
+
+while IFS= read -r pattern; do
+  # Skip empty lines and comments
+  if [ -z "$pattern" ] || echo "$pattern" | grep -q "^#"; then
+    continue
+  fi
+
+  # Check if pattern matches in any staged file
+  if echo "$STAGED_FILES" | xargs git diff --cached | grep -E "$pattern" > /dev/null 2>&1; then
+    if [ "$SECRETS_FOUND" = false ]; then
+      echo ""
+      echo "❌ ERROR: Potential secret detected in commit!"
+      echo ""
+      SECRETS_FOUND=true
+    fi
+    echo "   Pattern matched: $pattern"
+  fi
+done < .git-secrets-patterns
+
+if [ "$SECRETS_FOUND" = true ]; then
+  echo ""
+  echo "🔐 SECURITY VIOLATION:"
+  echo "   Secrets must be stored in AWS Secrets Manager, not in code."
+  echo ""
+  echo "   To fix this:"
+  echo "   1. Remove the secret from your staged changes"
+  echo "   2. Store the secret in AWS Secrets Manager:"
+  echo "      aws secretsmanager create-secret --name construction-expenses/your-secret ..."
+  echo "   3. Use getSecret() in your code to fetch it"
+  echo ""
+  echo "   For more info, see: SECRETS_MIGRATION_GUIDE.md"
+  echo ""
+  exit 1
+fi
+
+echo "✅ No secrets detected - commit allowed"
+exit 0
