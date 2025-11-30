@@ -182,17 +182,20 @@ async function createExpense(event, companyId, userId) {
     return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
   }
 
-  // FIX BUG #3: Check for duplicate invoice number (using Scan since no GSI exists)
+  // Efficient duplicate invoice check using GSI (O(1) instead of O(n))
+  // Uses invoiceNum-index GSI for fast lookups by companyId + invoiceNum
   const duplicateCheckParams = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
-    FilterExpression: 'companyId = :companyId AND invoiceNum = :invoiceNum',
+    IndexName: 'invoiceNum-index',
+    KeyConditionExpression: 'companyId = :companyId AND invoiceNum = :invoiceNum',
     ExpressionAttributeValues: {
       ':companyId': companyId,
       ':invoiceNum': requestBody.invoiceNum
-    }
+    },
+    Limit: 1  // We only need to know if one exists
   };
 
-  const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
+  const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
   if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
     return createErrorResponse(409, `Invoice number ${requestBody.invoiceNum} already exists`);
   }
