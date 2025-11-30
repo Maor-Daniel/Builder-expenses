@@ -139,6 +139,64 @@ async function createExpense(event, companyId, userId) {
 
   const requestBody = JSON.parse(event.body || '{}');
 
+  // Validate required fields early
+  const required = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
+  const missing = required.filter(field => !requestBody[field]);
+
+  if (missing.length > 0) {
+    return createErrorResponse(400, `Missing required fields: ${missing.join(', ')}`);
+  }
+
+  // FIX BUG #5: Validate amount early (before creating expense object)
+  const parsedAmount = parseFloat(requestBody.amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    return createErrorResponse(400, 'Amount must be a positive number');
+  }
+  if (parsedAmount > 100000000) {
+    return createErrorResponse(400, 'Amount exceeds maximum limit (100,000,000)');
+  }
+
+  // FIX BUG #4: Validate payment method against allowed values
+  const VALID_PAYMENT_METHODS = ['העברה בנקאית', 'צ\'ק', 'מזומן', 'כרטיס אשראי'];
+  if (!VALID_PAYMENT_METHODS.includes(requestBody.paymentMethod.trim())) {
+    return createErrorResponse(400, `Invalid payment method. Must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+  }
+
+  // FIX BUG #1: Validate date format and validity
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(requestBody.date)) {
+    return createErrorResponse(400, 'Date must be in YYYY-MM-DD format');
+  }
+  const dateObj = new Date(requestBody.date);
+  if (isNaN(dateObj.getTime())) {
+    return createErrorResponse(400, 'Invalid date value');
+  }
+
+  // FIX BUG #2: Validate foreign key relationships
+  try {
+    await Promise.all([
+      validateProjectExists(companyId, requestBody.projectId),
+      validateContractorExists(companyId, requestBody.contractorId)
+    ]);
+  } catch (fkError) {
+    return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
+  }
+
+  // FIX BUG #3: Check for duplicate invoice number (using Scan since no GSI exists)
+  const duplicateCheckParams = {
+    TableName: COMPANY_TABLE_NAMES.EXPENSES,
+    FilterExpression: 'companyId = :companyId AND invoiceNum = :invoiceNum',
+    ExpressionAttributeValues: {
+      ':companyId': companyId,
+      ':invoiceNum': requestBody.invoiceNum
+    }
+  };
+
+  const duplicateCheck = await dynamoOperation('scan', duplicateCheckParams);
+  if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
+    return createErrorResponse(409, `Invoice number ${requestBody.invoiceNum} already exists`);
+  }
+
   const expense = {
     companyId,
     expenseId: generateExpenseId(),
@@ -147,8 +205,8 @@ async function createExpense(event, companyId, userId) {
     projectId: requestBody.projectId,
     contractorId: requestBody.contractorId,
     invoiceNum: requestBody.invoiceNum,
-    amount: parseFloat(requestBody.amount),
-    paymentMethod: requestBody.paymentMethod,
+    amount: parsedAmount,
+    paymentMethod: requestBody.paymentMethod.trim(),
     date: requestBody.date,
     description: requestBody.description || '',
     receiptUrl: requestBody.receiptUrl || '', // URL to uploaded receipt image
@@ -156,19 +214,6 @@ async function createExpense(event, companyId, userId) {
     createdAt: getCurrentTimestamp(),
     updatedAt: getCurrentTimestamp()
   };
-
-  // Validate required fields
-  const required = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
-  const missing = required.filter(field => !expense[field]);
-  
-  if (missing.length > 0) {
-    return createErrorResponse(400, `Missing required fields: ${missing.join(', ')}`);
-  }
-
-  // Validate amount
-  if (isNaN(expense.amount) || expense.amount <= 0) {
-    return createErrorResponse(400, 'Amount must be a positive number');
-  }
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
@@ -191,6 +236,35 @@ async function createExpense(event, companyId, userId) {
     message: 'Expense created successfully',
     expense: cleaned
   });
+}
+
+// Helper functions for foreign key validation
+async function validateProjectExists(companyId, projectId) {
+  const params = {
+    TableName: COMPANY_TABLE_NAMES.PROJECTS,
+    Key: { companyId, projectId }
+  };
+
+  const result = await dynamoOperation('get', params);
+  if (!result.Item) {
+    throw new Error(`Project with ID ${projectId} not found`);
+  }
+
+  return result.Item;
+}
+
+async function validateContractorExists(companyId, contractorId) {
+  const params = {
+    TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+    Key: { companyId, contractorId }
+  };
+
+  const result = await dynamoOperation('get', params);
+  if (!result.Item) {
+    throw new Error(`Contractor with ID ${contractorId} not found`);
+  }
+
+  return result.Item;
 }
 
 // Update an existing expense
