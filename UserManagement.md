@@ -6,9 +6,9 @@ Transform the current single-user system into a multi-user, company-centric arch
 
 ### **Current Status: Phase 3 Complete ✅**
 - **Database Foundation**: All required tables created and populated with 7 active companies
-- **Company Management**: Registration, retrieval, and update APIs fully functional  
+- **Company Management**: Registration, retrieval, and update APIs fully functional
 - **User Association**: Company-user relationships established with role-based access
-- **Authentication**: Cognito integration with company context working
+- **Authentication**: Clerk integration with company context working
 - **Invitation System**: Complete user invitation and acceptance flow implemented
 - **Email Integration**: SES configured with Hebrew email templates
 - **Permission System**: Complete role-based access control with API middleware and UI filtering
@@ -20,11 +20,11 @@ Transform the current single-user system into a multi-user, company-centric arch
 ## 📊 **Current System Analysis**
 
 ### **What We Have**
-- ✅ Single-user Cognito authentication
-- ✅ Individual user data isolation (`userId` scoping)
-- ✅ Paddle billing per individual user
-- ✅ Projects, contractors, works, expenses tied to individual users
-- ✅ Basic subscription management
+- ✅ Multi-user Clerk authentication with JWT tokens
+- ✅ Company-based data isolation (`companyId` scoping)
+- ✅ Paddle billing per company (ready for integration)
+- ✅ Projects, contractors, works, expenses shared within companies
+- ✅ Role-based access control and permissions
 
 ### **What We Need to Change**
 - 🔄 Multi-user companies with shared data
@@ -88,7 +88,7 @@ Company (Paddle Customer)
 ```javascript
 {
   PK: "companyId",                    // Links to company
-  SK: "userId",                       // Cognito user ID
+  SK: "userId",                       // Clerk user ID
   
   // User Info
   email: "user@company.com",

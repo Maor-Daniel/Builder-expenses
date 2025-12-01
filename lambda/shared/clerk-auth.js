@@ -83,16 +83,8 @@ function mapClerkRoleToAppRole(clerkRole) {
  * @returns {string} User ID
  */
 async function getUserIdFromEvent(event) {
-  try {
-    const userContext = await verifyClerkToken(event);
-    return userContext.userId;
-  } catch (error) {
-    // For backward compatibility during migration
-    if (process.env.ALLOW_DEFAULT_USER === 'true') {
-      return 'default-user';
-    }
-    throw new Error('User ID not found in request context');
-  }
+  const userContext = await verifyClerkToken(event);
+  return userContext.userId;
 }
 
 /**
@@ -101,16 +93,8 @@ async function getUserIdFromEvent(event) {
  * @returns {string} Company ID
  */
 async function getCompanyIdFromEvent(event) {
-  try {
-    const userContext = await verifyClerkToken(event);
-    return userContext.companyId;
-  } catch (error) {
-    // For backward compatibility during migration
-    if (process.env.ALLOW_DEFAULT_COMPANY === 'true') {
-      return 'default-company';
-    }
-    throw new Error('Company ID not found in request context');
-  }
+  const userContext = await verifyClerkToken(event);
+  return userContext.companyId;
 }
 
 /**
@@ -119,22 +103,7 @@ async function getCompanyIdFromEvent(event) {
  * @returns {Object} Complete user context
  */
 async function getUserContextFromEvent(event) {
-  try {
-    return await verifyClerkToken(event);
-  } catch (error) {
-    // For backward compatibility during migration
-    if (process.env.ALLOW_DEFAULT_USER === 'true') {
-      return {
-        userId: 'default-user',
-        companyId: 'default-company',
-        email: 'default@example.com',
-        name: 'Default User',
-        role: 'ADMIN',
-        isAuthenticated: false
-      };
-    }
-    throw error;
-  }
+  return await verifyClerkToken(event);
 }
 
 /**
