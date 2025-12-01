@@ -57,7 +57,7 @@ async function resetMonthlyCounterIfNeeded(company) {
 }
 
 /**
- * Check if company can create new project
+ * Check if company can create new project (with atomic increment)
  * @param {string} companyId - Company ID
  * @returns {object} { allowed: boolean, reason?: string, currentUsage?: number, limit?: number, suggestedTier?: string }
  */
@@ -70,9 +70,11 @@ async function checkProjectLimit(companyId) {
     return { allowed: true };
   }
 
-  const currentProjects = company.currentProjects || 0;
+  // Use atomic increment with conditional check to prevent race conditions
+  const result = await incrementProjectCounter(companyId, limits.maxProjects);
 
-  if (currentProjects >= limits.maxProjects) {
+  if (!result.success) {
+    const currentProjects = company.currentProjects || 0;
     return {
       allowed: false,
       reason: 'PROJECT_LIMIT_REACHED',
@@ -88,16 +90,12 @@ async function checkProjectLimit(companyId) {
 }
 
 /**
- * Check if company can create new expense
+ * Check if company can create new expense (with atomic increment)
  * @param {string} companyId - Company ID
  * @returns {object} { allowed: boolean, reason?: string, currentUsage?: number, limit?: number, suggestedTier?: string }
  */
 async function checkExpenseLimit(companyId) {
-  let company = await getCompany(companyId);
-
-  // Reset counter if new month
-  company = await resetMonthlyCounterIfNeeded(company);
-
+  const company = await getCompany(companyId);
   const tier = company.subscriptionTier || 'trial';
   const limits = getTierLimits(tier);
 
@@ -105,9 +103,11 @@ async function checkExpenseLimit(companyId) {
     return { allowed: true };
   }
 
-  const currentExpenses = company.currentMonthExpenses || 0;
+  // Use atomic increment with conditional check and monthly reset to prevent race conditions
+  const result = await incrementExpenseCounter(companyId, limits.maxExpensesPerMonth);
 
-  if (currentExpenses >= limits.maxExpensesPerMonth) {
+  if (!result.success) {
+    const currentExpenses = company.currentMonthExpenses || 0;
     return {
       allowed: false,
       reason: 'EXPENSE_LIMIT_REACHED',
@@ -123,7 +123,7 @@ async function checkExpenseLimit(companyId) {
 }
 
 /**
- * Check if company can invite new user
+ * Check if company can invite new user (with atomic increment)
  * @param {string} companyId - Company ID
  * @returns {object} { allowed: boolean, reason?: string, currentUsage?: number, limit?: number, suggestedTier?: string }
  */
@@ -136,9 +136,11 @@ async function checkUserLimit(companyId) {
     return { allowed: true };
   }
 
-  const currentUsers = company.currentUsers || 1; // At least admin
+  // Use atomic increment with conditional check to prevent race conditions
+  const result = await incrementUserCounter(companyId, limits.maxUsers);
 
-  if (currentUsers >= limits.maxUsers) {
+  if (!result.success) {
+    const currentUsers = company.currentUsers || 1;
     return {
       allowed: false,
       reason: 'USER_LIMIT_REACHED',
@@ -154,19 +156,31 @@ async function checkUserLimit(companyId) {
 }
 
 /**
- * Increment project counter
+ * Increment project counter atomically with limit check
  * @param {string} companyId - Company ID
+ * @param {number} limit - Maximum allowed projects
+ * @returns {object} { success: boolean, reason?: string }
  */
-async function incrementProjectCounter(companyId) {
-  await dynamoOperation('update', {
-    TableName: COMPANY_TABLE_NAMES.COMPANIES,
-    Key: { companyId },
-    UpdateExpression: 'ADD currentProjects :inc SET updatedAt = :now',
-    ExpressionAttributeValues: {
-      ':inc': 1,
-      ':now': new Date().toISOString()
+async function incrementProjectCounter(companyId, limit) {
+  try {
+    await dynamoOperation('update', {
+      TableName: COMPANY_TABLE_NAMES.COMPANIES,
+      Key: { companyId },
+      UpdateExpression: 'ADD currentProjects :inc SET updatedAt = :now',
+      ConditionExpression: 'attribute_not_exists(currentProjects) OR currentProjects < :limit',
+      ExpressionAttributeValues: {
+        ':inc': 1,
+        ':limit': limit,
+        ':now': new Date().toISOString()
+      }
+    });
+    return { success: true };
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return { success: false, reason: 'LIMIT_EXCEEDED' };
     }
-  });
+    throw error;
+  }
 }
 
 /**
@@ -186,19 +200,57 @@ async function decrementProjectCounter(companyId) {
 }
 
 /**
- * Increment expense counter
+ * Increment expense counter atomically with limit check and monthly reset
  * @param {string} companyId - Company ID
+ * @param {number} limit - Maximum allowed expenses per month
+ * @returns {object} { success: boolean, reason?: string }
  */
-async function incrementExpenseCounter(companyId) {
-  await dynamoOperation('update', {
-    TableName: COMPANY_TABLE_NAMES.COMPANIES,
-    Key: { companyId },
-    UpdateExpression: 'ADD currentMonthExpenses :inc SET updatedAt = :now',
-    ExpressionAttributeValues: {
-      ':inc': 1,
-      ':now': new Date().toISOString()
+async function incrementExpenseCounter(companyId, limit) {
+  const now = new Date();
+  const resetDateThreshold = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  try {
+    // First, try to increment with the limit check (assuming counter is current)
+    await dynamoOperation('update', {
+      TableName: COMPANY_TABLE_NAMES.COMPANIES,
+      Key: { companyId },
+      UpdateExpression: 'ADD currentMonthExpenses :inc SET updatedAt = :now',
+      ConditionExpression: '(attribute_not_exists(currentMonthExpenses) OR currentMonthExpenses < :limit) AND (attribute_not_exists(expenseCounterResetDate) OR expenseCounterResetDate >= :resetThreshold)',
+      ExpressionAttributeValues: {
+        ':inc': 1,
+        ':limit': limit,
+        ':now': now.toISOString(),
+        ':resetThreshold': resetDateThreshold
+      }
+    });
+    return { success: true };
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      // Could be limit exceeded OR needs monthly reset
+      // Try to reset and then increment atomically
+      try {
+        await dynamoOperation('update', {
+          TableName: COMPANY_TABLE_NAMES.COMPANIES,
+          Key: { companyId },
+          UpdateExpression: 'SET currentMonthExpenses = :one, expenseCounterResetDate = :now, updatedAt = :now',
+          ConditionExpression: 'attribute_not_exists(expenseCounterResetDate) OR expenseCounterResetDate < :resetThreshold',
+          ExpressionAttributeValues: {
+            ':one': 1,
+            ':now': now.toISOString(),
+            ':resetThreshold': resetDateThreshold
+          }
+        });
+        return { success: true };
+      } catch (resetError) {
+        if (resetError.name === 'ConditionalCheckFailedException') {
+          // Counter is current and limit was actually exceeded
+          return { success: false, reason: 'LIMIT_EXCEEDED' };
+        }
+        throw resetError;
+      }
     }
-  });
+    throw error;
+  }
 }
 
 /**
@@ -218,19 +270,31 @@ async function decrementExpenseCounter(companyId) {
 }
 
 /**
- * Increment user counter
+ * Increment user counter atomically with limit check
  * @param {string} companyId - Company ID
+ * @param {number} limit - Maximum allowed users
+ * @returns {object} { success: boolean, reason?: string }
  */
-async function incrementUserCounter(companyId) {
-  await dynamoOperation('update', {
-    TableName: COMPANY_TABLE_NAMES.COMPANIES,
-    Key: { companyId },
-    UpdateExpression: 'ADD currentUsers :inc SET updatedAt = :now',
-    ExpressionAttributeValues: {
-      ':inc': 1,
-      ':now': new Date().toISOString()
+async function incrementUserCounter(companyId, limit) {
+  try {
+    await dynamoOperation('update', {
+      TableName: COMPANY_TABLE_NAMES.COMPANIES,
+      Key: { companyId },
+      UpdateExpression: 'ADD currentUsers :inc SET updatedAt = :now',
+      ConditionExpression: 'attribute_not_exists(currentUsers) OR currentUsers < :limit',
+      ExpressionAttributeValues: {
+        ':inc': 1,
+        ':limit': limit,
+        ':now': new Date().toISOString()
+      }
+    });
+    return { success: true };
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return { success: false, reason: 'LIMIT_EXCEEDED' };
     }
-  });
+    throw error;
+  }
 }
 
 /**
