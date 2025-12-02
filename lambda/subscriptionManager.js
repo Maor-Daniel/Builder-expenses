@@ -19,13 +19,12 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight for subscription manager' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   try {
     // For GET requests, allow unauthenticated access to view plans

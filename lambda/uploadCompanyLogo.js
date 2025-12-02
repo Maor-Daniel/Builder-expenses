@@ -18,18 +18,17 @@ const {
   createSecurityErrorResponse,
   FILE_SIZE_LIMITS
 } = require('./shared/file-validator');
+const { withSecureCors } = require('./shared/cors-config');
 
 const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
 
 const LOGO_BUCKET = process.env.LOGO_BUCKET || 'construction-expenses-company-logos-702358134603';
 const MAX_FILE_SIZE = FILE_SIZE_LIMITS.LOGO; // 5MB for company logos
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');

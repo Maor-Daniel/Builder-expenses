@@ -18,13 +18,10 @@ const {
   decrementExpenseCounter
 } = require('./shared/limit-checker');
 
-exports.handler = async (event) => {
+const { withSecureCors } = require('./shared/cors-config');
 
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
-
+// Wrap handler with secure CORS middleware
+exports.handler = withSecureCors(async (event, context) => {
   try {
     // Get company and user context from JWT token
     const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
@@ -50,7 +47,7 @@ exports.handler = async (event) => {
     });
     return createErrorResponse(500, 'Internal server error during expenses operation');
   }
-};
+});
 
 // Get all expenses for the company
 async function getExpenses(companyId, userId) {

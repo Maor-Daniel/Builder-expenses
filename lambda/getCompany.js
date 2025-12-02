@@ -12,13 +12,12 @@ const {
 } = require('./shared/company-utils');
 
 const { PADDLE_TABLE_NAMES } = require('./shared/paddle-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'GET') {
     return createErrorResponse(405, 'Method not allowed');

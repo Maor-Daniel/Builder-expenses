@@ -12,6 +12,7 @@ const {
 } = require('./shared/multi-table-utils');
 
 const { withClerkAuth } = require('./shared/clerk-auth');
+const { withSecureCors } = require('./shared/cors-config');
 
 // Main handler wrapped with Clerk authentication
 exports.handler = withClerkAuth(async (event) => {

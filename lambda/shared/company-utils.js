@@ -3,6 +3,7 @@
 
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
+const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
 
 // Always use real AWS DynamoDB for company operations
 const dynamoConfig = {
@@ -210,32 +211,28 @@ const INVITATION_STATUS = {
 
 /**
  * Create standardized API response
+ * SECURITY: Now uses secure CORS configuration instead of wildcard
+ * @param {number} statusCode - HTTP status code
+ * @param {Object} body - Response body
+ * @param {Object} additionalHeaders - Additional headers (optional)
+ * @param {string} origin - Request origin (optional, for CORS)
  */
-function createResponse(statusCode, body, additionalHeaders = {}) {
-  return {
-    statusCode,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Content-Type': 'application/json',
-      ...additionalHeaders
-    },
-    body: JSON.stringify(body)
-  };
+function createResponse(statusCode, body, additionalHeaders = {}, origin = null) {
+  // Use secure CORS response builder
+  return secureCorsResponse(statusCode, body, origin, additionalHeaders);
 }
 
 /**
  * Create error response
+ * SECURITY: Now uses secure CORS configuration
+ * @param {number} statusCode - HTTP status code
+ * @param {string} message - Error message
+ * @param {Error} error - Error object (optional)
+ * @param {string} origin - Request origin (optional, for CORS)
  */
-function createErrorResponse(statusCode, message, error = null) {
-  const body = {
-    error: true,
-    message,
-    timestamp: new Date().toISOString()
-  };
-  
-  return createResponse(statusCode, body);
+function createErrorResponse(statusCode, message, error = null, origin = null) {
+  // Use secure CORS error response builder
+  return createCorsErrorResponse(statusCode, message, origin, error);
 }
 
 /**

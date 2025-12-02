@@ -2,6 +2,7 @@
 // Multi-table utilities for Lambda functions
 
 const AWS = require('aws-sdk');
+const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
 
 // Always use real AWS DynamoDB - no mock databases
 const dynamoConfig = {
@@ -22,34 +23,18 @@ const TABLE_NAMES = {
 
 /**
  * Create standardized API response
+ * SECURITY: Now uses secure CORS configuration instead of wildcard
  */
-function createResponse(statusCode, body, additionalHeaders = {}) {
-  return {
-    statusCode,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Content-Type': 'application/json',
-      ...additionalHeaders
-    },
-    body: JSON.stringify(body)
-  };
+function createResponse(statusCode, body, additionalHeaders = {}, origin = null) {
+  return secureCorsResponse(statusCode, body, origin, additionalHeaders);
 }
 
 /**
  * Create error response
+ * SECURITY: Now uses secure CORS configuration
  */
-function createErrorResponse(statusCode, message, error = null) {
-  const body = {
-    error: true,
-    message,
-    timestamp: new Date().toISOString()
-  };
-  
-  // No debug info in production
-  
-  return createResponse(statusCode, body);
+function createErrorResponse(statusCode, message, error = null, origin = null) {
+  return createCorsErrorResponse(statusCode, message, origin, error);
 }
 
 /**

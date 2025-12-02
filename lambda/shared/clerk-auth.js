@@ -3,6 +3,7 @@
 
 const { ClerkBackend } = require('@clerk/backend');
 const { getSecret } = require('./secrets');
+const { createOptionsResponse, getOriginFromEvent, createCorsResponse } = require('./cors-config');
 
 // Clerk instance cache (initialized on first use)
 let clerkInstance = null;
@@ -206,18 +207,12 @@ function hasPermission(userContext, permission) {
  */
 function withClerkAuth(handler, options = {}) {
   return async (event, context) => {
+    const origin = getOriginFromEvent(event);
+
     try {
-      // Handle CORS preflight
+      // Handle CORS preflight with secure CORS configuration
       if (event.httpMethod === 'OPTIONS') {
-        return {
-          statusCode: 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-          },
-          body: JSON.stringify({ message: 'CORS preflight' })
-        };
+        return createOptionsResponse(origin);
       }
 
       // Verify authentication
@@ -226,17 +221,14 @@ function withClerkAuth(handler, options = {}) {
       // Check permission if specified
       if (options.requiredPermission) {
         if (!hasPermission(userContext, options.requiredPermission)) {
-          return {
-            statusCode: 403,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
+          return createCorsResponse(
+            403,
+            {
               error: 'Forbidden',
               message: `Missing required permission: ${options.requiredPermission}`
-            })
-          };
+            },
+            origin
+          );
         }
       }
 
@@ -252,17 +244,14 @@ function withClerkAuth(handler, options = {}) {
       if (error.message.includes('User ID not found') ||
           error.message.includes('Invalid token') ||
           error.message.includes('Missing or invalid authorization')) {
-        return {
-          statusCode: 401,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        return createCorsResponse(
+          401,
+          {
             error: 'Unauthorized',
             message: error.message
-          })
-        };
+          },
+          origin
+        );
       }
 
       // Re-throw other errors to be handled by the handler

@@ -5,6 +5,7 @@
 
 const crypto = require('crypto');
 const { getSecret } = require('./secrets');
+const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
 
 // Paddle configuration (secrets loaded on-demand)
 let paddleConfigCache = null;
@@ -428,36 +429,18 @@ async function storePayment(paymentData) {
 
 /**
  * Create standardized API response with CORS
+ * SECURITY: Now uses secure CORS configuration instead of wildcard
  */
-function createResponse(statusCode, body, additionalHeaders = {}) {
-  return {
-    statusCode,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Content-Type': 'application/json',
-      ...additionalHeaders
-    },
-    body: JSON.stringify(body)
-  };
+function createResponse(statusCode, body, additionalHeaders = {}, origin = null) {
+  return secureCorsResponse(statusCode, body, origin, additionalHeaders);
 }
 
 /**
  * Create error response
+ * SECURITY: Now uses secure CORS configuration
  */
-function createErrorResponse(statusCode, message, error = null) {
-  const body = {
-    error: true,
-    message,
-    timestamp: new Date().toISOString()
-  };
-  
-  if (error && process.env.NODE_ENV !== 'production') {
-    body.details = error.message;
-  }
-  
-  return createResponse(statusCode, body);
+function createErrorResponse(statusCode, message, error = null, origin = null) {
+  return createCorsErrorResponse(statusCode, message, origin, error);
 }
 
 module.exports = {
