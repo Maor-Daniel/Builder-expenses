@@ -14,6 +14,7 @@ const {
   withCompanyAuth,
   debugLog
 } = require('./shared/company-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
 // Main handler with permission-based filtering
 async function getProjectsHandler(event) {

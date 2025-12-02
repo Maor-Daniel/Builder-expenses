@@ -11,8 +11,9 @@ const {
   dynamoOperation,
   TABLE_NAME
 } = require('./shared/utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   try {
     // Get user ID from event context

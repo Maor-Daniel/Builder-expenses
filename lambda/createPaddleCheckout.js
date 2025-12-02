@@ -13,14 +13,13 @@ const {
 const {
   SUBSCRIPTION_PLANS
 } = require('./shared/paddle-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
   console.log('createPaddleCheckout invoked');
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');

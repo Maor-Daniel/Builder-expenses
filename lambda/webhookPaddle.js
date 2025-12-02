@@ -16,6 +16,7 @@ const {
   getCurrentTimestamp,
   USER_ROLES
 } = require('./shared/company-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
 /**
  * Handle Paddle webhook events
@@ -23,16 +24,14 @@ const {
  *         subscription.canceled, subscription.past_due,
  *         transaction.completed, transaction.payment_failed
  */
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
   console.log('Paddle Webhook Event Received:', {
     headers: event.headers,
     hasBody: !!event.body
   });
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');

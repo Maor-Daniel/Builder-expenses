@@ -11,12 +11,11 @@ const {
   TABLE_NAMES,
   dynamoOperation
 } = require('./shared/multi-table-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
   // Handle CORS preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   try {
     // Get user ID from event context

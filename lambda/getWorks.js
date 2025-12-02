@@ -10,8 +10,9 @@ const {
   isLocal,
   TABLE_NAMES
 } = require('./shared/multi-table-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   try {
     // Get user ID from event context

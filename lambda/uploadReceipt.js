@@ -15,18 +15,17 @@ const {
   createSecurityErrorResponse,
   FILE_SIZE_LIMITS
 } = require('./shared/file-validator');
+const { withSecureCors } = require('./shared/cors-config');
 
 const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
 
 const RECEIPTS_BUCKET = process.env.RECEIPTS_BUCKET || 'construction-expenses-receipts-702358134603';
 const MAX_FILE_SIZE = FILE_SIZE_LIMITS.RECEIPT; // 10MB for receipts
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');

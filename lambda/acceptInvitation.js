@@ -14,6 +14,7 @@ const {
 const {
   incrementUserCounter
 } = require('./shared/limit-checker');
+const { withSecureCors } = require('./shared/cors-config');
 
 async function validateInvitationToken(token) {
   const scanResult = await dynamoOperation('scan', {
@@ -41,11 +42,9 @@ async function validateInvitationToken(token) {
   return invitation;
 }
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   try {
     if (event.httpMethod === 'GET') {

@@ -16,6 +16,7 @@ const {
   validateSubscriptionLimits,
   getPlanLimits
 } = require('./shared/paddle-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
@@ -128,12 +129,10 @@ ${invitationUrl}
   return await ses.sendEmail(emailParams).promise();
 }
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');

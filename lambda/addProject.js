@@ -17,6 +17,7 @@ const {
 const {
   validateSubscriptionLimits
 } = require('./shared/paddle-utils');
+const { withSecureCors } = require('./shared/cors-config');
 
 // Main handler with permission checking
 async function addProjectHandler(event) {

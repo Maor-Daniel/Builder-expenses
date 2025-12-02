@@ -15,6 +15,7 @@ const {
 const {
   decrementUserCounter
 } = require('./shared/limit-checker');
+const { withSecureCors } = require('./shared/cors-config');
 
 const AWS = require('aws-sdk');
 const cognito = new AWS.CognitoIdentityServiceProvider();
@@ -135,12 +136,10 @@ async function getUserDataCount(companyId, userId) {
   return counts;
 }
 
-exports.handler = async (event) => {
+exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, { message: 'CORS preflight' });
-  }
+  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'DELETE') {
     return createErrorResponse(405, 'Method not allowed');
