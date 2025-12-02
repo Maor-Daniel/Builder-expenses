@@ -3,7 +3,7 @@
 
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
-const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
+const { withSecureCors } = require('./cors-config');
 
 // Always use real AWS DynamoDB for company operations
 const dynamoConfig = {
@@ -211,28 +211,48 @@ const INVITATION_STATUS = {
 
 /**
  * Create standardized API response
- * SECURITY: Now uses secure CORS configuration instead of wildcard
+ * SECURITY: Returns response WITHOUT CORS headers - let middleware handle CORS
+ * The withSecureCors or withCompanyAuth middleware will add appropriate CORS headers
+ *
  * @param {number} statusCode - HTTP status code
  * @param {Object} body - Response body
  * @param {Object} additionalHeaders - Additional headers (optional)
- * @param {string} origin - Request origin (optional, for CORS)
  */
-function createResponse(statusCode, body, additionalHeaders = {}, origin = null) {
-  // Use secure CORS response builder
-  return secureCorsResponse(statusCode, body, origin, additionalHeaders);
+function createResponse(statusCode, body, additionalHeaders = {}) {
+  return {
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      ...additionalHeaders
+    },
+    body: typeof body === 'string' ? body : JSON.stringify(body)
+  };
 }
 
 /**
  * Create error response
- * SECURITY: Now uses secure CORS configuration
+ * SECURITY: Returns response WITHOUT CORS headers - let middleware handle CORS
+ *
  * @param {number} statusCode - HTTP status code
  * @param {string} message - Error message
  * @param {Error} error - Error object (optional)
- * @param {string} origin - Request origin (optional, for CORS)
  */
-function createErrorResponse(statusCode, message, error = null, origin = null) {
-  // Use secure CORS error response builder
-  return createCorsErrorResponse(statusCode, message, origin, error);
+function createErrorResponse(statusCode, message, error = null) {
+  const body = {
+    error: true,
+    message,
+    timestamp: new Date().toISOString()
+  };
+
+  // Include error details in non-production environments
+  if (!isProductionEnvironment() && error) {
+    body.debug = {
+      stack: error.stack,
+      details: error.message
+    };
+  }
+
+  return createResponse(statusCode, body);
 }
 
 /**
@@ -722,16 +742,12 @@ function getCompanyContextFromEvent(event) {
  * Middleware wrapper to require specific permission for Lambda handler
  */
 function withPermission(requiredPermission, handler) {
-  return async (event, context) => {
+  // Wrap with CORS middleware first
+  return withSecureCors(async (event, context) => {
     try {
-      // Handle CORS preflight
-      if (event.httpMethod === 'OPTIONS') {
-        return createResponse(200, { message: 'CORS preflight' });
-      }
-
       // Get user context from event
       const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-      
+
       // Check if user has required permission
       if (!hasPermission(userRole, requiredPermission)) {
         return createErrorResponse(403, `Access denied. Required permission: ${requiredPermission}`);
@@ -748,20 +764,20 @@ function withPermission(requiredPermission, handler) {
 
       // Call the actual handler
       return await handler(event, context);
-      
+
     } catch (error) {
-      
+
       if (error.message.includes('Company authentication required')) {
         return createErrorResponse(401, 'Authentication required');
       }
-      
+
       if (error.message.includes('missing company')) {
         return createErrorResponse(401, 'Invalid company context');
       }
-      
+
       return createErrorResponse(403, 'Access denied');
     }
-  };
+  });
 }
 
 /**
@@ -775,16 +791,12 @@ function withAdminRole(handler) {
  * Middleware wrapper for company-scoped operations (any authenticated user)
  */
 function withCompanyAuth(handler) {
-  return async (event, context) => {
+  // Wrap with CORS middleware first
+  return withSecureCors(async (event, context) => {
     try {
-      // Handle CORS preflight
-      if (event.httpMethod === 'OPTIONS') {
-        return createResponse(200, { message: 'CORS preflight' });
-      }
-
       // Get user context from event
       const { companyId, userId, userRole } = getCompanyUserFromEvent(event);
-      
+
       // Add auth context to event for handler use
       event.authContext = {
         companyId,
@@ -796,20 +808,20 @@ function withCompanyAuth(handler) {
 
       // Call the actual handler
       return await handler(event, context);
-      
+
     } catch (error) {
-      
+
       if (error.message.includes('Company authentication required')) {
         return createErrorResponse(401, 'Authentication required');
       }
-      
+
       if (error.message.includes('missing company')) {
         return createErrorResponse(401, 'Invalid company context');
       }
-      
+
       return createErrorResponse(500, 'Authentication error');
     }
-  };
+  });
 }
 
 /**

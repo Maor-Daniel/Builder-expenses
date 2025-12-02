@@ -248,4 +248,4 @@ exports.handler = withSecureCors(async (event) => {
       error: error.message
     });
   }
-};
+});

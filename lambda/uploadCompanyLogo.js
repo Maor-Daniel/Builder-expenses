@@ -146,4 +146,4 @@ exports.handler = withSecureCors(async (event) => {
 
     return createErrorResponse(500, 'Internal server error generating upload URL');
   }
-};
+});

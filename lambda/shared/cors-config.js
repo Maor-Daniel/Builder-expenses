@@ -93,12 +93,21 @@ function isOriginAllowed(origin) {
 function getCorsHeaders(requestOrigin) {
   const allowedOrigins = getAllowedOrigins();
 
+  // Debug logging for CORS troubleshooting
+  console.log('[CORS] getCorsHeaders called', {
+    requestOrigin,
+    allowedOrigins,
+    isIncluded: requestOrigin ? allowedOrigins.includes(requestOrigin) : false
+  });
+
   // Determine which origin to return
   // If request origin is allowed, use it (enables credential support)
   // Otherwise, use first production origin as default
   const origin = requestOrigin && allowedOrigins.includes(requestOrigin)
     ? requestOrigin
     : allowedOrigins[0];
+
+  console.log('[CORS] Selected origin for response:', origin);
 
   return {
     'Access-Control-Allow-Origin': origin,
@@ -241,8 +250,12 @@ function withSecureCors(handler, options = {}) {
     const functionName = context.functionName || 'unknown-function';
     const origin = getOriginFromEvent(event);
 
+    console.log(`[CORS] ${functionName} - Extracted origin:`, origin);
+    console.log(`[CORS] ${functionName} - Request headers:`, JSON.stringify(event.headers || {}));
+
     // Handle OPTIONS preflight requests
     if (event.httpMethod === 'OPTIONS' || event.requestContext?.httpMethod === 'OPTIONS') {
+      console.log(`[CORS] ${functionName} - Handling OPTIONS preflight request`);
       return createOptionsResponse(origin);
     }
 
@@ -271,10 +284,13 @@ function withSecureCors(handler, options = {}) {
       if (result && typeof result === 'object' && result.statusCode) {
         // Add CORS headers if not already present
         if (!result.headers || !result.headers['Access-Control-Allow-Origin']) {
+          console.log(`[CORS] ${functionName} - Adding CORS headers to response`);
           result.headers = {
             ...getCorsHeaders(origin),
             ...(result.headers || {})
           };
+        } else {
+          console.log(`[CORS] ${functionName} - Response already has CORS headers:`, result.headers['Access-Control-Allow-Origin']);
         }
       }
 

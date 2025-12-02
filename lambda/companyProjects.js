@@ -49,7 +49,7 @@ exports.handler = withSecureCors(async (event) => {
     });
     return createErrorResponse(500, 'Internal server error during projects operation');
   }
-};
+});
 
 // Get all projects for the company
 async function getProjects(companyId, userId) {

@@ -120,7 +120,7 @@ exports.handler = withSecureCors(async (event) => {
       error: error.message
     });
   }
-};
+});
 
 /**
  * Store webhook event for auditing

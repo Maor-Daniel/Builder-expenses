@@ -266,4 +266,4 @@ ${invitationUrl}
     
     return createErrorResponse(500, 'Internal server error while sending invitation');
   }
-};
+});
