@@ -134,4 +134,4 @@ exports.handler = withSecureCors(async (event) => {
 
     return createErrorResponse(500, 'Failed to delete project', error);
   }
-};
+});

@@ -136,4 +136,4 @@ exports.handler = withSecureCors(async (event) => {
     
     return createErrorResponse(500, 'Internal server error retrieving company information');
   }
-};
+});

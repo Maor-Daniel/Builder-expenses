@@ -47,6 +47,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-api-gateway": "^3.943.0",
     "@clerk/backend": "^2.20.0",
     "@clerk/clerk-js": "^5.105.1",
     "@sentry/aws-serverless": "^10.23.0",

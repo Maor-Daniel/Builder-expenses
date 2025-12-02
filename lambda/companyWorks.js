@@ -37,7 +37,7 @@ exports.handler = withSecureCors(async (event) => {
   } catch (error) {
     return createErrorResponse(500, 'Internal server error during works operation');
   }
-};
+});
 
 // Get all works for the company
 async function getWorks(companyId, userId) {
