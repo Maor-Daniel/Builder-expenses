@@ -53,9 +53,12 @@
     "@sentry/browser": "^10.23.0",
     "@sentry/react": "^10.23.0",
     "aws-sdk": "^2.1498.0",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "file-type": "^16.5.4"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.940.0",
+    "@aws-sdk/lib-dynamodb": "^3.940.0",
     "@playwright/test": "^1.56.1",
     "archiver": "^6.0.1",
     "eslint": "^8.54.0",
