@@ -7,6 +7,12 @@ const { DynamoDBDocument } = require('@aws-sdk/lib-dynamodb');
 
 const dynamodb = DynamoDBDocument.from(new DynamoDB({}));
 
+// Import secrets manager utility
+const { getSecret } = require('./shared/secrets');
+
+// Cache for Clerk secret key
+let clerkSecretKey = null;
+
 // Environment configuration with defaults
 const JWT_CONFIG = {
   maxTokenAge: parseInt(process.env.JWT_MAX_TOKEN_AGE || '3600', 10), // 1 hour default
@@ -209,10 +215,16 @@ exports.handler = async (event) => {
       throw new Error('Unauthorized');
     }
 
+    // Fetch Clerk secret key from AWS Secrets Manager (cached)
+    if (!clerkSecretKey) {
+      console.log('Fetching Clerk secret key from AWS Secrets Manager...');
+      clerkSecretKey = await getSecret('clerk/secret-key');
+    }
+
     // Verify the token with Clerk (signature verification)
     console.log('Verifying token with Clerk...');
     const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY
+      secretKey: clerkSecretKey
     });
 
     console.log('Token signature verified successfully');

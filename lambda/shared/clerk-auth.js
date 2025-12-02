@@ -2,11 +2,51 @@
 // Clerk authentication middleware for Lambda functions
 
 const { ClerkBackend } = require('@clerk/backend');
+const { getSecret } = require('./secrets');
 
-// Initialize Clerk backend
-const clerk = ClerkBackend({
-  secretKey: process.env.CLERK_SECRET_KEY || process.env.REACT_APP_CLERK_SECRET_KEY,
-});
+// Clerk instance cache (initialized on first use)
+let clerkInstance = null;
+let clerkInitPromise = null;
+
+/**
+ * Initialize Clerk backend with secret from AWS Secrets Manager
+ * @returns {Promise<ClerkBackend>} Initialized Clerk instance
+ */
+async function getClerkInstance() {
+  // Return cached instance if available
+  if (clerkInstance) {
+    return clerkInstance;
+  }
+
+  // If initialization is in progress, wait for it
+  if (clerkInitPromise) {
+    return clerkInitPromise;
+  }
+
+  // Start initialization
+  clerkInitPromise = (async () => {
+    try {
+      // Fetch Clerk secret key from AWS Secrets Manager
+      const secretKey = await getSecret('clerk/secret-key');
+
+      // Initialize Clerk backend
+      clerkInstance = ClerkBackend({
+        secretKey
+      });
+
+      console.log('Clerk backend initialized successfully with secret from Secrets Manager');
+      return clerkInstance;
+
+    } catch (error) {
+      console.error('Failed to initialize Clerk backend:', error);
+      // Reset promise so next call will retry
+      clerkInitPromise = null;
+      throw error;
+    }
+  })();
+
+  return clerkInitPromise;
+}
 
 /**
  * Verify Clerk JWT token and extract user/company information
@@ -24,6 +64,9 @@ async function verifyClerkToken(event) {
 
     // Extract the token
     const token = authHeader.replace('Bearer ', '');
+
+    // Get initialized Clerk instance
+    const clerk = await getClerkInstance();
 
     // Verify the JWT token with Clerk
     const sessionClaims = await clerk.verifyToken(token);
@@ -229,6 +272,7 @@ function withClerkAuth(handler, options = {}) {
 }
 
 module.exports = {
+  getClerkInstance,
   verifyClerkToken,
   getUserIdFromEvent,
   getCompanyIdFromEvent,
