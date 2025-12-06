@@ -76,6 +76,7 @@ exports.handler = withSecureCors(async (event) => {
       paymentMethod: expenseData.paymentMethod.trim(),
       date: expenseData.date,
       description: expenseData.description ? expenseData.description.trim() : '',
+      missingReceipt: expenseData.missingReceipt === true || (!expenseData.receiptUrl && !expenseData.receiptImage),
       createdAt: timestamp,
       updatedAt: timestamp
     };

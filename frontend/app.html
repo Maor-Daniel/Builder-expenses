@@ -1369,6 +1369,618 @@
                 grid-template-columns: repeat(4, 1fr);
             }
         }
+
+        /* Expense Type Selection Buttons */
+        .btn-expense-type {
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .btn-expense-type:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-expense-type:first-child {
+            border-color: #3182ce;
+            background: #ebf8ff;
+        }
+
+        .btn-expense-type:first-child:hover {
+            background: #bee3f8;
+            border-color: #2b6cb0;
+        }
+
+        .btn-expense-type:last-child:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        /* Wide Expense Modal */
+        .expense-modal-wide {
+            max-width: 900px !important;
+        }
+
+        .expense-modal-wide.no-picture {
+            max-width: 600px !important;
+        }
+
+        /* Side-by-side Layout - Picture on LEFT, Form on RIGHT for RTL readers */
+        .expense-form-layout {
+            display: flex;
+            gap: 24px;
+            direction: ltr; /* Keep picture on left side for Hebrew readers */
+        }
+
+        .expense-receipt-panel {
+            flex: 0 0 350px;
+            min-height: 400px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            background: #f7fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .expense-form-panel {
+            flex: 1;
+            min-width: 0;
+            direction: rtl; /* Keep form content RTL for Hebrew */
+            text-align: right;
+        }
+
+        /* Receipt Upload Area */
+        .receipt-upload-area {
+            width: 100%;
+            height: 100%;
+        }
+
+        .receipt-dropzone {
+            width: 100%;
+            height: 100%;
+            min-height: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            border-radius: 6px;
+        }
+
+        .receipt-dropzone:hover {
+            background: #edf2f7;
+        }
+
+        .receipt-dropzone.drag-over {
+            background: #ebf8ff;
+            border-color: #3182ce;
+        }
+
+        /* Receipt Image Preview */
+        .receipt-image-preview {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .receipt-image-preview img {
+            max-width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .btn-remove-receipt {
+            margin-top: 15px;
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Rubik', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-remove-receipt:hover {
+            background: #c53030;
+        }
+
+        /* Missing Receipt Badge */
+        .missing-receipt-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #fef3c7;
+            color: #92400e;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .missing-receipt-badge i {
+            color: #d97706;
+        }
+
+        /* Mobile Responsive for Expense Modal */
+        @media (max-width: 768px) {
+            .expense-modal-wide {
+                max-width: 95% !important;
+            }
+
+            .expense-form-layout {
+                flex-direction: column;
+            }
+
+            .expense-receipt-panel {
+                flex: none;
+                width: 100%;
+                min-height: 200px;
+            }
+
+            .receipt-dropzone {
+                min-height: 180px;
+            }
+        }
+
+        /* OCR Component Styles */
+        .ocr-container-wrapper {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .receipt-upload-ocr {
+            width: 100%;
+        }
+
+        /* Upload Zone */
+        .ocr-upload-zone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 30px 20px;
+            text-align: center;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .ocr-upload-zone:hover {
+            border-color: #3182ce;
+            background: #edf2f7;
+        }
+
+        .ocr-upload-zone.drag-over {
+            border-color: #3182ce;
+            background: #e6f2ff;
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #3182ce;
+            margin-bottom: 15px;
+        }
+
+        .upload-text .primary-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .upload-text .secondary-text {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .upload-text .ocr-info-text {
+            font-size: 13px;
+            color: #3182ce;
+            background: #e6f2ff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .upload-text .ocr-info-text i {
+            margin-left: 5px;
+        }
+
+        /* Progress Bar */
+        .ocr-progress-container {
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+
+        .ocr-progress-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .progress-icon {
+            font-size: 24px;
+            color: #3182ce;
+        }
+
+        .progress-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .progress-bar-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3182ce, #4299e1);
+            transition: width 0.3s ease;
+        }
+
+        .progress-percent {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3182ce;
+            min-width: 40px;
+        }
+
+        .progress-subtext {
+            text-align: center;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        /* Preview */
+        .ocr-preview-container {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .preview-header h3 {
+            font-size: 16px;
+            color: #2d3748;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preview-success-icon {
+            color: #10b981;
+            font-size: 24px;
+        }
+
+        .clear-receipt-btn {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .clear-receipt-btn:hover {
+            color: #c53030;
+        }
+
+        .preview-thumbnail {
+            position: relative;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            max-width: 200px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        .preview-thumbnail img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .thumbnail-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+        }
+
+        .thumbnail-overlay .file-name {
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .extracted-fields-summary h4 {
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .field-indicator {
+            background: white;
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .field-indicator[data-confidence="high"] {
+            border-color: #10b981;
+        }
+
+        .field-indicator[data-confidence="medium"] {
+            border-color: #f59e0b;
+        }
+
+        .field-indicator[data-confidence="low"] {
+            border-color: #ef4444;
+        }
+
+        .field-indicator .field-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .field-indicator .confidence-icon {
+            font-size: 14px;
+        }
+
+        .field-indicator[data-confidence="high"] .confidence-icon {
+            color: #10b981;
+        }
+
+        .field-indicator[data-confidence="medium"] .confidence-icon {
+            color: #f59e0b;
+        }
+
+        .field-indicator[data-confidence="low"] .confidence-icon {
+            color: #ef4444;
+        }
+
+        .field-indicator .field-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 3px;
+        }
+
+        .field-indicator .field-confidence {
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .low-confidence-warning {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #c53030;
+        }
+
+        .low-confidence-warning i {
+            font-size: 16px;
+        }
+
+        .preview-actions {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .btn-change-receipt {
+            background: white;
+            border: 1px solid #cbd5e0;
+            color: #2d3748;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-change-receipt:hover {
+            background: #f7fafc;
+            border-color: #3182ce;
+            color: #3182ce;
+        }
+
+        .btn-change-receipt i {
+            margin-left: 5px;
+        }
+
+        /* Error State */
+        .ocr-error-container {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            color: #e53e3e;
+            margin-bottom: 15px;
+        }
+
+        .ocr-error-container h3 {
+            font-size: 16px;
+            color: #c53030;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            font-size: 14px;
+            color: #742a2a;
+            margin-bottom: 15px;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-retry,
+        .btn-cancel {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-retry {
+            background: #3182ce;
+            border: none;
+            color: white;
+        }
+
+        .btn-retry:hover {
+            background: #2c5aa0;
+        }
+
+        .btn-cancel {
+            background: white;
+            border: 1px solid #cbd5e0;
+            color: #2d3748;
+        }
+
+        .btn-cancel:hover {
+            background: #f7fafc;
+        }
+
+        /* Form Field with Confidence */
+        .form-field-with-confidence {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .field-confidence-indicator {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            font-size: 18px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .field-confidence-indicator.visible {
+            opacity: 1;
+        }
+
+        .field-confidence-indicator.high {
+            color: #10b981;
+        }
+
+        .field-confidence-indicator.medium {
+            color: #f59e0b;
+        }
+
+        .field-confidence-indicator.low {
+            color: #ef4444;
+        }
+
+        .form-field-with-confidence input {
+            padding-right: 35px;
+        }
+
+        .form-field-with-confidence input.ocr-filled {
+            background: #f0fdf4;
+            border-color: #10b981;
+        }
+
+        .form-field-with-confidence input.ocr-edited {
+            background: #fff7ed;
+            border-color: #f59e0b;
+        }
+
+        /* Pulse animation for low confidence warning */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Additional styles for confidence badge wrapper */
+        .confidence-badge-wrapper {
+            pointer-events: auto;
+        }
+
+        .confidence-percentage {
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -1526,39 +2138,88 @@
         </div>
     </div>
 
-    <div id="expenseModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('expenseModal')">&times;</span>
+    <!-- Expense Type Selection Modal -->
+    <div id="expenseTypeModal" class="modal">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <span class="close" onclick="closeModal('expenseTypeModal')">&times;</span>
             <h2>הוסף הוצאה חדשה</h2>
-            <form id="expenseForm" onsubmit="submitExpense(event)">
-                <input type="text" id="expenseDescription" placeholder="תיאור *" required>
-                <input type="number" id="expenseAmount" placeholder="סכום *" step="0.01" required>
-                <input type="date" id="expenseDate" placeholder="תאריך *" required>
-                <input type="text" id="expenseInvoice" placeholder="מספר חשבונית *" required>
-                <div class="form-group">
-                    <label for="expenseReceipt">תמונת חשבונית / קבלה</label>
-                    <input type="file" id="expenseReceipt" accept="image/*,application/pdf">
-                    <small id="receiptPreview" style="display: none; color: #3182ce; margin-top: 5px;"></small>
+            <p style="color: #718096; margin-bottom: 24px;">בחר כיצד ברצונך להוסיף את ההוצאה</p>
+
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <button type="button" class="btn-expense-type" onclick="openExpenseFormWithPicture()">
+                    <i class="fas fa-camera" style="font-size: 32px; color: #3182ce; margin-bottom: 10px; display: block;"></i>
+                    <span style="font-size: 18px; font-weight: 600; color: #2d3748;">העלה תמונה</span>
+                    <p style="font-size: 14px; color: #718096; margin-top: 5px;">העלה תמונת קבלה או חשבונית</p>
+                </button>
+
+                <button type="button" class="btn-expense-type" onclick="openExpenseFormWithoutPicture()">
+                    <i class="fas fa-edit" style="font-size: 32px; color: #718096; margin-bottom: 10px; display: block;"></i>
+                    <span style="font-size: 18px; font-weight: 600; color: #2d3748;">המשך ללא תמונה</span>
+                    <p style="font-size: 14px; color: #718096; margin-top: 5px;">הזן פרטי הוצאה ידנית</p>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content expense-modal-wide">
+            <span class="close" onclick="closeModal('expenseModal')">&times;</span>
+            <h2 id="expenseModalTitle">הוסף הוצאה חדשה</h2>
+
+            <div class="expense-form-layout">
+                <!-- Left side: Receipt Preview -->
+                <div id="expense-receipt-preview" class="expense-receipt-panel">
+                    <div class="receipt-upload-area" id="receipt-upload-area">
+                        <input type="file" id="expenseReceiptFile" accept="image/*,application/pdf"
+                               style="display: none;" onchange="handleReceiptUpload(event)">
+                        <div class="receipt-dropzone" id="receipt-dropzone" onclick="document.getElementById('expenseReceiptFile').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #3182ce; margin-bottom: 15px;"></i>
+                            <p style="font-size: 16px; color: #2d3748; margin: 0;">לחץ או גרור תמונה לכאן</p>
+                            <p style="font-size: 14px; color: #718096; margin-top: 8px;">JPG, PNG, PDF עד 10MB</p>
+                        </div>
+                    </div>
+                    <div class="receipt-image-preview" id="receipt-image-preview" style="display: none;">
+                        <img id="receipt-preview-img" src="" alt="תצוגה מקדימה">
+                        <button type="button" class="btn-remove-receipt" onclick="removeReceiptPreview()">
+                            <i class="fas fa-times"></i> הסר תמונה
+                        </button>
+                    </div>
                 </div>
-                <select id="expensePayment" required>
-                    <option value="">אמצעי תשלום *</option>
-                    <option value="מזומן">מזומן</option>
-                    <option value="כרטיס אשראי">כרטיס אשראי</option>
-                    <option value="העברה בנקאית">העברה בנקאית</option>
-                    <option value="צ'ק">צ'ק</option>
-                </select>
-                <select id="expenseWorkId" onchange="onWorkSelected()">
-                    <option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>
-                </select>
-                <select id="expenseProjectId">
-                    <option value="">בחר פרויקט (אופציונלי)</option>
-                </select>
-                <select id="expenseContractorId">
-                    <option value="">בחר קבלן (אופציונלי)</option>
-                </select>
-                <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" class="btn-secondary" onclick="closeModal('expenseModal')">ביטול</button>
-            </form>
+
+                <!-- Right side: Expense Form -->
+                <div class="expense-form-panel">
+                    <form id="expenseForm" onsubmit="submitExpense(event)">
+                        <input type="text" id="expenseDescription" placeholder="תיאור *" required>
+                        <input type="number" id="expenseAmount" placeholder="סכום *" step="0.01" required>
+                        <input type="date" id="expenseDate" placeholder="תאריך *" required>
+                        <input type="text" id="expenseInvoice" placeholder="מספר חשבונית *" required>
+                        <select id="expensePayment" required>
+                            <option value="">אמצעי תשלום *</option>
+                            <option value="מזומן">מזומן</option>
+                            <option value="כרטיס אשראי">כרטיס אשראי</option>
+                            <option value="העברה בנקאית">העברה בנקאית</option>
+                            <option value="צ'ק">צ'ק</option>
+                        </select>
+                        <select id="expenseWorkId" onchange="onWorkSelected()">
+                            <option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>
+                        </select>
+                        <select id="expenseProjectId">
+                            <option value="">בחר פרויקט (אופציונלי)</option>
+                        </select>
+                        <select id="expenseContractorId">
+                            <option value="">בחר קבלן (אופציונלי)</option>
+                        </select>
+
+                        <input type="hidden" id="expenseMissingReceipt" value="false">
+
+                        <div class="form-buttons">
+                            <button type="submit" class="btn-primary">שמור</button>
+                            <button type="button" class="btn-secondary" onclick="closeModal('expenseModal')">ביטול</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1751,6 +2412,11 @@
     <!-- Clerk Authentication Module -->
     <script src="clerk-auth.js"></script>
 
+    <!-- OCR Component and Utilities - DISABLED for new simplified flow -->
+    <!-- <script src="utils/ocrApi.js"></script> -->
+    <!-- <script src="components/OcrFieldIndicator.js"></script> -->
+    <!-- <script src="components/ReceiptUploadWithOCR.js"></script> -->
+
     <!-- Main Application Script -->
     <script>
         // Initialize Clerk when page loads
@@ -1775,9 +2441,18 @@
                 });
                 window.paddleInitialized = true;
 
-                // Don't call initializeApp here - wait for onUserAuthenticated callback
-                // Clerk will fire the callback when it finishes loading the session
-                console.log('Clerk and Paddle initialized, waiting for auth callback...');
+                // Check if user is authenticated after Clerk initialization
+                console.log('Clerk and Paddle initialized, checking auth status...');
+
+                // If user is not authenticated, show sign-in UI immediately
+                if (!ClerkAuth.isAuthenticated()) {
+                    console.log('No authenticated user, showing sign-in UI');
+                    showClerkAuth();
+                }
+                // Otherwise, onUserAuthenticated callback will be triggered automatically
+
+                // Initialize drag-drop for receipt upload
+                setupReceiptDragDrop();
 
             } catch (error) {
                 console.error('Failed to initialize Clerk:', error);
@@ -2305,7 +2980,12 @@
                                 <td>${expense.projectName || '-'}</td>
                                 <td>${expense.contractorName || '-'}</td>
                                 <td>
-                                    ${expense.receiptUrl ? `<a href="${expense.receiptUrl}" target="_blank" class="btn-secondary" style="display: inline-block; padding: 6px 12px; text-decoration: none;"><i class="fas fa-file-image"></i> צפה</a>` : '-'}
+                                    ${expense.receiptUrl
+                                        ? `<a href="${expense.receiptUrl}" target="_blank" class="btn-secondary" style="display: inline-block; padding: 6px 12px; text-decoration: none;"><i class="fas fa-file-image"></i> צפה</a>`
+                                        : expense.missingReceipt
+                                            ? `<span class="missing-receipt-badge"><i class="fas fa-exclamation-triangle"></i> חסרה קבלה</span>`
+                                            : '-'
+                                    }
                                 </td>
                                 <td>
                                     <button class="btn-edit" onclick="editExpense('${expense.expenseId}')">ערוך</button>
@@ -2417,7 +3097,12 @@
                         <td>${expense.projectName || '-'}</td>
                         <td>${expense.contractorName || '-'}</td>
                         <td>
-                            ${expense.receiptUrl ? `<a href="${expense.receiptUrl}" target="_blank" class="btn-secondary" style="display: inline-block; padding: 6px 12px; text-decoration: none;"><i class="fas fa-file-image"></i> צפה</a>` : '-'}
+                            ${expense.receiptUrl
+                                ? `<a href="${expense.receiptUrl}" target="_blank" class="btn-secondary" style="display: inline-block; padding: 6px 12px; text-decoration: none;"><i class="fas fa-file-image"></i> צפה</a>`
+                                : expense.missingReceipt
+                                    ? `<span class="missing-receipt-badge"><i class="fas fa-exclamation-triangle"></i> חסרה קבלה</span>`
+                                    : '-'
+                            }
                         </td>
                         <td>
                             <button class="btn-edit" onclick="editExpense('${expense.expenseId}')">ערוך</button>
@@ -4170,6 +4855,184 @@
             showMessage(message, 'success');
         }
 
+        // ===== OCR COMPONENT INTEGRATION =====
+
+        // Store OCR component instance globally
+        let expenseOcrComponent = null;
+
+        /**
+         * Initialize OCR component in expense modal
+         */
+        function initializeExpenseOcrComponent() {
+            // Check if already initialized
+            if (expenseOcrComponent) {
+                expenseOcrComponent.reset();
+                return;
+            }
+
+            // Get company ID from current context
+            const companyId = window.companyContext?.companyId || currentCompany?.companyId;
+
+            if (!companyId) {
+                console.warn('[OCR] No company ID available, OCR component will not be initialized');
+                return;
+            }
+
+            try {
+                expenseOcrComponent = new ReceiptUploadWithOCR('expense-ocr-container', {
+                    companyId: companyId,
+                    onOcrComplete: handleExpenseOcrComplete,
+                    onError: handleExpenseOcrError,
+                    apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/production/expenses/ocr-process'
+                });
+
+                console.log('[OCR] Component initialized successfully');
+            } catch (error) {
+                console.error('[OCR] Failed to initialize component:', error);
+            }
+        }
+
+        /**
+         * Handle successful OCR processing
+         * Pre-fill form fields with extracted data
+         */
+        function handleExpenseOcrComplete(ocrResult) {
+            console.log('[OCR] Processing complete:', ocrResult);
+
+            const { extractedFields, ocrMetadata } = ocrResult;
+
+            // Store OCR data globally for later use (including File object!)
+            window.currentExpenseOcrData = {
+                receiptFile: expenseOcrComponent.currentFile, // The actual File object
+                extractedFields: extractedFields,
+                ocrMetadata: ocrMetadata,
+                userEdits: {} // Track which fields user has edited
+            };
+
+            // Pre-fill form fields with extracted data
+            if (extractedFields.date) {
+                const dateInput = document.getElementById('expenseDate');
+                dateInput.value = extractedFields.date;
+                dateInput.classList.add('ocr-filled');
+                updateConfidenceIndicator('expenseDate', extractedFields.confidence?.date || 0);
+            }
+
+            if (extractedFields.amount) {
+                const amountInput = document.getElementById('expenseAmount');
+                amountInput.value = extractedFields.amount;
+                amountInput.classList.add('ocr-filled');
+                updateConfidenceIndicator('expenseAmount', extractedFields.confidence?.amount || 0);
+            }
+
+            if (extractedFields.vendor) {
+                const descInput = document.getElementById('expenseDescription');
+                descInput.value = extractedFields.vendor;
+                descInput.classList.add('ocr-filled');
+                updateConfidenceIndicator('expenseDescription', extractedFields.confidence?.vendor || 0);
+            }
+
+            if (extractedFields.invoiceNum) {
+                const invoiceInput = document.getElementById('expenseInvoice');
+                invoiceInput.value = extractedFields.invoiceNum;
+                invoiceInput.classList.add('ocr-filled');
+                updateConfidenceIndicator('expenseInvoice', extractedFields.confidence?.invoiceNum || 0);
+            }
+
+            // Show success message
+            showSuccess('הקבלה עובדה בהצלחה! השדות מולאו אוטומטית. אנא בדוק את הנתונים לפני שמירה.');
+
+            console.log('[OCR] Form fields pre-filled successfully');
+        }
+
+        /**
+         * Handle OCR processing error
+         */
+        function handleExpenseOcrError(error) {
+            console.error('[OCR] Error:', error);
+            showError('שגיאה בעיבוד הקבלה: ' + error.message);
+        }
+
+        /**
+         * Update confidence indicator next to form field
+         * Uses OcrFieldIndicator component for consistent UI
+         */
+        function updateConfidenceIndicator(fieldId, confidence) {
+            const indicator = document.getElementById(fieldId + '-confidence');
+            if (!indicator) return;
+
+            // Get confidence icon and color from OcrFieldIndicator component
+            const confidenceIcon = OcrFieldIndicator.getConfidenceIcon(confidence);
+            const confidenceColor = OcrFieldIndicator.getConfidenceColor(confidence);
+            const confidenceDesc = OcrFieldIndicator.getConfidenceDescription(confidence);
+            const confidenceClass = OcrFieldIndicator.getConfidenceClass(confidence);
+
+            // Update indicator with enhanced UI
+            indicator.innerHTML = `
+                <div class="confidence-badge-wrapper" style="display: flex; align-items: center; gap: 6px;">
+                    <i class="fas ${confidenceIcon}" style="color: ${confidenceColor}; font-size: 16px;"></i>
+                    <span class="confidence-percentage" style="font-size: 12px; font-weight: 600; color: ${confidenceColor};">
+                        ${Math.round(confidence)}%
+                    </span>
+                    ${confidence < 80 ? `
+                        <i class="fas fa-exclamation-triangle"
+                           style="color: #ef4444; font-size: 14px; animation: pulse 2s infinite;"
+                           title="יש לבדוק שדה זה ידנית"></i>
+                    ` : ''}
+                </div>
+            `;
+            indicator.className = `field-confidence-indicator visible ${confidenceClass}`;
+            indicator.title = confidenceDesc;
+            indicator.setAttribute('aria-label', `${confidenceDesc} - ${Math.round(confidence)}%`);
+        }
+
+        /**
+         * Clear confidence indicators
+         */
+        function clearConfidenceIndicators() {
+            ['expenseDate', 'expenseAmount', 'expenseDescription', 'expenseInvoice'].forEach(fieldId => {
+                const indicator = document.getElementById(fieldId + '-confidence');
+                if (indicator) {
+                    indicator.className = 'field-confidence-indicator';
+                    indicator.innerHTML = '';
+                }
+
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.classList.remove('ocr-filled', 'ocr-edited');
+                }
+            });
+        }
+
+        /**
+         * Track field edits
+         * Called when user modifies an OCR-filled field
+         */
+        function trackFieldEdit(fieldId) {
+            if (window.currentExpenseOcrData) {
+                window.currentExpenseOcrData.userEdits[fieldId] = true;
+
+                // Change visual indicator to show it was edited
+                const input = document.getElementById(fieldId);
+                if (input && input.classList.contains('ocr-filled')) {
+                    input.classList.remove('ocr-filled');
+                    input.classList.add('ocr-edited');
+                }
+            }
+        }
+
+        /**
+         * Set up field edit listeners
+         */
+        function setupFieldEditListeners() {
+            ['expenseDate', 'expenseAmount', 'expenseDescription', 'expenseInvoice'].forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.addEventListener('change', () => trackFieldEdit(fieldId));
+                    input.addEventListener('input', () => trackFieldEdit(fieldId));
+                }
+            });
+        }
+
         // Modal Control Functions
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
@@ -4191,13 +5054,10 @@
                     document.querySelector('#workModal h2').textContent = 'הוסף עבודה חדשה';
                 } else if (modalId === 'expenseModal') {
                     editingExpenseId = null;
-                    document.querySelector('#expenseModal h2').textContent = 'הוסף הוצאה חדשה';
-                    // Clear receipt preview
-                    const preview = document.getElementById('receiptPreview');
-                    if (preview) {
-                        preview.style.display = 'none';
-                        preview.innerHTML = '';
-                    }
+                    document.querySelector('#expenseModalTitle').textContent = 'הוסף הוצאה חדשה';
+                    // Clear receipt preview and pending file
+                    pendingReceiptFile = null;
+                    resetReceiptPreview();
                 }
             }
         }
@@ -4395,16 +5255,52 @@
         let expenseFormWorks = [];
 
         async function showAddExpenseForm() {
-            // Load projects, contractors, and works for dropdowns
+            // Show selection modal instead of expense modal directly
+            document.getElementById('expenseTypeModal').style.display = 'block';
+        }
+
+        async function openExpenseFormWithPicture() {
+            closeModal('expenseTypeModal');
+            expenseWithPicture = true;
+            pendingReceiptFile = null;
+
+            await prepareExpenseModal();
+
+            // Show picture panel, expand modal
+            document.getElementById('expense-receipt-preview').style.display = 'flex';
+            document.querySelector('.expense-modal-wide').classList.remove('no-picture');
+            document.getElementById('expenseMissingReceipt').value = 'false';
+
+            // Reset receipt preview
+            resetReceiptPreview();
+
+            document.getElementById('expenseModal').style.display = 'block';
+        }
+
+        async function openExpenseFormWithoutPicture() {
+            closeModal('expenseTypeModal');
+            expenseWithPicture = false;
+            pendingReceiptFile = null;
+
+            await prepareExpenseModal();
+
+            // Hide picture panel, shrink modal
+            document.getElementById('expense-receipt-preview').style.display = 'none';
+            document.querySelector('.expense-modal-wide').classList.add('no-picture');
+            document.getElementById('expenseMissingReceipt').value = 'true';
+
+            document.getElementById('expenseModal').style.display = 'block';
+        }
+
+        async function prepareExpenseModal() {
             try {
                 const projects = await apiCall('/projects', 'GET');
                 const contractors = await apiCall('/contractors', 'GET');
                 const works = await apiCall('/works', 'GET');
 
-                // Store works data globally for onWorkSelected function
                 expenseFormWorks = works.works || [];
 
-                // Populate works dropdown
+                // Populate dropdowns
                 const workSelect = document.getElementById('expenseWorkId');
                 workSelect.innerHTML = '<option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>';
                 if (works.works) {
@@ -4416,7 +5312,6 @@
                     });
                 }
 
-                // Populate project dropdown (optional)
                 const projectSelect = document.getElementById('expenseProjectId');
                 projectSelect.innerHTML = '<option value="">בחר פרויקט (אופציונלי)</option>';
                 if (projects.projects) {
@@ -4428,7 +5323,6 @@
                     });
                 }
 
-                // Populate contractor dropdown (optional)
                 const contractorSelect = document.getElementById('expenseContractorId');
                 contractorSelect.innerHTML = '<option value="">בחר קבלן (אופציונלי)</option>';
                 if (contractors.contractors) {
@@ -4440,10 +5334,106 @@
                     });
                 }
 
-                document.getElementById('expenseModal').style.display = 'block';
+                // Reset form
+                document.getElementById('expenseForm').reset();
+                document.getElementById('expenseModalTitle').textContent = 'הוסף הוצאה חדשה';
+
             } catch (error) {
                 showError('שגיאה בטעינת נתונים: ' + error.message);
             }
+        }
+
+        function handleReceiptUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('סוג קובץ לא נתמך. אנא בחר קובץ מסוג JPG, PNG או PDF');
+                return;
+            }
+
+            // Validate file size (10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('הקובץ גדול מדי. גודל מקסימלי: 10MB');
+                return;
+            }
+
+            pendingReceiptFile = file;
+
+            // Show preview
+            if (file.type === 'application/pdf') {
+                // For PDF, show placeholder
+                document.getElementById('receipt-preview-img').src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U1M2UzZSIgc3Ryb2tlLXdpZHRoPSIyIj48cGF0aCBkPSJNMTQgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjhsLTYtNnoiLz48cG9seWxpbmUgcG9pbnRzPSIxNCAyIDE0IDggMjAgOCIvPjxwYXRoIGQ9Ik05IDEzaDZ2NUg5eiIvPjxwYXRoIGQ9Ik05IDEzVjloNnY0Ii8+PC9zdmc+';
+                document.getElementById('receipt-preview-img').alt = file.name;
+                document.getElementById('receipt-dropzone').style.display = 'none';
+                document.getElementById('receipt-image-preview').style.display = 'flex';
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('receipt-preview-img').src = e.target.result;
+                    document.getElementById('receipt-dropzone').style.display = 'none';
+                    document.getElementById('receipt-image-preview').style.display = 'flex';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Update missing receipt flag
+            document.getElementById('expenseMissingReceipt').value = 'false';
+        }
+
+        function removeReceiptPreview() {
+            pendingReceiptFile = null;
+            document.getElementById('expenseReceiptFile').value = '';
+            document.getElementById('receipt-dropzone').style.display = 'flex';
+            document.getElementById('receipt-image-preview').style.display = 'none';
+            document.getElementById('receipt-preview-img').src = '';
+
+            // If in picture mode but removed picture, still mark as missing
+            if (expenseWithPicture) {
+                document.getElementById('expenseMissingReceipt').value = 'true';
+            }
+        }
+
+        function resetReceiptPreview() {
+            pendingReceiptFile = null;
+            const fileInput = document.getElementById('expenseReceiptFile');
+            if (fileInput) fileInput.value = '';
+            const dropzone = document.getElementById('receipt-dropzone');
+            if (dropzone) dropzone.style.display = 'flex';
+            const imagePreview = document.getElementById('receipt-image-preview');
+            if (imagePreview) imagePreview.style.display = 'none';
+            const previewImg = document.getElementById('receipt-preview-img');
+            if (previewImg) previewImg.src = '';
+        }
+
+        // Drag and drop handlers for receipt panel
+        function setupReceiptDragDrop() {
+            const dropzone = document.getElementById('receipt-dropzone');
+            if (!dropzone) return;
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('drag-over');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('drag-over');
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+
+                const file = e.dataTransfer?.files[0];
+                if (file) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    document.getElementById('expenseReceiptFile').files = dataTransfer.files;
+                    handleReceiptUpload({ target: { files: [file] } });
+                }
+            });
         }
 
         // Auto-fill project and contractor when work is selected
@@ -4582,6 +5572,7 @@
 
             try {
                 let receiptUrl = '';
+                const missingReceipt = document.getElementById('expenseMissingReceipt').value === 'true';
 
                 // If editing, get existing receipt URL
                 if (editingExpenseId) {
@@ -4589,20 +5580,17 @@
                     receiptUrl = existingExpense?.receiptUrl || '';
                 }
 
-                // Check if a new receipt file was selected
-                const fileInput = document.getElementById('expenseReceipt');
-                if (fileInput.files && fileInput.files[0]) {
-                    const file = fileInput.files[0];
+                // Upload receipt if file is pending
+                if (pendingReceiptFile) {
+                    const file = pendingReceiptFile;
 
-                    // Show uploading message
-                    const preview = document.getElementById('receiptPreview');
-                    preview.textContent = 'מעלה קבלה...';
-                    preview.style.display = 'block';
+                    console.log('[SUBMIT] Uploading receipt to S3:', file.name);
 
                     // Get presigned URL from Lambda
                     const uploadData = await apiCall('/upload-receipt', 'POST', {
                         fileName: file.name,
-                        fileType: file.type
+                        fileType: file.type,
+                        fileSize: file.size
                     });
 
                     // Upload file to S3 using presigned URL
@@ -4619,9 +5607,9 @@
                     }
 
                     receiptUrl = uploadData.data.receiptUrl;
-                    preview.textContent = '✓ קבלה הועלתה בהצלחה';
                 }
 
+                // Create expense object
                 const expense = {
                     description: document.getElementById('expenseDescription').value,
                     amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
@@ -4632,27 +5620,29 @@
                     projectId: document.getElementById('expenseProjectId').value || '',
                     contractorId: document.getElementById('expenseContractorId').value || '',
                     receiptUrl: receiptUrl,
+                    missingReceipt: !receiptUrl && missingReceipt,
                     category: 'General'
                 };
 
+                console.log('[SUBMIT] Creating expense:', expense);
+
                 if (editingExpenseId) {
-                    // Update existing expense
                     expense.expenseId = editingExpenseId;
                     await apiCall('/expenses', 'PUT', expense);
                     showSuccess('הוצאה עודכנה בהצלחה');
                     editingExpenseId = null;
                 } else {
-                    // Create new expense
                     await apiCall('/expenses', 'POST', expense);
                     showSuccess('הוצאה נוספה בהצלחה');
                 }
 
+                // Clear pending file
+                pendingReceiptFile = null;
+
                 closeModal('expenseModal');
                 await loadAppData();
-                // Always stay on current tab after creating/updating
                 refreshCurrentTab();
             } catch (error) {
-                // Don't show error if upgrade modal is already displayed
                 if (error.message !== 'TIER_LIMIT') {
                     showError('שגיאה בעדכון הוצאה: ' + error.message);
                 }
@@ -4666,6 +5656,10 @@
         let editingContractorId = null;
         let editingWorkId = null;
         let editingExpenseId = null;
+
+        // Global variables for expense flow
+        let expenseWithPicture = false;
+        let pendingReceiptFile = null;
 
         function editProject(projectId) {
             const project = appData.projects.find(p => p.projectId === projectId);

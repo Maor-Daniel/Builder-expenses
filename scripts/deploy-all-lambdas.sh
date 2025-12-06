@@ -101,6 +101,9 @@ deploy_lambda "acceptInvitation" "construction-expenses-accept-invitation" && ((
 deploy_lambda "resendInvitation" "construction-expenses-resend-invitation" && ((DEPLOYED++)) || ((FAILED++))
 deploy_lambda "cancelInvitation" "construction-expenses-cancel-invitation" && ((DEPLOYED++)) || ((FAILED++))
 
+# OCR Processing
+deploy_lambda "processReceiptOCR" "construction-expenses-process-receipt-ocr" && ((DEPLOYED++)) || ((FAILED++))
+
 echo -e "\n${YELLOW}📊 Deployment Summary:${NC}"
 echo -e "${GREEN}✅ Successfully deployed: ${DEPLOYED} functions${NC}"
 

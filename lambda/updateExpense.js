@@ -72,6 +72,23 @@ exports.handler = withSecureCors(async (event) => {
 
     // Build update expression
     const timestamp = getCurrentTimestamp();
+
+    // Determine missingReceipt value based on receipt presence
+    let missingReceiptValue;
+    if (updateData.receiptUrl !== undefined) {
+      // If receiptUrl is being updated
+      missingReceiptValue = !updateData.receiptUrl; // false if URL provided, true if removed
+    } else if (updateData.receiptImage !== undefined) {
+      // If receiptImage is being updated
+      missingReceiptValue = !updateData.receiptImage; // false if image provided, true if removed
+    } else if (updateData.missingReceipt !== undefined) {
+      // If missingReceipt is explicitly provided
+      missingReceiptValue = updateData.missingReceipt === true;
+    } else {
+      // Otherwise, preserve existing value
+      missingReceiptValue = existingExpense.missingReceipt !== undefined ? existingExpense.missingReceipt : true;
+    }
+
     const updateFields = {
       project: updateData.project.trim(),
       contractor: updateData.contractor.trim(),
@@ -82,6 +99,7 @@ exports.handler = withSecureCors(async (event) => {
       date: updateData.date,
       description: updateData.description ? updateData.description.trim() : '',
       status: updateData.status || existingExpense.status || 'pending',
+      missingReceipt: missingReceiptValue,
       updatedAt: timestamp
     };
 
