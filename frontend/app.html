@@ -14,7 +14,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <!-- html2pdf.js for PDF export with Hebrew support -->
+    <!-- PDF Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <!-- Paddle.js for payment checkout -->
@@ -2903,7 +2905,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 0;">הוצאות</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button class="btn-secondary" onclick="exportExpensesToPDF()">
+                        <button id="exportPdfBtn" class="btn-secondary" onclick="exportExpensesToPDF()">
                             <i class="fas fa-file-pdf"></i> ייצא ל-PDF
                         </button>
                         <button class="btn-primary" onclick="showAddExpenseForm()">
@@ -3283,6 +3285,13 @@
 
         // Export Expenses to PDF
         window.exportExpensesToPDF = function() {
+            // Disable button to prevent multiple clicks
+            const btn = document.getElementById('exportPdfBtn');
+            if (!btn) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מייצא...';
+
             const searchTerm = document.getElementById('expenseSearch')?.value.toLowerCase() || '';
             const projectFilter = document.getElementById('projectFilter')?.value || '';
             const contractorFilter = document.getElementById('contractorFilter')?.value || '';
@@ -3341,12 +3350,32 @@
                 return matchesSearch && matchesProject && matchesContractor && matchesDate;
             });
 
-            // Group by project -> contractor -> work
+            // Validate that we have expenses to export
+            if (filtered.length === 0) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-pdf"></i> ייצא ל-PDF';
+                showError('אין הוצאות להצגה בדוח');
+                return;
+            }
+
+            // Calculate statistics
+            const reportDate = new Date().toLocaleString('he-IL');
+            const dateRangeText = dateRangeFilter === 'custom' && startDate && endDate
+                ? `${startDate}&nbsp;עד&nbsp;${endDate}`
+                : dateRangeFilter === 'all' ? 'כל&nbsp;התקופות' : dateRangeFilter;
+            const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
+            const uniqueProjects = new Set(filtered.map(e => e.projectId)).size;
+            const uniqueContractors = new Set(filtered.map(e => e.contractorId)).size;
+            const avgAmount = filtered.length > 0 ? totalAmount / filtered.length : 0;
+            const withReceipt = filtered.filter(e => e.receiptUrl).length;
+            const withoutReceipt = filtered.filter(e => !e.receiptUrl).length;
+
+            // Group by project -> contractor -> work for hierarchical view
             const groupedData = {};
             filtered.forEach(expense => {
-                const projectKey = expense.projectName || 'ללא פרויקט';
-                const contractorKey = expense.contractorName || 'ללא קבלן';
-                const workKey = expense.workName || 'ללא עבודה';
+                const projectKey = expense.projectName || 'ללא&nbsp;פרויקט';
+                const contractorKey = expense.contractorName || 'ללא&nbsp;קבלן';
+                const workKey = expense.workName || 'ללא&nbsp;עבודה';
 
                 if (!groupedData[projectKey]) {
                     groupedData[projectKey] = {};
@@ -3360,129 +3389,241 @@
                 groupedData[projectKey][contractorKey][workKey].push(expense);
             });
 
-            // Build HTML content for PDF
-            const reportDate = new Date().toLocaleString('he-IL');
-            const dateRangeText = dateRangeFilter === 'custom' && startDate && endDate
-                ? `${startDate} עד ${endDate}`
-                : dateRangeFilter === 'all' ? 'כל התקופות' : dateRangeFilter;
-            const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
+            // ========================================
+            // html2pdf Implementation with Hebrew Support
+            // Using simpler structure for better page breaks
+            // ========================================
 
+            // Build HTML content - simplified structure for better page breaks
             let htmlContent = `
-                <div dir="rtl" style="font-family: 'Rubik', Arial, sans-serif; padding: 20px; color: #1a202c;">
-                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">דוח הוצאות - מערכת מעקב הוצאות בניה</h1>
+                <div style="font-family: 'Rubik', Arial, sans-serif; padding: 20px; color: #1a202c; direction: rtl; width: 100%;">
 
-                    <div style="margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                        <p style="margin: 5px 0;"><strong>תאריך דוח:</strong> ${reportDate}</p>
-                        <p style="margin: 5px 0;"><strong>תקופת הדוח:</strong> ${dateRangeText}</p>
-                        <p style="margin: 5px 0;"><strong>סה"כ הוצאות:</strong> ${filtered.length}</p>
-                        <p style="margin: 5px 0;"><strong>סכום כולל:</strong> ₪${totalAmount.toLocaleString('he-IL')}</p>
+                    <!-- PAGE 1: Title and Summary -->
+                    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 22px; word-spacing: 0.1em;">דוח&nbsp;הוצאות&nbsp;-&nbsp;מערכת&nbsp;מעקב&nbsp;הוצאות&nbsp;בניה</h1>
+
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h2 style="margin: 0 0 15px 0; font-size: 18px; text-align: center; border-bottom: 2px solid rgba(255,255,255,0.5); padding-bottom: 10px; word-spacing: 0.1em;">סיכום&nbsp;מנהלים</h2>
+                        <table style="width: 100%; border-collapse: collapse; color: white; word-spacing: 0.05em;">
+                            <tr>
+                                <td style="padding: 8px; text-align: right; width: 50%;">סה"כ&nbsp;הוצאות:&nbsp;<strong>${filtered.length}</strong></td>
+                                <td style="padding: 8px; text-align: right; width: 50%;">סכום&nbsp;כולל:&nbsp;<strong>₪${totalAmount.toLocaleString('he-IL')}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; text-align: right;">מספר&nbsp;פרויקטים:&nbsp;<strong>${uniqueProjects}</strong></td>
+                                <td style="padding: 8px; text-align: right;">מספר&nbsp;קבלנים:&nbsp;<strong>${uniqueContractors}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; text-align: right;">ממוצע&nbsp;להוצאה:&nbsp;<strong>₪${avgAmount.toLocaleString('he-IL', {maximumFractionDigits: 2})}</strong></td>
+                                <td style="padding: 8px; text-align: right;">עם&nbsp;קבלה:&nbsp;<strong>${withReceipt}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; text-align: right;">ללא&nbsp;קבלה:&nbsp;<strong>${withoutReceipt}</strong></td>
+                                <td style="padding: 8px; text-align: right;">תאריך&nbsp;דוח:&nbsp;<strong>${reportDate}</strong></td>
+                            </tr>
+                        </table>
+                        <div style="text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); word-spacing: 0.05em;">
+                            תקופת&nbsp;הדוח&nbsp;-&nbsp;<strong>${dateRangeText}</strong>
+                        </div>
                     </div>
             `;
 
-            // Process each project
-            Object.keys(groupedData).sort().forEach(projectName => {
-                const projectData = groupedData[projectName];
-                const projectExpenses = Object.values(projectData).flatMap(contractors =>
-                    Object.values(contractors).flat()
-                );
-                const projectTotal = projectExpenses.reduce((sum, e) => sum + e.amount, 0);
+            // SECTION 2: All Expenses Table (simplified - one big table)
+            htmlContent += `
+                <div style="page-break-before: always;"></div>
+                <h2 style="color: #2c3e50; margin: 20px 0 15px 0; font-size: 18px; border-bottom: 3px solid #2c3e50; padding-bottom: 8px; word-spacing: 0.1em;">כל&nbsp;ההוצאות&nbsp;לפי&nbsp;תאריך</h2>
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                    <thead>
+                        <tr style="background: #2c3e50; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 12%;">תאריך</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: right; width: 25%;">תיאור</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 13%;">סכום</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 18%;">פרויקט</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 18%;">קבלן</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; text-align: center; width: 8%;">קבלה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
 
+            // Sort by date (newest first)
+            const sortedExpenses = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sortedExpenses.forEach((expense, idx) => {
+                const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
                 htmlContent += `
-                    <div style="margin-top: 20px; page-break-inside: avoid;">
-                        <div style="background: #2c3e50; color: white; padding: 10px; border-radius: 5px;">
-                            <h2 style="margin: 0; font-size: 16px;">פרויקט: ${projectName}</h2>
-                        </div>
-                        <p style="margin: 5px 0 10px 0; padding-right: 10px;">
-                            <strong>סה"כ הוצאות:</strong> ${projectExpenses.length} | <strong>סכום:</strong> ₪${projectTotal.toLocaleString('he-IL')}
-                        </p>
+                    <tr style="background: ${bgColor}; page-break-inside: avoid;">
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${new Date(expense.date).toLocaleDateString('he-IL')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">${expense.description || '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">₪${expense.amount.toLocaleString('he-IL')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${expense.projectName || 'ללא&nbsp;פרויקט'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${expense.contractorName || 'ללא&nbsp;קבלן'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${expense.receiptUrl ? '✓' : '-'}</td>
+                    </tr>
                 `;
-
-                // Process each contractor
-                Object.keys(projectData).sort().forEach(contractorName => {
-                    const contractorData = projectData[contractorName];
-                    const contractorExpenses = Object.values(contractorData).flat();
-                    const contractorTotal = contractorExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-                    htmlContent += `
-                        <div style="margin: 10px 0; margin-right: 15px; page-break-inside: avoid;">
-                            <div style="background: #7f8c8d; color: white; padding: 8px; border-radius: 4px;">
-                                <h3 style="margin: 0; font-size: 14px;">קבלן: ${contractorName}</h3>
-                            </div>
-                            <p style="margin: 5px 0; padding-right: 10px; font-size: 12px;">
-                                <strong>סה"כ הוצאות:</strong> ${contractorExpenses.length} | <strong>סכום:</strong> ₪${contractorTotal.toLocaleString('he-IL')}
-                            </p>
-                    `;
-
-                    // Process each work
-                    Object.keys(contractorData).sort().forEach(workName => {
-                        const workExpenses = contractorData[workName];
-                        const workTotal = workExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-                        htmlContent += `
-                            <div style="margin: 10px 0; margin-right: 25px; page-break-inside: avoid;">
-                                <h4 style="margin: 5px 0; color: #34495e; font-size: 13px;">עבודה: ${workName}</h4>
-                                <p style="margin: 3px 0; font-size: 11px;"><strong>סכום:</strong> ₪${workTotal.toLocaleString('he-IL')}</p>
-
-                                <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px;">
-                                    <thead>
-                                        <tr style="background: #95a5a6; color: white;">
-                                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">קבלה</th>
-                                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">סכום</th>
-                                            <th style="border: 1px solid #ddd; padding: 6px; text-align: right;">תיאור</th>
-                                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">תאריך</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                        `;
-
-                        workExpenses.forEach((expense, idx) => {
-                            const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
-                            htmlContent += `
-                                <tr style="background: ${bgColor};">
-                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${expense.receiptUrl ? 'יש קבלה' : 'אין קבלה'}</td>
-                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">₪${expense.amount.toLocaleString('he-IL')}</td>
-                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: right;">${expense.description || ''}</td>
-                                    <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${new Date(expense.date).toLocaleDateString('he-IL')}</td>
-                                </tr>
-                            `;
-                        });
-
-                        htmlContent += `
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
-                    });
-
-                    htmlContent += `</div>`;
-                });
-
-                htmlContent += `</div>`;
             });
 
-            htmlContent += `</div>`;
+            htmlContent += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #2c3e50; color: white; font-weight: bold;">
+                            <td colspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: right;">סה"כ&nbsp;כללי</td>
+                            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">₪${totalAmount.toLocaleString('he-IL')}</td>
+                            <td colspan="3" style="border: 1px solid #ddd; padding: 8px; text-align: center;">${filtered.length} הוצאות</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
 
-            // Create a temporary element to hold the HTML
-            const element = document.createElement('div');
-            element.innerHTML = htmlContent;
-            element.style.position = 'absolute';
-            element.style.left = '-9999px';
-            document.body.appendChild(element);
+            // SECTION 3: Summary by Project
+            htmlContent += `
+                <div style="page-break-before: always;"></div>
+                <h2 style="color: #2c3e50; margin: 20px 0 15px 0; font-size: 18px; border-bottom: 3px solid #2c3e50; padding-bottom: 8px; word-spacing: 0.1em;">סיכום&nbsp;לפי&nbsp;פרויקט</h2>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; word-spacing: 0.05em;">
+                    <thead>
+                        <tr style="background: #2c3e50; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: right;">פרויקט</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">מספר&nbsp;הוצאות</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">סכום&nbsp;כולל</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
 
-            // Generate PDF
+            const projectGroups = {};
+            filtered.forEach(expense => {
+                const key = expense.projectName || 'ללא&nbsp;פרויקט';
+                if (!projectGroups[key]) projectGroups[key] = [];
+                projectGroups[key].push(expense);
+            });
+
+            Object.keys(projectGroups).sort().forEach((projectName, idx) => {
+                const expenses = projectGroups[projectName];
+                const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+                const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                htmlContent += `
+                    <tr style="background: ${bgColor}; page-break-inside: avoid;">
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-weight: bold;">${projectName}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${expenses.length}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">₪${total.toLocaleString('he-IL')}</td>
+                    </tr>
+                `;
+            });
+
+            htmlContent += `
+                    </tbody>
+                </table>
+            `;
+
+            // SECTION 4: Summary by Contractor
+            htmlContent += `
+                <h2 style="color: #2c3e50; margin: 20px 0 15px 0; font-size: 18px; border-bottom: 3px solid #2c3e50; padding-bottom: 8px; page-break-before: auto; word-spacing: 0.1em;">סיכום&nbsp;לפי&nbsp;קבלן</h2>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; word-spacing: 0.05em;">
+                    <thead>
+                        <tr style="background: #7f8c8d; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: right;">קבלן</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">מספר&nbsp;הוצאות</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: center;">סכום&nbsp;כולל</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            const contractorGroups = {};
+            filtered.forEach(expense => {
+                const key = expense.contractorName || 'ללא&nbsp;קבלן';
+                if (!contractorGroups[key]) contractorGroups[key] = [];
+                contractorGroups[key].push(expense);
+            });
+
+            Object.keys(contractorGroups).sort().forEach((contractorName, idx) => {
+                const expenses = contractorGroups[contractorName];
+                const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+                const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                htmlContent += `
+                    <tr style="background: ${bgColor}; page-break-inside: avoid;">
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-weight: bold;">${contractorName}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">${expenses.length}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">₪${total.toLocaleString('he-IL')}</td>
+                    </tr>
+                `;
+            });
+
+            htmlContent += `
+                    </tbody>
+                </table>
+                </div>
+            `;
+
+            // Debug: Log content
+            console.log('PDF HTML Content length:', htmlContent.length);
+
+            // Create wrapper in normal document flow
+            // A4 = 210mm, with 10mm margins on each side = 190mm content area
+            // At 96 DPI: 190mm * 96 / 25.4 ≈ 718px, use 700px for safety
+            const wrapper = document.createElement('div');
+            wrapper.id = 'pdf-wrapper-debug';
+            wrapper.innerHTML = htmlContent;
+            wrapper.style.cssText = 'width: 700px; background: white; padding: 0; margin: 0;';
+            document.body.appendChild(wrapper);
+
+            console.log('Wrapper added, dimensions:', wrapper.offsetWidth, 'x', wrapper.offsetHeight);
+
             const filename = `expenses_report_${new Date().toISOString().split('T')[0]}.pdf`;
-            const opt = {
-                margin: 10,
-                filename: filename,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                document.body.removeChild(element);
-                showSuccess(`דוח PDF עם ${filtered.length} הוצאות יוצא בהצלחה`);
-            });
+            // Wait for render
+            setTimeout(async () => {
+                console.log('Generating PDF with html2pdf.js and page break support...');
+                const captureHeight = wrapper.offsetHeight;
+                const captureWidth = wrapper.offsetWidth;
+                console.log('Capture dimensions:', captureWidth, 'x', captureHeight);
+
+                try {
+                    // Use html2pdf.js with proper page break configuration
+                    const opt = {
+                        margin: 10,
+                        filename: filename,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            logging: true,
+                            backgroundColor: '#ffffff'
+                        },
+                        jsPDF: {
+                            unit: 'mm',
+                            format: 'a4',
+                            orientation: 'portrait'
+                        },
+                        pagebreak: {
+                            mode: ['avoid-all', 'css', 'legacy'],
+                            before: '.page-break-before',
+                            after: '.page-break-after',
+                            avoid: ['tr', 'thead', 'tfoot', '.avoid-break']
+                        }
+                    };
+
+                    console.log('Starting html2pdf generation with pagebreak mode...');
+
+                    await html2pdf().set(opt).from(wrapper).save();
+
+                    console.log('PDF saved successfully!');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i> ייצא ל-PDF';
+                    showSuccess(`דוח PDF יוצא בהצלחה`);
+
+                } catch (error) {
+                    console.error('PDF error:', error);
+                    console.error('Error message:', error.message);
+                    console.error('Error stack:', error.stack);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i> ייצא ל-PDF';
+                    showError('שגיאה בייצוא PDF: ' + (error.message || 'Unknown error'));
+                }
+
+                // Remove wrapper
+                if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+            }, 500);
         }
 
         // Show Projects Tab
