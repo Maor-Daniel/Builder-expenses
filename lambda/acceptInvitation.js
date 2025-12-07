@@ -17,15 +17,17 @@ const {
 const { withSecureCors } = require('./shared/cors-config');
 
 async function validateInvitationToken(token) {
+  // First try to find by invitationId (the token IS the invitationId)
   const scanResult = await dynamoOperation('scan', {
     TableName: COMPANY_TABLE_NAMES.INVITATIONS,
-    FilterExpression: 'invitationId = :token AND #status = :status',
+    FilterExpression: '(invitationId = :token OR #tokenField = :token) AND #status = :status',
     ExpressionAttributeNames: {
-      '#status': 'status'
+      '#status': 'status',
+      '#tokenField': 'token'
     },
     ExpressionAttributeValues: {
       ':token': token,
-      ':status': 'PENDING'
+      ':status': 'pending'  // Database stores lowercase status
     }
   });
 

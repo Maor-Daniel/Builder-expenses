@@ -248,7 +248,7 @@ exports.handler = withSecureCors(async (event) => {
       ExpressionAttributeValues: {
         ':companyId': companyId,
         ':email': email,
-        ':status': 'PENDING'
+        ':status': 'pending'
       }
     });
 
@@ -267,7 +267,7 @@ exports.handler = withSecureCors(async (event) => {
       invitationId: invitationToken, // Using invitationToken as invitationId value
       email: email.toLowerCase().trim(),
       role: inviteeRole,
-      status: 'PENDING',
+      status: 'pending',  // Use lowercase for consistency
       invitedBy: userId,
       invitedAt: timestamp,
       expiresAt,

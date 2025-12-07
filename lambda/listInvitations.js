@@ -69,6 +69,14 @@ exports.handler = withSecureCors(async (event) => {
     const result = await queryPromise;
     let invitations = result.Items || [];
 
+    // When no status filter is provided, exclude cancelled and accepted invitations
+    // (show only pending/active invitations by default)
+    if (!status) {
+      invitations = invitations.filter(inv =>
+        inv.status !== 'cancelled' && inv.status !== 'accepted'
+      );
+    }
+
     // Filter expired invitations and mark them
     const now = new Date();
     const enhancedInvitations = invitations.map(invitation => {
