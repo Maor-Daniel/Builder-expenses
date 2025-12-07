@@ -62,36 +62,45 @@ exports.handler = withSecureCors(async (event) => {
     // Validate invitation data
     validateInvitation({ email, role });
 
-    // Check if user is already in the company
+    // Check if user is already an ACTIVE member of the company
+    // Allow re-inviting users who were soft-deleted (status='inactive')
     const existingUserParams = {
       TableName: COMPANY_TABLE_NAMES.USERS,
       IndexName: 'CompanyEmailIndex', // Assuming we have a GSI on companyId-email
       KeyConditionExpression: 'companyId = :companyId',
-      FilterExpression: 'email = :email',
+      FilterExpression: 'email = :email AND #status = :activeStatus',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
       ExpressionAttributeValues: {
         ':companyId': companyId,
-        ':email': email
+        ':email': email,
+        ':activeStatus': 'active'
       }
     };
 
     try {
       const existingUserResult = await dynamoOperation('query', existingUserParams);
       if (existingUserResult.Items && existingUserResult.Items.length > 0) {
-        return createErrorResponse(400, 'User is already a member of this company');
+        return createErrorResponse(400, 'User is already an active member of this company');
       }
     } catch (queryError) {
       // If GSI doesn't exist, do a scan instead (less efficient but works)
       const scanParams = {
         TableName: COMPANY_TABLE_NAMES.USERS,
-        FilterExpression: 'companyId = :companyId AND email = :email',
+        FilterExpression: 'companyId = :companyId AND email = :email AND #status = :activeStatus',
+        ExpressionAttributeNames: {
+          '#status': 'status'
+        },
         ExpressionAttributeValues: {
           ':companyId': companyId,
-          ':email': email
+          ':email': email,
+          ':activeStatus': 'active'
         }
       };
       const existingUserResult = await dynamoOperation('scan', scanParams);
       if (existingUserResult.Items && existingUserResult.Items.length > 0) {
-        return createErrorResponse(400, 'User is already a member of this company');
+        return createErrorResponse(400, 'User is already an active member of this company');
       }
     }
 
@@ -154,7 +163,7 @@ exports.handler = withSecureCors(async (event) => {
     const companyName = companyResult.Item?.name || 'Unknown Company';
 
     // Send invitation email
-    const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}?invitation=${token}`;
+    const invitationUrl = `${process.env.FRONTEND_URL || 'https://www.builder-expenses.com'}/app.html?invitation=${token}`;
     
     const emailParams = {
       Source: process.env.SES_EMAIL_SOURCE || process.env.FROM_EMAIL || 'maordtech@gmail.com',
