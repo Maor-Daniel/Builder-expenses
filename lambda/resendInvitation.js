@@ -18,10 +18,16 @@ const crypto = require('crypto');
 
 const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
 
+// Generate a new secure invitation token
+function generateNewToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
 // Send invitation email via SES
-async function sendInvitationEmail(invitation, companyName) {
-  const invitationToken = invitation.token || invitation.invitationToken;
-  const invitationUrl = `${process.env.FRONTEND_URL || 'http://construction-expenses-multi-table-frontend-702358134603.s3-website-us-east-1.amazonaws.com'}/accept-invitation?token=${invitationToken}`;
+async function sendInvitationEmail(invitation, companyName, newToken) {
+  // Use the new token passed in, or fall back to existing token
+  const invitationToken = newToken || invitation.token || invitation.invitationId;
+  const invitationUrl = `${process.env.FRONTEND_URL || 'https://www.builder-expenses.com'}/app.html?invitation=${invitationToken}`;
 
 
   const emailParams = {
@@ -233,20 +239,30 @@ exports.handler = withSecureCors(async (event) => {
 
     const companyName = companyResult.Item?.name || 'החברה';
 
+    // Generate new token and extend expiration by 7 days
+    const newToken = generateNewToken();
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+    const newExpiresAtISO = newExpiresAt.toISOString();
 
-    // Send the email
+    // Send the email with the new token
     try {
-      await sendInvitationEmail(invitation, companyName);
+      await sendInvitationEmail(invitation, companyName, newToken);
 
-      // Update invitation with new email send timestamp
+      // Update invitation with new token, extended expiration, and email send timestamp
       await dynamoOperation('update', {
         TableName: COMPANY_TABLE_NAMES.INVITATIONS,
         Key: {
           companyId,
           invitationId: invitationToken
         },
-        UpdateExpression: 'SET lastEmailSent = :timestamp, emailAttempts = :attempts, emailSent = :true, resentBy = :userId, resentAt = :timestamp',
+        UpdateExpression: 'SET #token = :newToken, expiresAt = :newExpiry, lastEmailSent = :timestamp, emailAttempts = :attempts, emailSent = :true, resentBy = :userId, resentAt = :timestamp',
+        ExpressionAttributeNames: {
+          '#token': 'token'
+        },
         ExpressionAttributeValues: {
+          ':newToken': newToken,
+          ':newExpiry': newExpiresAtISO,
           ':timestamp': getCurrentTimestamp(),
           ':attempts': emailAttempts + 1,
           ':true': true,
@@ -254,14 +270,16 @@ exports.handler = withSecureCors(async (event) => {
         }
       });
 
+      console.log('Invitation resent with new token:', { email: invitation.email, newToken: newToken.substring(0, 8) + '...', expiresAt: newExpiresAtISO });
 
       return createResponse(200, {
         success: true,
-        message: 'Invitation email resent successfully',
+        message: 'Invitation email resent successfully with new token',
         invitation: {
           email: invitation.email,
           role: invitation.role,
-          expiresAt: invitation.expiresAt,
+          expiresAt: newExpiresAtISO,
+          tokenRefreshed: true,
           emailAttempts: emailAttempts + 1,
           maxAttempts: MAX_RESEND_ATTEMPTS,
           attemptsRemaining: MAX_RESEND_ATTEMPTS - (emailAttempts + 1)

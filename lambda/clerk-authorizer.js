@@ -271,26 +271,38 @@ exports.handler = async (event) => {
     const email = payload.email;
     const userName = payload.name || payload.given_name || payload.first_name;
 
-    // For backward compatibility, use orgId as companyId
-    // If no organization, use user ID as company ID (single-user mode)
-    const companyId = orgId || userId;
-
-    // Get actual role from DynamoDB company-users table
-    // This is the source of truth for user roles, not Clerk organizations
+    // Determine companyId - first check if user has any company membership (for invited users)
+    // Then fall back to orgId (Clerk organization), then userId (single-user mode)
+    let companyId = orgId || userId;
     let appRole = 'admin'; // Default for new users
+
+    // First, try to find user's actual company membership (critical for invited users)
     try {
-      const userRole = await getUserRoleFromDB(companyId, userId);
-      if (userRole) {
-        appRole = userRole;
-        console.log(`Found user role in DynamoDB: ${appRole}`);
+      const membership = await findUserCompanyMembership(userId);
+      if (membership) {
+        companyId = membership.companyId;
+        appRole = membership.role || 'admin';
+        console.log(`Found user membership in DynamoDB: companyId=${companyId}, role=${appRole}`);
       } else {
-        console.log('No role found in DynamoDB - using default: admin');
+        // No membership found - user might be a new admin creating a company
+        // Use orgId if available, otherwise userId
+        companyId = orgId || userId;
+        console.log(`No membership found - using fallback companyId: ${companyId}`);
+
+        // Try to get role from the fallback companyId
+        const userRole = await getUserRoleFromDB(companyId, userId);
+        if (userRole) {
+          appRole = userRole;
+          console.log(`Found user role in DynamoDB with fallback: ${appRole}`);
+        } else {
+          console.log('No role found in DynamoDB - using default: admin');
+        }
       }
     } catch (error) {
-      console.error('Error fetching user role from DynamoDB:', error);
+      console.error('Error finding user company membership:', error);
       // Fallback to Clerk organization role if DB query fails
       appRole = mapClerkRoleToAppRole(orgRole);
-      console.log(`DB query failed, falling back to Clerk role mapping: ${appRole}`);
+      console.log(`Membership lookup failed, falling back to Clerk role mapping: ${appRole}`);
     }
 
     console.log('User context:', {
@@ -349,12 +361,53 @@ exports.logSecurityEvent = logSecurityEvent;
 exports.JWT_CONFIG = JWT_CONFIG;
 
 /**
+ * Find user's company membership from DynamoDB
+ * This scans for any company the user belongs to (for invited users)
+ */
+async function findUserCompanyMembership(userId) {
+  try {
+    // Scan company-users table for any record with this userId
+    const result = await dynamodb.scan({
+      TableName: process.env.COMPANY_USERS_TABLE || 'construction-expenses-company-users',
+      FilterExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId
+      },
+      Limit: 10 // User could belong to multiple companies
+    });
+
+    if (result.Items && result.Items.length > 0) {
+      // Return the first (or most recent) company membership
+      // Sort by joinedAt or createdAt if available
+      const sortedItems = result.Items.sort((a, b) => {
+        const dateA = new Date(a.joinedAt || a.createdAt || 0);
+        const dateB = new Date(b.joinedAt || b.createdAt || 0);
+        return dateB - dateA; // Most recent first
+      });
+
+      const membership = sortedItems[0];
+      console.log('Found company membership for user:', { userId, companyId: membership.companyId, role: membership.role });
+      return {
+        companyId: membership.companyId,
+        role: membership.role
+      };
+    }
+
+    console.log('No company membership found for user:', userId);
+    return null;
+  } catch (error) {
+    console.error('Error finding user company membership:', error);
+    return null;
+  }
+}
+
+/**
  * Get user role from DynamoDB company-users table
  */
 async function getUserRoleFromDB(companyId, userId) {
   try {
     const result = await dynamodb.get({
-      TableName: process.env.COMPANY_USERS_TABLE || 'company-users',
+      TableName: process.env.COMPANY_USERS_TABLE || 'construction-expenses-company-users',
       Key: {
         companyId,
         userId

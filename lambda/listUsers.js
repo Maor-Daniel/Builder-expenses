@@ -62,8 +62,15 @@ exports.handler = withSecureCors(async (event) => {
       users = users.filter(u => u.role === role.toUpperCase());
     }
 
-    if (status) {
+    // Filter by status - by default, exclude inactive (soft-deleted) users
+    // Pass ?status=all to include inactive users, or ?status=inactive to see only inactive
+    if (status === 'all') {
+      // Show all users including inactive
+    } else if (status) {
       users = users.filter(u => u.status === status.toLowerCase());
+    } else {
+      // Default: exclude inactive users (soft-deleted)
+      users = users.filter(u => u.status !== 'inactive');
     }
 
     // Enrich users with additional data from Cognito (optional - for names/emails)

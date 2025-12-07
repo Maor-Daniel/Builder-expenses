@@ -154,8 +154,19 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(403, 'Admin privileges required to remove users');
     }
 
-    // Get target user ID from path parameters
-    const targetUserId = event.pathParameters?.userId;
+    // Get target user ID from path parameters OR body (for flexibility)
+    let targetUserId = event.pathParameters?.userId;
+
+    // If not in path, check body
+    if (!targetUserId && event.body) {
+      try {
+        const body = JSON.parse(event.body);
+        targetUserId = body.userId;
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
     if (!targetUserId) {
       return createErrorResponse(400, 'User ID is required');
     }
