@@ -206,7 +206,8 @@ const ROLE_PERMISSIONS = {
 const INVITATION_STATUS = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',
-  EXPIRED: 'expired'
+  EXPIRED: 'expired',
+  CANCELLED: 'cancelled'
 };
 
 /**
@@ -471,6 +472,11 @@ function getCurrentTimestamp() {
  * Log debug information
  */
 function debugLog(message, data = null) {
+  if (data) {
+    console.log(`[DEBUG] ${message}`, JSON.stringify(data, null, 2));
+  } else {
+    console.log(`[DEBUG] ${message}`);
+  }
 }
 
 /**

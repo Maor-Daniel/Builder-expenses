@@ -53,21 +53,22 @@ exports.handler = withSecureCors(async (event) => {
 
     const invitation = invitationResult.Item;
 
-    // Check invitation status
-    if (invitation.status === 'ACCEPTED') {
+    // Check invitation status (compare lowercase - database stores lowercase)
+    const status = (invitation.status || '').toLowerCase();
+    if (status === 'accepted') {
       return createErrorResponse(400, 'Cannot cancel an invitation that has already been accepted');
     }
 
-    if (invitation.status === 'CANCELLED') {
+    if (status === 'cancelled') {
       return createErrorResponse(400, 'This invitation has already been cancelled');
     }
 
-    if (invitation.status === 'EXPIRED') {
+    if (status === 'expired') {
       return createErrorResponse(400, 'This invitation has already expired');
     }
 
 
-    // Update invitation status to CANCELLED
+    // Update invitation status to cancelled (lowercase for consistency)
     const updateResult = await dynamoOperation('update', {
       TableName: COMPANY_TABLE_NAMES.INVITATIONS,
       Key: {
@@ -79,7 +80,7 @@ exports.handler = withSecureCors(async (event) => {
         '#status': 'status'
       },
       ExpressionAttributeValues: {
-        ':cancelled': 'CANCELLED',
+        ':cancelled': 'cancelled',
         ':userId': userId,
         ':timestamp': getCurrentTimestamp()
       },

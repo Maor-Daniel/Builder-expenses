@@ -5369,7 +5369,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בשליחת ההזמנה');
+                    throw new Error(data.message || 'שגיאה בשליחת ההזמנה');
                 }
 
                 showSuccess('ההזמנה נשלחה בהצלחה!');
@@ -5395,7 +5395,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בטעינת משתמשים');
+                    throw new Error(data.message || 'שגיאה בטעינת משתמשים');
                 }
 
                 const tbody = document.querySelector('#usersTable tbody');
@@ -5467,13 +5467,15 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בטעינת הזמנות');
+                    throw new Error(data.message || 'שגיאה בטעינת הזמנות');
                 }
 
                 const tbody = document.querySelector('#invitationsTable tbody');
                 if (!tbody) return;
 
-                if (!data.invitations || data.invitations.length === 0) {
+                // API returns { data: { invitations: [...] } } structure
+                const invitations = data.data?.invitations || data.invitations || [];
+                if (invitations.length === 0) {
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
@@ -5485,7 +5487,7 @@
                     return;
                 }
 
-                tbody.innerHTML = data.invitations.map(invitation => {
+                tbody.innerHTML = invitations.map(invitation => {
                     const roleClass = `role-${invitation.role || 'viewer'}`;
                     const roleText = {
                         admin: 'מנהל',
@@ -5493,19 +5495,26 @@
                         viewer: 'צופה'
                     }[invitation.role] || 'צופה';
 
+                    // Backend returns 'id' not 'invitationId', and 'invitedAt' not 'sentAt'
+                    const invitationId = invitation.id || invitation.invitationId;
+                    const sentDate = invitation.invitedAt || invitation.sentAt;
+                    const isExpired = invitation.isExpired;
+
                     return `
-                        <tr>
-                            <td>${invitation.email}</td>
+                        <tr${isExpired ? ' style="opacity: 0.6;"' : ''}>
+                            <td>${invitation.email}${isExpired ? ' <span style="color: #e74c3c; font-size: 0.8em;">(פג תוקף)</span>' : ''}</td>
                             <td>${invitation.name || '-'}</td>
                             <td>${invitation.phone || '-'}</td>
                             <td><span class="role-badge ${roleClass}">${roleText}</span></td>
-                            <td>${invitation.sentAt ? new Date(invitation.sentAt).toLocaleDateString('he-IL') : '-'}</td>
+                            <td>${sentDate ? new Date(sentDate).toLocaleDateString('he-IL') : '-'}</td>
                             <td>
-                                <button class="btn-secondary" onclick="resendInvitation('${invitation.invitationId}', '${invitation.email}')" style="padding: 6px 12px; margin-left: 5px;">
+                                ${!isExpired ? `
+                                <button class="btn-secondary" onclick="resendInvitation('${invitationId}', '${invitation.email}')" style="padding: 6px 12px; margin-left: 5px;">
                                     <i class="fas fa-redo"></i> שלח שוב
                                 </button>
-                                <button class="btn-delete" onclick="cancelInvitation('${invitation.invitationId}', '${invitation.email}')">
-                                    <i class="fas fa-times"></i> בטל
+                                ` : ''}
+                                <button class="btn-delete" onclick="cancelInvitation('${invitationId}', '${invitation.email}')">
+                                    <i class="fas fa-times"></i> ${isExpired ? 'הסר' : 'בטל'}
                                 </button>
                             </td>
                         </tr>
@@ -5546,7 +5555,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בהסרת משתמש');
+                    throw new Error(data.message || 'שגיאה בהסרת משתמש');
                 }
 
                 showSuccess('המשתמש הוסר בהצלחה');
@@ -5561,19 +5570,19 @@
         // Resend invitation
         async function resendInvitation(invitationId, email) {
             try {
-                const response = await fetch(`${window.API_BASE_URL}/resendInvitation`, {
+                // Note: API expects invitationId in path parameter
+                const response = await fetch(`${window.API_BASE_URL}/resendInvitation/${encodeURIComponent(invitationId)}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
-                    },
-                    body: JSON.stringify({ invitationId })
+                    }
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בשליחת ההזמנה מחדש');
+                    throw new Error(data.message || 'שגיאה בשליחת ההזמנה מחדש');
                 }
 
                 showSuccess(`ההזמנה נשלחה מחדש ל-${email}`);
@@ -5592,19 +5601,19 @@
             }
 
             try {
-                const response = await fetch(`${window.API_BASE_URL}/cancelInvitation`, {
+                // Note: API expects invitationId in path parameter
+                const response = await fetch(`${window.API_BASE_URL}/cancelInvitation/${encodeURIComponent(invitationId)}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
-                    },
-                    body: JSON.stringify({ invitationId })
+                    }
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'שגיאה בביטול ההזמנה');
+                    throw new Error(data.message || 'שגיאה בביטול ההזמנה');
                 }
 
                 showSuccess('ההזמנה בוטלה בהצלחה');
