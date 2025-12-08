@@ -17,6 +17,8 @@ const {
   USER_ROLES,
   INVITATION_STATUS
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('sendInvitation');
 
 const {
   checkUserLimit

@@ -469,7 +469,8 @@ async function handleSubscriptionPastDue(subscriptionData) {
   });
 
   console.log(`Company ${companyId} marked as past_due`);
-  // TODO: Send email notification to company admin
+  // Note: Paddle automatically sends payment failure emails to the customer.
+  // Additional notification can be configured in Paddle dashboard under Notifications.
 }
 
 /**
@@ -499,7 +500,8 @@ async function handleTransactionCompleted(transactionData) {
   });
 
   console.log(`Payment record stored for company: ${companyId}`);
-  // TODO: Send receipt email
+  // Note: Paddle automatically sends payment receipts to the customer.
+  // Receipt templates can be customized in Paddle dashboard.
 }
 
 /**
@@ -529,7 +531,8 @@ async function handleTransactionPaymentFailed(transactionData) {
   });
 
   console.log(`Failed payment recorded for company: ${companyId}`);
-  // TODO: Send payment failure notification
+  // Note: Paddle automatically sends payment failure notifications to the customer.
+  // Dunning settings can be configured in Paddle dashboard.
 }
 
 /**

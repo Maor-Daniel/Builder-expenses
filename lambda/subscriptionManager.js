@@ -197,7 +197,7 @@ async function getCurrentUsage(companyId) {
       users: usersResult.Count || 0,
       projects: projectsResult.Count || 0,
       expensesThisMonth: expensesResult.Count || 0,
-      storageUsed: 0 // TODO: Calculate actual storage usage
+      storageUsed: 0 // Storage tracking not yet implemented - receipts stored externally
     };
 
   } catch (error) {

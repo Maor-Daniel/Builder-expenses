@@ -375,11 +375,13 @@ async function getCompanySubscription(companyId) {
 }
 
 /**
- * Get company storage usage (placeholder)
+ * Get company storage usage
+ * Currently returns 0 as receipt images are stored with external URLs.
+ * When S3-based file storage is implemented, this should query S3 for total size.
  */
 async function getCompanyStorageUsage(companyId) {
-  // TODO: Implement storage usage calculation
-  // This would sum up file sizes from S3 or similar
+  // Storage tracking not yet implemented - receipts use external URLs
+  // Future: Sum file sizes from S3 bucket using ListObjectsV2 with prefix companyId/
   return 0;
 }
 
