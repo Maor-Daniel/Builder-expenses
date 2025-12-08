@@ -9,7 +9,10 @@ const {
   getCurrentTimestamp,
   debugLog,
   dynamoOperation,
-  COMPANY_TABLE_NAMES
+  COMPANY_TABLE_NAMES,
+  USER_ROLES,
+  PERMISSIONS,
+  hasPermission
 } = require('./shared/company-utils');
 const { withSecureCors } = require('./shared/cors-config');
 
@@ -24,12 +27,26 @@ exports.handler = withSecureCors(async (event) => {
 
     switch (event.httpMethod) {
       case 'GET':
-        return await getWorks(companyId, userId);
+        // All authenticated users can view works
+        return await getWorks(companyId, userId, userRole);
       case 'POST':
+        // Check CREATE permission
+        if (!hasPermission(userRole, PERMISSIONS.CREATE_WORKS)) {
+          return createErrorResponse(403, 'You do not have permission to create works. Contact an admin to upgrade your role.');
+        }
         return await createWork(event, companyId, userId);
       case 'PUT':
-        return await updateWork(event, companyId, userId);
+        // Check EDIT permission
+        if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_WORKS) &&
+            !hasPermission(userRole, PERMISSIONS.EDIT_OWN_WORKS)) {
+          return createErrorResponse(403, 'You do not have permission to edit works. Contact an admin to upgrade your role.');
+        }
+        return await updateWork(event, companyId, userId, userRole);
       case 'DELETE':
+        // Only admin and manager can delete
+        if (!hasPermission(userRole, PERMISSIONS.DELETE_WORKS)) {
+          return createErrorResponse(403, 'You do not have permission to delete works. Only admins and managers can delete.');
+        }
         return await deleteWork(event, companyId, userId);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
@@ -40,7 +57,7 @@ exports.handler = withSecureCors(async (event) => {
 });
 
 // Get all works for the company
-async function getWorks(companyId, userId) {
+async function getWorks(companyId, userId, userRole) {
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.WORKS,
@@ -77,7 +94,7 @@ async function getWorks(companyId, userId) {
     contractorsMap[c.contractorId] = c.name;
   });
 
-  // Add names to works
+  // Add names to works - all authenticated users can view all works
   const worksWithNames = (result.Items || []).map(work => ({
     ...work,
     projectName: projectsMap[work.projectId] || '',
@@ -157,14 +174,29 @@ async function createWork(event, companyId, userId) {
 }
 
 // Update an existing work
-async function updateWork(event, companyId, userId) {
+async function updateWork(event, companyId, userId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
   const workId = requestBody.workId;
-  
+
   if (!workId) {
     return createErrorResponse(400, 'Missing workId');
   }
 
+  // For users with only EDIT_OWN permission, verify they own this work
+  if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_WORKS)) {
+    const existingWork = await dynamoOperation('get', {
+      TableName: COMPANY_TABLE_NAMES.WORKS,
+      Key: { companyId, workId }
+    });
+
+    if (!existingWork.Item) {
+      return createErrorResponse(404, 'Work not found');
+    }
+
+    if (existingWork.Item.userId !== userId) {
+      return createErrorResponse(403, 'You can only edit works you created');
+    }
+  }
 
   // Build update expression dynamically
   const updateExpressions = [];

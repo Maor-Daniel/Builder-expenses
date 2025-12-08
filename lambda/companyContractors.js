@@ -9,7 +9,10 @@ const {
   getCurrentTimestamp,
   debugLog,
   dynamoOperation,
-  COMPANY_TABLE_NAMES
+  COMPANY_TABLE_NAMES,
+  USER_ROLES,
+  PERMISSIONS,
+  hasPermission
 } = require('./shared/company-utils');
 const { withSecureCors } = require('./shared/cors-config');
 
@@ -24,12 +27,26 @@ exports.handler = withSecureCors(async (event) => {
 
     switch (event.httpMethod) {
       case 'GET':
-        return await getContractors(companyId, userId);
+        // All authenticated users can view contractors
+        return await getContractors(companyId, userId, userRole);
       case 'POST':
+        // Check CREATE permission
+        if (!hasPermission(userRole, PERMISSIONS.CREATE_CONTRACTORS)) {
+          return createErrorResponse(403, 'You do not have permission to create contractors. Contact an admin to upgrade your role.');
+        }
         return await createContractor(event, companyId, userId);
       case 'PUT':
-        return await updateContractor(event, companyId, userId);
+        // Check EDIT permission
+        if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_CONTRACTORS) &&
+            !hasPermission(userRole, PERMISSIONS.EDIT_OWN_CONTRACTORS)) {
+          return createErrorResponse(403, 'You do not have permission to edit contractors. Contact an admin to upgrade your role.');
+        }
+        return await updateContractor(event, companyId, userId, userRole);
       case 'DELETE':
+        // Only admin and manager can delete
+        if (!hasPermission(userRole, PERMISSIONS.DELETE_CONTRACTORS)) {
+          return createErrorResponse(403, 'You do not have permission to delete contractors. Only admins and managers can delete.');
+        }
         return await deleteContractor(event, companyId, userId);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
@@ -40,7 +57,7 @@ exports.handler = withSecureCors(async (event) => {
 });
 
 // Get all contractors for the company
-async function getContractors(companyId, userId) {
+async function getContractors(companyId, userId, userRole) {
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
@@ -51,12 +68,14 @@ async function getContractors(companyId, userId) {
   };
 
   const result = await dynamoOperation('query', params);
-  
-  
+
+  // All authenticated users can view all contractors in the company
+  const contractors = result.Items || [];
+
   return createResponse(200, {
     success: true,
-    contractors: result.Items || [],
-    count: result.Items.length
+    contractors: contractors,
+    count: contractors.length
   });
 }
 
@@ -122,14 +141,29 @@ async function createContractor(event, companyId, userId) {
 }
 
 // Update an existing contractor
-async function updateContractor(event, companyId, userId) {
+async function updateContractor(event, companyId, userId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
   const contractorId = requestBody.contractorId;
-  
+
   if (!contractorId) {
     return createErrorResponse(400, 'Missing contractorId');
   }
 
+  // For users with only EDIT_OWN permission, verify they own this contractor
+  if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_CONTRACTORS)) {
+    const existingContractor = await dynamoOperation('get', {
+      TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+      Key: { companyId, contractorId }
+    });
+
+    if (!existingContractor.Item) {
+      return createErrorResponse(404, 'Contractor not found');
+    }
+
+    if (existingContractor.Item.userId !== userId) {
+      return createErrorResponse(403, 'You can only edit contractors you created');
+    }
+  }
 
   // Build update expression dynamically
   const updateExpressions = [];

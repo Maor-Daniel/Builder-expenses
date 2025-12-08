@@ -9,7 +9,10 @@ const {
   getCurrentTimestamp,
   debugLog,
   dynamoOperation,
-  COMPANY_TABLE_NAMES
+  COMPANY_TABLE_NAMES,
+  USER_ROLES,
+  PERMISSIONS,
+  hasPermission
 } = require('./shared/company-utils');
 
 const {
@@ -28,12 +31,26 @@ exports.handler = withSecureCors(async (event, context) => {
 
     switch (event.httpMethod) {
       case 'GET':
-        return await getExpenses(companyId, userId);
+        // All authenticated users can view expenses (viewers included)
+        return await getExpenses(companyId, userId, userRole);
       case 'POST':
+        // Check CREATE permission (admin, manager, editor can create)
+        if (!hasPermission(userRole, PERMISSIONS.CREATE_EXPENSES)) {
+          return createErrorResponse(403, 'You do not have permission to create expenses. Contact an admin to upgrade your role.');
+        }
         return await createExpense(event, companyId, userId);
       case 'PUT':
-        return await updateExpense(event, companyId, userId);
+        // Check EDIT permission (will verify ownership inside for editors)
+        if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_EXPENSES) &&
+            !hasPermission(userRole, PERMISSIONS.EDIT_OWN_EXPENSES)) {
+          return createErrorResponse(403, 'You do not have permission to edit expenses. Contact an admin to upgrade your role.');
+        }
+        return await updateExpense(event, companyId, userId, userRole);
       case 'DELETE':
+        // Only admin and manager can delete
+        if (!hasPermission(userRole, PERMISSIONS.DELETE_EXPENSES)) {
+          return createErrorResponse(403, 'You do not have permission to delete expenses. Only admins and managers can delete.');
+        }
         return await deleteExpense(event, companyId, userId);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
@@ -50,7 +67,7 @@ exports.handler = withSecureCors(async (event, context) => {
 });
 
 // Get all expenses for the company
-async function getExpenses(companyId, userId) {
+async function getExpenses(companyId, userId, userRole) {
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
@@ -61,6 +78,13 @@ async function getExpenses(companyId, userId) {
   };
 
   const result = await dynamoOperation('query', params);
+
+  // Filter data based on user permissions
+  // Editors see only their own expenses; Viewers, Admins, Managers see all
+  let filteredExpenses = result.Items || [];
+  if (userRole === USER_ROLES.EDITOR) {
+    filteredExpenses = filteredExpenses.filter(expense => expense.userId === userId);
+  }
 
   // Fetch projects, contractors, and works to get names
   const [projectsResult, contractorsResult, worksResult] = await Promise.all([
@@ -98,7 +122,7 @@ async function getExpenses(companyId, userId) {
   });
 
   // Filter out deprecated fields and add names
-  const cleanedExpenses = (result.Items || []).map(expense => {
+  const cleanedExpenses = filteredExpenses.map(expense => {
     const cleaned = { ...expense };
     delete cleaned.contractorSignature;
     delete cleaned.paymentTerms;
@@ -268,14 +292,30 @@ async function validateContractorExists(companyId, contractorId) {
 }
 
 // Update an existing expense
-async function updateExpense(event, companyId, userId) {
+async function updateExpense(event, companyId, userId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
   const expenseId = requestBody.expenseId;
-  
+
   if (!expenseId) {
     return createErrorResponse(400, 'Missing expenseId');
   }
 
+  // For users with only EDIT_OWN permission, verify they own this expense
+  if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_EXPENSES)) {
+    // Get the expense to check ownership
+    const existingExpense = await dynamoOperation('get', {
+      TableName: COMPANY_TABLE_NAMES.EXPENSES,
+      Key: { companyId, expenseId }
+    });
+
+    if (!existingExpense.Item) {
+      return createErrorResponse(404, 'Expense not found');
+    }
+
+    if (existingExpense.Item.userId !== userId) {
+      return createErrorResponse(403, 'You can only edit expenses you created');
+    }
+  }
 
   // Build update expression dynamically
   const updateExpressions = [];
