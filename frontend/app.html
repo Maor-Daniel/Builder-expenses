@@ -2062,10 +2062,10 @@
                 <button class="tab-button" onclick="showTab('reports')">
                     <i class="fas fa-chart-bar"></i> דוחות
                 </button>
-                <button class="tab-button" onclick="showTab('billing')">
+                <button id="billingTabBtn" class="tab-button" onclick="showTab('billing')">
                     <i class="fas fa-credit-card"></i> חיוב ומנוי
                 </button>
-                <button class="tab-button" onclick="showTab('users')">
+                <button id="usersTabBtn" class="tab-button" onclick="showTab('users')">
                     <i class="fas fa-user-friends"></i> משתמשים
                 </button>
             </div>
@@ -2482,9 +2482,23 @@
 
     <!-- Main Application Script -->
     <script>
+        // Pending invitation token (from URL parameter)
+        let pendingInvitationToken = null;
+        let pendingInvitationData = null;
+
         // Initialize Clerk when page loads
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // Check for invitation token in URL before anything else
+                const urlParams = new URLSearchParams(window.location.search);
+                pendingInvitationToken = urlParams.get('invitation');
+
+                if (pendingInvitationToken) {
+                    console.log('[INVITATION] Found invitation token in URL:', pendingInvitationToken);
+                    // Validate the invitation token
+                    await validatePendingInvitation(pendingInvitationToken);
+                }
+
                 // Initialize Clerk
                 await ClerkAuth.initialize();
 
@@ -2523,10 +2537,95 @@
             }
         });
 
+        // Validate invitation token before user signs in
+        async function validatePendingInvitation(token) {
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/acceptInvitation?token=${encodeURIComponent(token)}`);
+                const data = await response.json();
+
+                if (data.success && data.data?.invitation) {
+                    pendingInvitationData = data.data.invitation;
+                    console.log('[INVITATION] Valid invitation:', pendingInvitationData);
+                } else {
+                    console.error('[INVITATION] Invalid invitation:', data.message);
+                    pendingInvitationToken = null;
+                    showError(data.message || 'ההזמנה אינה תקפה או שפג תוקפה');
+                }
+            } catch (error) {
+                console.error('[INVITATION] Error validating invitation:', error);
+                pendingInvitationToken = null;
+                showError('שגיאה באימות ההזמנה');
+            }
+        }
+
+        // Process pending invitation after user is authenticated
+        async function processPendingInvitation() {
+            if (!pendingInvitationToken || !pendingInvitationData) {
+                return false;
+            }
+
+            console.log('[INVITATION] Processing pending invitation...');
+
+            try {
+                const response = await fetch(`${window.API_BASE_URL}/acceptInvitation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await ClerkAuth.getAuthToken()}`
+                    },
+                    body: JSON.stringify({
+                        token: pendingInvitationToken,
+                        name: pendingInvitationData.name || '',
+                        phone: ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    console.log('[INVITATION] Invitation accepted successfully!', data);
+                    showSuccess(`הצטרפת בהצלחה לחברת ${data.data.company.name}!`);
+
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // Clear pending invitation
+                    pendingInvitationToken = null;
+                    pendingInvitationData = null;
+
+                    // Reload to get new company context
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+
+                    return true;
+                } else {
+                    throw new Error(data.message || 'שגיאה בקבלת ההזמנה');
+                }
+            } catch (error) {
+                console.error('[INVITATION] Error accepting invitation:', error);
+                showError(error.message || 'שגיאה בקבלת ההזמנה');
+                pendingInvitationToken = null;
+                pendingInvitationData = null;
+                return false;
+            }
+        }
+
         // Set up authentication callback
         window.onUserAuthenticated = async (user) => {
             console.log('User authenticated:', user);
             currentUser = user;
+
+            // Check if there's a pending invitation to process
+            if (pendingInvitationToken && pendingInvitationData) {
+                console.log('[INVITATION] User authenticated, processing pending invitation...');
+                const accepted = await processPendingInvitation();
+                if (accepted) {
+                    // processPendingInvitation will reload the page
+                    return;
+                }
+            }
+
             await initializeApp();
         };
 
@@ -2545,18 +2644,51 @@
 
             // Update loading message
             const loadingDiv = document.querySelector('.clerk-loading');
-            loadingDiv.innerHTML = `
-                <h2>מערכת מעקב הוצאות בניה</h2>
-                <div style="margin: 30px 0;">
-                    <button class="btn-primary" onclick="ClerkAuth.showSignIn()" style="margin: 10px;">
-                        <i class="fas fa-sign-in-alt"></i> התחברות
-                    </button>
-                    <button class="btn-primary" onclick="ClerkAuth.showSignUp()" style="margin: 10px;">
-                        <i class="fas fa-user-plus"></i> הרשמה
-                    </button>
-                </div>
-                <p style="color: white; margin-top: 20px;">מערכת מאובטחת עם Clerk Authentication</p>
-            `;
+
+            // Check if there's a pending invitation
+            if (pendingInvitationData) {
+                loadingDiv.innerHTML = `
+                    <h2>הזמנה להצטרף לחברה</h2>
+                    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 20px 0; max-width: 400px;">
+                        <p style="color: white; font-size: 1.1em; margin-bottom: 15px;">
+                            הוזמנת להצטרף לחברת <strong>${pendingInvitationData.companyName}</strong>
+                        </p>
+                        <p style="color: #ccc; margin-bottom: 10px;">
+                            <i class="fas fa-envelope"></i> ${pendingInvitationData.email}
+                        </p>
+                        <p style="color: #ccc; margin-bottom: 15px;">
+                            <i class="fas fa-user-tag"></i> תפקיד: ${pendingInvitationData.role === 'admin' ? 'מנהל' : pendingInvitationData.role === 'editor' ? 'עורך' : 'צופה'}
+                        </p>
+                        ${pendingInvitationData.personalMessage ? `
+                            <p style="color: #eee; font-style: italic; margin-bottom: 15px;">
+                                "${pendingInvitationData.personalMessage}"
+                            </p>
+                        ` : ''}
+                    </div>
+                    <p style="color: white; margin-bottom: 20px;">כדי לקבל את ההזמנה, אנא התחבר או צור חשבון:</p>
+                    <div style="margin: 30px 0;">
+                        <button class="btn-primary" onclick="ClerkAuth.showSignIn()" style="margin: 10px;">
+                            <i class="fas fa-sign-in-alt"></i> התחברות
+                        </button>
+                        <button class="btn-primary" onclick="ClerkAuth.showSignUp()" style="margin: 10px;">
+                            <i class="fas fa-user-plus"></i> הרשמה חדשה
+                        </button>
+                    </div>
+                `;
+            } else {
+                loadingDiv.innerHTML = `
+                    <h2>מערכת מעקב הוצאות בניה</h2>
+                    <div style="margin: 30px 0;">
+                        <button class="btn-primary" onclick="ClerkAuth.showSignIn()" style="margin: 10px;">
+                            <i class="fas fa-sign-in-alt"></i> התחברות
+                        </button>
+                        <button class="btn-primary" onclick="ClerkAuth.showSignUp()" style="margin: 10px;">
+                            <i class="fas fa-user-plus"></i> הרשמה
+                        </button>
+                    </div>
+                    <p style="color: white; margin-top: 20px;">מערכת מאובטחת עם Clerk Authentication</p>
+                `;
+            }
         }
 
         // Handle successful Paddle checkout (called by eventCallback)
@@ -2802,6 +2934,9 @@
                         role: window.currentUser.role,
                         isAdmin: window.currentUser.isAdmin
                     });
+
+                    // Apply role-based UI visibility
+                    applyRoleBasedUI();
                 }
 
                 // Company exists - load all data in parallel
@@ -2871,6 +3006,55 @@
                 console.error('API call error:', error);
                 throw error;
             }
+        }
+
+        // Role-based permission helpers
+        function canUserCreate() {
+            const role = window.currentUser?.role;
+            // Admin, Manager, Editor can create; Viewer cannot
+            return role === 'admin' || role === 'manager' || role === 'editor';
+        }
+
+        function canUserManageUsers() {
+            const role = window.currentUser?.role;
+            // Only Admin can manage users (invite, edit roles, remove)
+            return role === 'admin';
+        }
+
+        function canUserManageBilling() {
+            const role = window.currentUser?.role;
+            // Only Admin can manage billing
+            return role === 'admin';
+        }
+
+        // Apply Role-Based UI Visibility
+        function applyRoleBasedUI() {
+            const role = window.currentUser?.role || 'viewer';
+            console.log('[RBAC] Applying role-based UI for role:', role);
+
+            // Hide billing tab for non-admins
+            const billingTabBtn = document.getElementById('billingTabBtn');
+            if (billingTabBtn) {
+                billingTabBtn.style.display = canUserManageBilling() ? '' : 'none';
+            }
+
+            // Hide users tab for non-admins
+            const usersTabBtn = document.getElementById('usersTabBtn');
+            if (usersTabBtn) {
+                usersTabBtn.style.display = canUserManageUsers() ? '' : 'none';
+            }
+
+            // Hide add expense button for viewers
+            const addExpenseBtn = document.getElementById('addExpenseBtn');
+            if (addExpenseBtn) {
+                addExpenseBtn.style.display = canUserCreate() ? '' : 'none';
+            }
+
+            console.log('[RBAC] UI visibility applied:', {
+                billingTab: canUserManageBilling(),
+                usersTab: canUserManageUsers(),
+                addButtons: canUserCreate()
+            });
         }
 
         // Update Dashboard
@@ -2962,6 +3146,7 @@
 
         // Show Expenses Tab
         function showExpensesTab(container) {
+            const showAddBtn = canUserCreate();
             container.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 0;">הוצאות</h2>
@@ -2969,9 +3154,9 @@
                         <button id="exportBtn" class="btn-secondary" onclick="showExportPopup()">
                             <i class="fas fa-file-export"></i> ייצא דוח
                         </button>
-                        <button class="btn-primary" onclick="showAddExpenseForm()">
+                        ${showAddBtn ? `<button id="addExpenseBtn" class="btn-primary" onclick="showAddExpenseForm()">
                             <i class="fas fa-plus"></i> הוסף הוצאה
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
 
@@ -4260,11 +4445,12 @@
 
         // Show Projects Tab
         function showProjectsTab(container) {
+            const showAddBtn = canUserCreate();
             container.innerHTML = `
                 <h2>פרויקטים</h2>
-                <button class="btn-primary" onclick="showAddProjectForm()">
+                ${showAddBtn ? `<button class="btn-primary" onclick="showAddProjectForm()">
                     <i class="fas fa-plus"></i> הוסף פרויקט
-                </button>
+                </button>` : ''}
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 20px;">
                     ${appData.projects.map(project => {
                         // Calculate total expenses for this project
@@ -4362,11 +4548,12 @@
 
         // Show Contractors Tab
         function showContractorsTab(container) {
+            const showAddBtn = canUserCreate();
             container.innerHTML = `
                 <h2>קבלנים</h2>
-                <button class="btn-primary" onclick="showAddContractorForm()">
+                ${showAddBtn ? `<button class="btn-primary" onclick="showAddContractorForm()">
                     <i class="fas fa-plus"></i> הוסף קבלן
-                </button>
+                </button>` : ''}
                 <table>
                     <thead>
                         <tr>
@@ -4410,11 +4597,12 @@
 
         // Show Works Tab
         function showWorksTab(container) {
+            const showAddBtn = canUserCreate();
             container.innerHTML = `
                 <h2>עבודות</h2>
-                <button class="btn-primary" onclick="showAddWorkForm()">
+                ${showAddBtn ? `<button class="btn-primary" onclick="showAddWorkForm()">
                     <i class="fas fa-plus"></i> הוסף עבודה
-                </button>
+                </button>` : ''}
                 <table>
                     <thead>
                         <tr>
