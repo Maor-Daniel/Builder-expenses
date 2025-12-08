@@ -13,6 +13,8 @@ const {
   COMPANY_TABLE_NAMES,
   USER_ROLES
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('registerCompany');
 
 const { sendWelcomeEmail } = require('./shared/email-utils');
 const { withSecureCors } = require('./shared/cors-config');
@@ -140,7 +142,7 @@ exports.handler = withSecureCors(async (event) => {
         await sendWelcomeEmail(admin.email, admin.name, company.name);
       } catch (emailError) {
         // Log email error but don't fail the registration
-        console.warn('[REGISTRATION] Welcome email failed to send:', emailError.message);
+        logger.warn('[REGISTRATION] Welcome email failed to send:', emailError.message);
       }
 
       return createResponse(200, {

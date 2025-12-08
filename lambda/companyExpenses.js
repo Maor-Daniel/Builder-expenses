@@ -14,6 +14,10 @@ const {
   PERMISSIONS,
   hasPermission
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('companyExpenses');
+const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
+const auditLog = createAuditLogger(RESOURCE_TYPES.EXPENSE);
 
 const {
   checkExpenseLimit,
@@ -22,6 +26,7 @@ const {
 } = require('./shared/limit-checker');
 
 const { withSecureCors } = require('./shared/cors-config');
+const { validateAndSanitize, EXPENSE_SCHEMA, checkDangerousPatterns } = require('./shared/input-validator');
 
 // Wrap handler with secure CORS middleware
 exports.handler = withSecureCors(async (event, context) => {
@@ -32,13 +37,13 @@ exports.handler = withSecureCors(async (event, context) => {
     switch (event.httpMethod) {
       case 'GET':
         // All authenticated users can view expenses (viewers included)
-        return await getExpenses(companyId, userId, userRole);
+        return await getExpenses(companyId, userId, userRole, event);
       case 'POST':
         // Check CREATE permission (admin, manager, editor can create)
         if (!hasPermission(userRole, PERMISSIONS.CREATE_EXPENSES)) {
           return createErrorResponse(403, 'You do not have permission to create expenses. Contact an admin to upgrade your role.');
         }
-        return await createExpense(event, companyId, userId);
+        return await createExpense(event, companyId, userId, userRole);
       case 'PUT':
         // Check EDIT permission (will verify ownership inside for editors)
         if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_EXPENSES) &&
@@ -51,12 +56,12 @@ exports.handler = withSecureCors(async (event, context) => {
         if (!hasPermission(userRole, PERMISSIONS.DELETE_EXPENSES)) {
           return createErrorResponse(403, 'You do not have permission to delete expenses. Only admins and managers can delete.');
         }
-        return await deleteExpense(event, companyId, userId);
+        return await deleteExpense(event, companyId, userId, userRole);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('ERROR in companyExpenses handler:', {
+    logger.error('ERROR in companyExpenses handler:', {
       error: error.message,
       stack: error.stack,
       httpMethod: event.httpMethod,
@@ -67,8 +72,7 @@ exports.handler = withSecureCors(async (event, context) => {
 });
 
 // Get all expenses for the company
-async function getExpenses(companyId, userId, userRole) {
-
+async function getExpenses(companyId, userId, userRole, event) {
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
     KeyConditionExpression: 'companyId = :companyId',
@@ -136,6 +140,15 @@ async function getExpenses(companyId, userId, userRole) {
   });
 
 
+  // Audit log for READ operation
+  auditLog.logRead({
+    companyId,
+    userId,
+    userRole,
+    count: cleanedExpenses.length,
+    request: event
+  });
+
   return createResponse(200, {
     success: true,
     expenses: cleanedExpenses,
@@ -144,7 +157,7 @@ async function getExpenses(companyId, userId, userRole) {
 }
 
 // Create a new expense
-async function createExpense(event, companyId, userId) {
+async function createExpense(event, companyId, userId, userRole) {
   // Check if company can create new expense (tier limit check)
   const limitCheck = await checkExpenseLimit(companyId);
 
@@ -159,6 +172,17 @@ async function createExpense(event, companyId, userId) {
   }
 
   const requestBody = JSON.parse(event.body || '{}');
+
+  // Security: Check for dangerous patterns in all string inputs
+  for (const [key, value] of Object.entries(requestBody)) {
+    if (typeof value === 'string') {
+      const patternCheck = checkDangerousPatterns(value);
+      if (!patternCheck.safe) {
+        logger.warn('Dangerous pattern detected in expense creation', { field: key, companyId, userId });
+        return createErrorResponse(400, `Invalid characters detected in ${key}`);
+      }
+    }
+  }
 
   // Validate required fields early
   const required = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
@@ -255,6 +279,16 @@ async function createExpense(event, companyId, userId) {
   delete cleaned.contractorSignature;
   delete cleaned.paymentTerms;
 
+  // Audit log for CREATE operation
+  auditLog.logCreate({
+    resourceId: expense.expenseId,
+    companyId,
+    userId,
+    userRole,
+    data: cleaned,
+    request: event
+  });
+
   return createResponse(201, {
     success: true,
     message: 'Expense created successfully',
@@ -300,19 +334,21 @@ async function updateExpense(event, companyId, userId, userRole) {
     return createErrorResponse(400, 'Missing expenseId');
   }
 
+  // Always fetch existing expense for audit logging (before state)
+  const existingExpenseResult = await dynamoOperation('get', {
+    TableName: COMPANY_TABLE_NAMES.EXPENSES,
+    Key: { companyId, expenseId }
+  });
+
+  if (!existingExpenseResult.Item) {
+    return createErrorResponse(404, 'Expense not found');
+  }
+
+  const existingExpense = existingExpenseResult.Item;
+
   // For users with only EDIT_OWN permission, verify they own this expense
   if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_EXPENSES)) {
-    // Get the expense to check ownership
-    const existingExpense = await dynamoOperation('get', {
-      TableName: COMPANY_TABLE_NAMES.EXPENSES,
-      Key: { companyId, expenseId }
-    });
-
-    if (!existingExpense.Item) {
-      return createErrorResponse(404, 'Expense not found');
-    }
-
-    if (existingExpense.Item.userId !== userId) {
+    if (existingExpense.userId !== userId) {
       return createErrorResponse(403, 'You can only edit expenses you created');
     }
   }
@@ -353,11 +389,26 @@ async function updateExpense(event, companyId, userId, userRole) {
 
   const result = await dynamoOperation('update', params);
 
-
   // Clean deprecated fields before returning
   const cleaned = { ...result.Attributes };
   delete cleaned.contractorSignature;
   delete cleaned.paymentTerms;
+
+  // Clean before state for audit log
+  const beforeCleaned = { ...existingExpense };
+  delete beforeCleaned.contractorSignature;
+  delete beforeCleaned.paymentTerms;
+
+  // Audit log for UPDATE operation with before/after
+  auditLog.logUpdate({
+    resourceId: expenseId,
+    companyId,
+    userId,
+    userRole,
+    before: beforeCleaned,
+    after: cleaned,
+    request: event
+  });
 
   return createResponse(200, {
     success: true,
@@ -367,7 +418,7 @@ async function updateExpense(event, companyId, userId, userRole) {
 }
 
 // Delete an expense
-async function deleteExpense(event, companyId, userId) {
+async function deleteExpense(event, companyId, userId, userRole) {
   const expenseId = event.pathParameters?.expenseId || event.queryStringParameters?.expenseId;
   
   if (!expenseId) {
@@ -391,6 +442,16 @@ async function deleteExpense(event, companyId, userId) {
   const cleaned = { ...result.Attributes };
   delete cleaned.contractorSignature;
   delete cleaned.paymentTerms;
+
+  // Audit log for DELETE operation
+  auditLog.logDelete({
+    resourceId: expenseId,
+    companyId,
+    userId,
+    userRole,
+    deletedData: cleaned,
+    request: event
+  });
 
   return createResponse(200, {
     success: true,

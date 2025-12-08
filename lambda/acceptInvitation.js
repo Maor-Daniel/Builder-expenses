@@ -9,6 +9,8 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('acceptInvitation');
 
 const {
   incrementUserCounter
@@ -145,7 +147,7 @@ exports.handler = withSecureCors(async (event) => {
 
     // Verify the email matches (security check)
     if (clerkUser.email && invitation.email.toLowerCase() !== clerkUser.email.toLowerCase()) {
-      console.warn('Email mismatch - invitation email:', invitation.email, 'clerk email:', clerkUser.email);
+      logger.warn('Email mismatch - invitation email:', invitation.email, 'clerk email:', clerkUser.email);
       // For now, allow this but log it - the invitation email might differ from Clerk email
     }
 
@@ -246,7 +248,7 @@ exports.handler = withSecureCors(async (event) => {
     try {
       await incrementUserCounter(invitation.companyId);
     } catch (counterError) {
-      console.error('Failed to increment user counter:', counterError);
+      logger.error('Failed to increment user counter:', { error: counterError });
       // Don't fail the invitation for counter issues
     }
 
@@ -295,7 +297,7 @@ exports.handler = withSecureCors(async (event) => {
     });
 
   } catch (error) {
-    console.error('Accept invitation error:', error);
+    logger.error('Accept invitation error:', { error: error });
 
     if (error.message.includes('Invalid or expired') || error.message.includes('has expired')) {
       return createErrorResponse(400, error.message);

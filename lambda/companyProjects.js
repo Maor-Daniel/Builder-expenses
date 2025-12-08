@@ -14,6 +14,10 @@ const {
   PERMISSIONS,
   hasPermission
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('companyProjects');
+const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
+const auditLog = createAuditLogger(RESOURCE_TYPES.PROJECT);
 
 const {
   checkProjectLimit,
@@ -34,13 +38,13 @@ exports.handler = withSecureCors(async (event) => {
     switch (event.httpMethod) {
       case 'GET':
         // All authenticated users can view projects
-        return await getProjects(companyId, userId, userRole);
+        return await getProjects(companyId, userId, userRole, event);
       case 'POST':
         // Check CREATE permission
         if (!hasPermission(userRole, PERMISSIONS.CREATE_PROJECTS)) {
           return createErrorResponse(403, 'You do not have permission to create projects. Contact an admin to upgrade your role.');
         }
-        return await createProject(event, companyId, userId);
+        return await createProject(event, companyId, userId, userRole);
       case 'PUT':
         // Check EDIT permission
         if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_PROJECTS) &&
@@ -53,12 +57,12 @@ exports.handler = withSecureCors(async (event) => {
         if (!hasPermission(userRole, PERMISSIONS.DELETE_PROJECTS)) {
           return createErrorResponse(403, 'You do not have permission to delete projects. Only admins and managers can delete.');
         }
-        return await deleteProject(event, companyId, userId);
+        return await deleteProject(event, companyId, userId, userRole);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
-    console.error('ERROR in companyProjects handler:', {
+    logger.error('ERROR in companyProjects handler:', {
       error: error.message,
       stack: error.stack,
       httpMethod: event.httpMethod,
@@ -69,8 +73,7 @@ exports.handler = withSecureCors(async (event) => {
 });
 
 // Get all projects for the company
-async function getProjects(companyId, userId, userRole) {
-
+async function getProjects(companyId, userId, userRole, event) {
   const params = {
     TableName: COMPANY_TABLE_NAMES.PROJECTS,
     KeyConditionExpression: 'companyId = :companyId',
@@ -84,6 +87,15 @@ async function getProjects(companyId, userId, userRole) {
   // All authenticated users can view all projects in the company
   const projects = result.Items || [];
 
+  // Audit log for READ operation
+  auditLog.logRead({
+    companyId,
+    userId,
+    userRole,
+    count: projects.length,
+    request: event
+  });
+
   return createResponse(200, {
     success: true,
     projects: projects,
@@ -92,7 +104,7 @@ async function getProjects(companyId, userId, userRole) {
 }
 
 // Create a new project
-async function createProject(event, companyId, userId) {
+async function createProject(event, companyId, userId, userRole) {
   // Check if company can create new project (tier limit check)
   const limitCheck = await checkProjectLimit(companyId);
 
@@ -154,6 +166,16 @@ async function createProject(event, companyId, userId) {
   // Increment project counter for tier tracking
   await incrementProjectCounter(companyId);
 
+  // Audit log for CREATE operation
+  auditLog.logCreate({
+    resourceId: project.projectId,
+    companyId,
+    userId,
+    userRole,
+    data: project,
+    request: event
+  });
+
   return createResponse(201, {
     success: true,
     message: 'Project created successfully',
@@ -170,18 +192,21 @@ async function updateProject(event, companyId, userId, userRole) {
     return createErrorResponse(400, 'Missing projectId');
   }
 
+  // Always fetch existing project for audit logging (before state)
+  const existingProjectResult = await dynamoOperation('get', {
+    TableName: COMPANY_TABLE_NAMES.PROJECTS,
+    Key: { companyId, projectId }
+  });
+
+  if (!existingProjectResult.Item) {
+    return createErrorResponse(404, 'Project not found');
+  }
+
+  const existingProject = existingProjectResult.Item;
+
   // For users with only EDIT_OWN permission, verify they own this project
   if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_PROJECTS)) {
-    const existingProject = await dynamoOperation('get', {
-      TableName: COMPANY_TABLE_NAMES.PROJECTS,
-      Key: { companyId, projectId }
-    });
-
-    if (!existingProject.Item) {
-      return createErrorResponse(404, 'Project not found');
-    }
-
-    if (existingProject.Item.userId !== userId) {
+    if (existingProject.userId !== userId) {
       return createErrorResponse(403, 'You can only edit projects you created');
     }
   }
@@ -227,8 +252,18 @@ async function updateProject(event, companyId, userId, userRole) {
   };
 
   const result = await dynamoOperation('update', params);
-  
-  
+
+  // Audit log for UPDATE operation with before/after
+  auditLog.logUpdate({
+    resourceId: projectId,
+    companyId,
+    userId,
+    userRole,
+    before: existingProject,
+    after: result.Attributes,
+    request: event
+  });
+
   return createResponse(200, {
     success: true,
     message: 'Project updated successfully',
@@ -237,7 +272,7 @@ async function updateProject(event, companyId, userId, userRole) {
 }
 
 // Delete a project
-async function deleteProject(event, companyId, userId) {
+async function deleteProject(event, companyId, userId, userRole) {
   const projectId = event.pathParameters?.projectId || event.queryStringParameters?.projectId;
   
   if (!projectId) {
@@ -256,6 +291,16 @@ async function deleteProject(event, companyId, userId) {
 
   // Decrement project counter for tier tracking
   await decrementProjectCounter(companyId);
+
+  // Audit log for DELETE operation
+  auditLog.logDelete({
+    resourceId: projectId,
+    companyId,
+    userId,
+    userRole,
+    deletedData: result.Attributes,
+    request: event
+  });
 
   return createResponse(200, {
     success: true,

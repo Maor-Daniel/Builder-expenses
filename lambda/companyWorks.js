@@ -14,6 +14,10 @@ const {
   PERMISSIONS,
   hasPermission
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('companyWorks');
+const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
+const auditLog = createAuditLogger(RESOURCE_TYPES.WORK);
 const { withSecureCors } = require('./shared/cors-config');
 
 exports.handler = withSecureCors(async (event) => {
@@ -34,7 +38,7 @@ exports.handler = withSecureCors(async (event) => {
         if (!hasPermission(userRole, PERMISSIONS.CREATE_WORKS)) {
           return createErrorResponse(403, 'You do not have permission to create works. Contact an admin to upgrade your role.');
         }
-        return await createWork(event, companyId, userId);
+        return await createWork(event, companyId, userId, userRole);
       case 'PUT':
         // Check EDIT permission
         if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_WORKS) &&
@@ -47,7 +51,7 @@ exports.handler = withSecureCors(async (event) => {
         if (!hasPermission(userRole, PERMISSIONS.DELETE_WORKS)) {
           return createErrorResponse(403, 'You do not have permission to delete works. Only admins and managers can delete.');
         }
-        return await deleteWork(event, companyId, userId);
+        return await deleteWork(event, companyId, userId, userRole);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
@@ -109,7 +113,7 @@ async function getWorks(companyId, userId, userRole) {
 }
 
 // Create a new work
-async function createWork(event, companyId, userId) {
+async function createWork(event, companyId, userId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
 
   const work = {
@@ -164,8 +168,17 @@ async function createWork(event, companyId, userId) {
   };
 
   await dynamoOperation('put', params);
-  
-  
+
+  // Audit log for CREATE operation
+  auditLog.logCreate({
+    resourceId: work.workId,
+    companyId,
+    userId,
+    userRole,
+    data: work,
+    request: event
+  });
+
   return createResponse(201, {
     success: true,
     message: 'Work created successfully',
@@ -257,13 +270,12 @@ async function updateWork(event, companyId, userId, userRole) {
 }
 
 // Delete a work
-async function deleteWork(event, companyId, userId) {
+async function deleteWork(event, companyId, userId, userRole) {
   const workId = event.pathParameters?.workId || event.queryStringParameters?.workId;
-  
+
   if (!workId) {
     return createErrorResponse(400, 'Missing workId');
   }
-
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.WORKS,
@@ -273,8 +285,17 @@ async function deleteWork(event, companyId, userId) {
   };
 
   const result = await dynamoOperation('delete', params);
-  
-  
+
+  // Audit log for DELETE operation
+  auditLog.logDelete({
+    resourceId: workId,
+    companyId,
+    userId,
+    userRole,
+    deletedData: result.Attributes,
+    request: event
+  });
+
   return createResponse(200, {
     success: true,
     message: 'Work deleted successfully',

@@ -10,6 +10,8 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('getCompany');
 
 const { PADDLE_TABLE_NAMES } = require('./shared/paddle-utils');
 const { withSecureCors } = require('./shared/cors-config');
@@ -79,14 +81,44 @@ exports.handler = withSecureCors(async (event) => {
         };
       }
     } catch (error) {
-      console.error('Error checking Paddle subscription:', error);
+      logger.error('Error checking Paddle subscription:', { error: error });
       // Non-fatal error, continue without Paddle info
     }
 
-    // Get company stats (can be expanded later)
+    // Get company stats from existing tables
+    const [projectsResult, expensesResult, contractorsResult, worksResult] = await Promise.all([
+      dynamoOperation('query', {
+        TableName: COMPANY_TABLE_NAMES.PROJECTS,
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: { ':companyId': companyId },
+        Select: 'COUNT'
+      }),
+      dynamoOperation('query', {
+        TableName: COMPANY_TABLE_NAMES.EXPENSES,
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: { ':companyId': companyId },
+        Select: 'COUNT'
+      }),
+      dynamoOperation('query', {
+        TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: { ':companyId': companyId },
+        Select: 'COUNT'
+      }),
+      dynamoOperation('query', {
+        TableName: COMPANY_TABLE_NAMES.WORKS,
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: { ':companyId': companyId },
+        Select: 'COUNT'
+      })
+    ]);
+
     const stats = {
       totalUsers: userCount,
-      // TODO: Add project count, expense count, etc. when implementing those endpoints
+      totalProjects: projectsResult.Count || 0,
+      totalExpenses: expensesResult.Count || 0,
+      totalContractors: contractorsResult.Count || 0,
+      totalWorks: worksResult.Count || 0
     };
 
 

@@ -8,21 +8,21 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome (with SRI) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js (with SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 
-    <!-- PDF Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- PDF Export Libraries (with SRI) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
 
-    <!-- SheetJS (xlsx) for Excel Export with Multiple Sheets -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- SheetJS (xlsx) for Excel Export with Multiple Sheets (with SRI) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 
-    <!-- Paddle.js for payment checkout -->
+    <!-- Paddle.js for payment checkout (no SRI - dynamically updated) -->
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 
     <style>
@@ -2444,6 +2444,134 @@
         }
     </style>
 
+    <!-- Session Timeout Warning Modal Styles -->
+    <style>
+        /* Session Timeout Warning Modal */
+        .session-timeout-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .session-timeout-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .session-timeout-modal {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .session-timeout-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f6ad55, #ed8936);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .session-timeout-icon i {
+            font-size: 36px;
+            color: white;
+        }
+
+        .session-timeout-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 12px;
+        }
+
+        .session-timeout-message {
+            color: #4a5568;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .session-timeout-countdown {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #e53e3e;
+            margin-bottom: 24px;
+        }
+
+        .session-timeout-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .session-timeout-btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .session-timeout-btn-continue {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            color: white;
+        }
+
+        .session-timeout-btn-continue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.4);
+        }
+
+        .session-timeout-btn-logout {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .session-timeout-btn-logout:hover {
+            background: #cbd5e0;
+        }
+
+        /* Activity indicator (subtle) */
+        .session-activity-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            z-index: 9998;
+        }
+    </style>
+
     <!-- Clerk Configuration -->
     <script>
         // Clerk Configuration
@@ -2897,6 +3025,11 @@
                     console.log('[INIT] Re-authentication - staying on current tab:', currentTab);
                     // Refresh the current tab to update data
                     refreshCurrentTab();
+                }
+
+                // Initialize session timeout manager (15 min idle timeout)
+                if (typeof SessionTimeout !== 'undefined') {
+                    SessionTimeout.init();
                 }
 
             } catch (error) {
@@ -5816,6 +5949,10 @@
         // Sign Out
         async function signOut() {
             if (confirm('האם אתה בטוח שברצונך לצאת מהמערכת?')) {
+                // Destroy session timeout manager before signing out
+                if (typeof SessionTimeout !== 'undefined') {
+                    SessionTimeout.destroy();
+                }
                 await ClerkAuth.signOut();
             }
         }
@@ -7297,6 +7434,290 @@
                 ` : '<p style="text-align: center; padding: 40px; color: #10b981;"><i class="fas fa-check-circle"></i> כל ההוצאות כוללות קבלות!</p>'}
             `;
         }
+    </script>
+
+    <!-- Session Timeout Warning Modal -->
+    <div id="sessionTimeoutOverlay" class="session-timeout-overlay">
+        <div class="session-timeout-modal">
+            <div class="session-timeout-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h2 class="session-timeout-title">החיבור שלך עומד לפוג</h2>
+            <p class="session-timeout-message">
+                בשל חוסר פעילות, תנותק מהמערכת בעוד:
+            </p>
+            <div id="sessionTimeoutCountdown" class="session-timeout-countdown">2:00</div>
+            <div class="session-timeout-buttons">
+                <button class="session-timeout-btn session-timeout-btn-continue" onclick="SessionTimeout.continueSession()">
+                    <i class="fas fa-check"></i> להישאר מחובר
+                </button>
+                <button class="session-timeout-btn session-timeout-btn-logout" onclick="SessionTimeout.logoutNow()">
+                    <i class="fas fa-sign-out-alt"></i> יציאה
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Timeout Module -->
+    <script>
+        /**
+         * Session Timeout Manager
+         * Automatically logs out users after 15 minutes of inactivity
+         * Shows a 2-minute warning before logout
+         */
+        const SessionTimeout = (function() {
+            // Configuration
+            const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes of inactivity
+            const WARNING_TIME_MS = 2 * 60 * 1000;  // 2 minutes warning before logout
+            const CHECK_INTERVAL_MS = 1000;         // Check every second
+
+            // State
+            let idleTimer = null;
+            let warningTimer = null;
+            let countdownTimer = null;
+            let lastActivity = Date.now();
+            let isWarningShown = false;
+            let isInitialized = false;
+
+            // Activity events to track
+            const ACTIVITY_EVENTS = [
+                'mousedown', 'mousemove', 'keydown', 'keypress',
+                'scroll', 'touchstart', 'touchmove', 'click', 'focus'
+            ];
+
+            /**
+             * Initialize the session timeout manager
+             */
+            function init() {
+                if (isInitialized) {
+                    console.log('[SessionTimeout] Already initialized');
+                    return;
+                }
+
+                console.log('[SessionTimeout] Initializing with', IDLE_TIMEOUT_MS / 60000, 'min timeout');
+
+                // Bind activity events
+                ACTIVITY_EVENTS.forEach(event => {
+                    document.addEventListener(event, handleActivity, { passive: true });
+                });
+
+                // Also track visibility changes (tab switching)
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+
+                // Start the idle checker
+                startIdleChecker();
+
+                isInitialized = true;
+                console.log('[SessionTimeout] Initialized successfully');
+            }
+
+            /**
+             * Handle user activity
+             */
+            function handleActivity() {
+                lastActivity = Date.now();
+
+                // If warning is shown, hide it on activity
+                if (isWarningShown) {
+                    hideWarning();
+                }
+            }
+
+            /**
+             * Handle tab visibility changes
+             */
+            function handleVisibilityChange() {
+                if (document.visibilityState === 'visible') {
+                    // User returned to tab, check if session should have expired
+                    const idleTime = Date.now() - lastActivity;
+                    if (idleTime >= IDLE_TIMEOUT_MS) {
+                        console.log('[SessionTimeout] Session expired while away');
+                        performLogout();
+                    }
+                }
+            }
+
+            /**
+             * Start the idle checker interval
+             */
+            function startIdleChecker() {
+                if (idleTimer) {
+                    clearInterval(idleTimer);
+                }
+
+                idleTimer = setInterval(() => {
+                    const idleTime = Date.now() - lastActivity;
+
+                    // Check if we should show warning
+                    if (!isWarningShown && idleTime >= (IDLE_TIMEOUT_MS - WARNING_TIME_MS)) {
+                        showWarning();
+                    }
+
+                    // Check if we should logout
+                    if (idleTime >= IDLE_TIMEOUT_MS) {
+                        performLogout();
+                    }
+                }, CHECK_INTERVAL_MS);
+            }
+
+            /**
+             * Show the warning modal
+             */
+            function showWarning() {
+                if (isWarningShown) return;
+
+                isWarningShown = true;
+                const overlay = document.getElementById('sessionTimeoutOverlay');
+                if (overlay) {
+                    overlay.classList.add('show');
+                }
+
+                // Start countdown
+                startCountdown();
+
+                console.log('[SessionTimeout] Warning shown');
+            }
+
+            /**
+             * Hide the warning modal
+             */
+            function hideWarning() {
+                isWarningShown = false;
+                const overlay = document.getElementById('sessionTimeoutOverlay');
+                if (overlay) {
+                    overlay.classList.remove('show');
+                }
+
+                // Clear countdown timer
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+
+                console.log('[SessionTimeout] Warning hidden - session continued');
+            }
+
+            /**
+             * Start the countdown timer in the warning modal
+             */
+            function startCountdown() {
+                let remainingTime = WARNING_TIME_MS;
+                const countdownEl = document.getElementById('sessionTimeoutCountdown');
+
+                function updateCountdown() {
+                    const minutes = Math.floor(remainingTime / 60000);
+                    const seconds = Math.floor((remainingTime % 60000) / 1000);
+                    if (countdownEl) {
+                        countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }
+
+                updateCountdown();
+
+                countdownTimer = setInterval(() => {
+                    remainingTime -= 1000;
+                    updateCountdown();
+
+                    if (remainingTime <= 0) {
+                        clearInterval(countdownTimer);
+                    }
+                }, 1000);
+            }
+
+            /**
+             * Continue the session (user clicked "stay logged in")
+             */
+            function continueSession() {
+                lastActivity = Date.now();
+                hideWarning();
+                console.log('[SessionTimeout] User chose to continue session');
+            }
+
+            /**
+             * Logout now (user clicked "logout" or timeout expired)
+             */
+            function logoutNow() {
+                hideWarning();
+                performLogout();
+            }
+
+            /**
+             * Perform the actual logout
+             */
+            async function performLogout() {
+                console.log('[SessionTimeout] Performing automatic logout due to inactivity');
+
+                // Stop all timers
+                if (idleTimer) {
+                    clearInterval(idleTimer);
+                    idleTimer = null;
+                }
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+
+                // Remove event listeners
+                ACTIVITY_EVENTS.forEach(event => {
+                    document.removeEventListener(event, handleActivity);
+                });
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+                isInitialized = false;
+                isWarningShown = false;
+
+                // Perform Clerk signout
+                try {
+                    if (typeof ClerkAuth !== 'undefined' && ClerkAuth.signOut) {
+                        await ClerkAuth.signOut();
+                    }
+                } catch (error) {
+                    console.error('[SessionTimeout] Error during logout:', error);
+                    // Fallback: reload the page
+                    window.location.reload();
+                }
+            }
+
+            /**
+             * Destroy the session timeout manager
+             */
+            function destroy() {
+                if (idleTimer) {
+                    clearInterval(idleTimer);
+                    idleTimer = null;
+                }
+                if (countdownTimer) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                }
+
+                ACTIVITY_EVENTS.forEach(event => {
+                    document.removeEventListener(event, handleActivity);
+                });
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+                isInitialized = false;
+                isWarningShown = false;
+
+                console.log('[SessionTimeout] Destroyed');
+            }
+
+            /**
+             * Get current idle time (for debugging)
+             */
+            function getIdleTime() {
+                return Date.now() - lastActivity;
+            }
+
+            // Public API
+            return {
+                init,
+                destroy,
+                continueSession,
+                logoutNow,
+                getIdleTime
+            };
+        })();
     </script>
 
     <!-- Details Modal -->

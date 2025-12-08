@@ -4,6 +4,9 @@
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const { withSecureCors } = require('./cors-config');
+const { createLogger } = require('./logger');
+
+const logger = createLogger('company-utils');
 
 // Always use real AWS DynamoDB for company operations
 const dynamoConfig = {
@@ -46,18 +49,19 @@ function logSecurityEvent(eventType, severity, message, additionalData = {}) {
   const securityEvent = {
     eventType,
     severity,
-    message,
     environment: process.env.NODE_ENV || 'unknown',
     awsRegion: process.env.AWS_REGION || 'unknown',
-    timestamp: new Date().toISOString(),
     ...additionalData
   };
 
-  // Log as JSON for CloudWatch Insights parsing
-  console.error(JSON.stringify(securityEvent));
-
-  // Also log human-readable version for immediate visibility
-  console.error(`[SECURITY ${severity}] ${eventType}: ${message}`);
+  // Use structured logger for security events
+  if (severity === 'CRITICAL' || severity === 'ERROR') {
+    logger.error(`[SECURITY] ${eventType}: ${message}`, securityEvent);
+  } else if (severity === 'WARNING') {
+    logger.warn(`[SECURITY] ${eventType}: ${message}`, securityEvent);
+  } else {
+    logger.info(`[SECURITY] ${eventType}: ${message}`, securityEvent);
+  }
 }
 
 // Company-scoped table names
@@ -277,7 +281,7 @@ function getCompanyUserFromEvent(event) {
       const userRole = authorizer.userRole || authorizer.role || USER_ROLES.ADMIN;
 
       if (!userId || !companyId) {
-        console.error('Clerk authorizer missing required fields:', { companyId, userId });
+        logger.error('Clerk authorizer missing required fields', { companyId: !!companyId, userId: !!userId });
         throw new Error('Invalid Clerk authentication - missing company or user information');
       }
 
@@ -343,7 +347,7 @@ function getCompanyUserFromEvent(event) {
         userEmail
       };
     } catch (parseError) {
-      console.error('Failed to parse Cognito JWT token:', parseError);
+      logger.error('Failed to parse Cognito JWT token', { error: parseError });
       throw new Error('Invalid authentication token format');
     }
   }
@@ -370,11 +374,10 @@ function getCompanyUserFromEvent(event) {
   }
 
   // Development/Test Environment Only - Allow test mode
-  console.warn('WARNING: Test authentication mode active - DEVELOPMENT ONLY');
-  console.warn('Environment:', {
-    NODE_ENV: process.env.NODE_ENV,
-    AWS_REGION: process.env.AWS_REGION,
-    IS_LOCAL_DEVELOPMENT: process.env.IS_LOCAL_DEVELOPMENT
+  logger.warn('Test authentication mode active - DEVELOPMENT ONLY', {
+    nodeEnv: process.env.NODE_ENV,
+    awsRegion: process.env.AWS_REGION,
+    isLocalDevelopment: process.env.IS_LOCAL_DEVELOPMENT
   });
 
   return {
@@ -472,11 +475,7 @@ function getCurrentTimestamp() {
  * Log debug information
  */
 function debugLog(message, data = null) {
-  if (data) {
-    console.log(`[DEBUG] ${message}`, JSON.stringify(data, null, 2));
-  } else {
-    console.log(`[DEBUG] ${message}`);
-  }
+  logger.debug(message, data || {});
 }
 
 /**

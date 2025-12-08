@@ -237,12 +237,45 @@ function getOriginFromEvent(event) {
          event.headers?.ORIGIN;
 }
 
+// Maximum request body size (1MB - sufficient for API data, prevents abuse)
+const MAX_BODY_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+
+/**
+ * Validate request body size
+ * @param {Object} event - Lambda event object
+ * @param {number} maxSize - Maximum allowed body size in bytes
+ * @returns {Object|null} Error response if body exceeds limit, null if valid
+ */
+function validateBodySize(event, maxSize = MAX_BODY_SIZE_BYTES) {
+  if (!event.body) {
+    return null; // No body, no limit to check
+  }
+
+  const bodySize = Buffer.byteLength(event.body, 'utf8');
+
+  if (bodySize > maxSize) {
+    console.warn(`[SECURITY] Request body too large: ${bodySize} bytes (max: ${maxSize})`);
+    return {
+      statusCode: 413,
+      body: JSON.stringify({
+        error: 'Payload Too Large',
+        message: `Request body exceeds maximum size of ${Math.floor(maxSize / 1024)}KB`,
+        maxAllowed: maxSize,
+        received: bodySize
+      })
+    };
+  }
+
+  return null; // Body size is valid
+}
+
 /**
  * Middleware wrapper for Lambda handlers to enforce CORS security
  *
  * @param {Function} handler - Lambda handler function
  * @param {Object} options - Configuration options
  * @param {boolean} options.requireOrigin - If true, blocks requests without origin header in production
+ * @param {number} options.maxBodySize - Maximum body size in bytes (default: 1MB)
  * @returns {Function} Wrapped handler with CORS enforcement
  */
 function withSecureCors(handler, options = {}) {
@@ -257,6 +290,16 @@ function withSecureCors(handler, options = {}) {
     if (event.httpMethod === 'OPTIONS' || event.requestContext?.httpMethod === 'OPTIONS') {
       console.log(`[CORS] ${functionName} - Handling OPTIONS preflight request`);
       return createOptionsResponse(origin);
+    }
+
+    // Validate request body size (before any processing)
+    const maxBodySize = options.maxBodySize || MAX_BODY_SIZE_BYTES;
+    const bodySizeError = validateBodySize(event, maxBodySize);
+    if (bodySizeError) {
+      return {
+        ...bodySizeError,
+        headers: getCorsHeaders(origin)
+      };
     }
 
     // Enforce origin checking in production (unless explicitly disabled)
@@ -314,11 +357,13 @@ module.exports = {
   PRODUCTION_ORIGINS,
   DEVELOPMENT_ORIGINS,
   IS_PRODUCTION,
+  MAX_BODY_SIZE_BYTES,
 
   // Core functions
   getAllowedOrigins,
   isOriginAllowed,
   getCorsHeaders,
+  validateBodySize,
 
   // Response builders
   createCorsResponse,

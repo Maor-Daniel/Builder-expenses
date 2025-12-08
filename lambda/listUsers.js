@@ -11,6 +11,8 @@ const {
   COMPANY_TABLE_NAMES,
   USER_ROLES
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('listUsers');
 const { withSecureCors } = require('./shared/cors-config');
 
 const AWS = require('aws-sdk');

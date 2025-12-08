@@ -73,7 +73,9 @@ const LAMBDA_FUNCTIONS = [
   'companyExpenses',
   'companyProjects',
   'companyContractors',
-  'companyWorks'
+  'companyWorks',
+  // OCR Processing
+  'processReceiptOCR'  // Smart expense OCR with AWS Textract
 ];
 
 function ensureDirectoryExists(dirPath) {

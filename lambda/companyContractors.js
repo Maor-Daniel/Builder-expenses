@@ -14,6 +14,10 @@ const {
   PERMISSIONS,
   hasPermission
 } = require('./shared/company-utils');
+const { createLogger } = require('./shared/logger');
+const logger = createLogger('companyContractors');
+const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
+const auditLog = createAuditLogger(RESOURCE_TYPES.CONTRACTOR);
 const { withSecureCors } = require('./shared/cors-config');
 
 exports.handler = withSecureCors(async (event) => {
@@ -34,7 +38,7 @@ exports.handler = withSecureCors(async (event) => {
         if (!hasPermission(userRole, PERMISSIONS.CREATE_CONTRACTORS)) {
           return createErrorResponse(403, 'You do not have permission to create contractors. Contact an admin to upgrade your role.');
         }
-        return await createContractor(event, companyId, userId);
+        return await createContractor(event, companyId, userId, userRole);
       case 'PUT':
         // Check EDIT permission
         if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_CONTRACTORS) &&
@@ -47,7 +51,7 @@ exports.handler = withSecureCors(async (event) => {
         if (!hasPermission(userRole, PERMISSIONS.DELETE_CONTRACTORS)) {
           return createErrorResponse(403, 'You do not have permission to delete contractors. Only admins and managers can delete.');
         }
-        return await deleteContractor(event, companyId, userId);
+        return await deleteContractor(event, companyId, userId, userRole);
       default:
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
@@ -80,7 +84,7 @@ async function getContractors(companyId, userId, userRole) {
 }
 
 // Create a new contractor
-async function createContractor(event, companyId, userId) {
+async function createContractor(event, companyId, userId, userRole) {
   const requestBody = JSON.parse(event.body || '{}');
 
   const contractor = {
@@ -131,8 +135,17 @@ async function createContractor(event, companyId, userId) {
   };
 
   await dynamoOperation('put', params);
-  
-  
+
+  // Audit log for CREATE operation
+  auditLog.logCreate({
+    resourceId: contractor.contractorId,
+    companyId,
+    userId,
+    userRole,
+    data: contractor,
+    request: event
+  });
+
   return createResponse(201, {
     success: true,
     message: 'Contractor created successfully',
@@ -229,7 +242,7 @@ async function updateContractor(event, companyId, userId, userRole) {
 }
 
 // Delete a contractor
-async function deleteContractor(event, companyId, userId) {
+async function deleteContractor(event, companyId, userId, userRole) {
   const contractorId = event.pathParameters?.contractorId || event.queryStringParameters?.contractorId;
   
   if (!contractorId) {
@@ -245,8 +258,17 @@ async function deleteContractor(event, companyId, userId) {
   };
 
   const result = await dynamoOperation('delete', params);
-  
-  
+
+  // Audit log for DELETE operation
+  auditLog.logDelete({
+    resourceId: contractorId,
+    companyId,
+    userId,
+    userRole,
+    deletedData: result.Attributes,
+    request: event
+  });
+
   return createResponse(200, {
     success: true,
     message: 'Contractor deleted successfully',
