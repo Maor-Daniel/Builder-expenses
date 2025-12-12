@@ -79,30 +79,35 @@ exports.handler = withSecureCors(async (event) => {
       uniqueFileName
     });
 
-    // Generate pre-signed URL for upload with size limit enforcement
+    // Generate pre-signed URL for upload
+    // Note: ACL removed since bucket has BlockPublicAcls enabled
+    // Note: ContentLengthRange is not valid for putObject signed URLs
     const uploadParams = {
       Bucket: RECEIPTS_BUCKET,
       Key: uniqueFileName,
       Expires: 300, // URL valid for 5 minutes
-      ContentType: validation.mimeType,
-      ACL: 'public-read', // Make the receipt publicly readable
-      // SECURITY: Enforce file size limit in S3
-      ContentLengthRange: [1, MAX_FILE_SIZE] // Min 1 byte, Max 10MB
+      ContentType: validation.mimeType
     };
 
     const uploadUrl = await s3.getSignedUrlPromise('putObject', uploadParams);
 
-    // Generate the public URL where the receipt will be accessible
-    const receiptUrl = `https://${RECEIPTS_BUCKET}.s3.amazonaws.com/${uniqueFileName}`;
+    // Generate pre-signed URL for reading the receipt (since public access is blocked)
+    const readParams = {
+      Bucket: RECEIPTS_BUCKET,
+      Key: uniqueFileName,
+      Expires: 86400 * 7 // 7 days for reading
+    };
+    const receiptUrl = await s3.getSignedUrlPromise('getObject', readParams);
 
 
     return createResponse(200, {
       success: true,
       message: 'Pre-signed URL generated successfully',
       data: {
-        uploadUrl, // Use this URL to upload the file
-        receiptUrl, // This will be the receipt's public URL after upload
-        expiresIn: 300, // Seconds
+        uploadUrl, // Use this URL to upload the file via PUT
+        receiptKey: uniqueFileName, // S3 key - store this in the database for permanent access
+        receiptUrl, // Temporary pre-signed URL for immediate preview (expires in 7 days)
+        expiresIn: 300, // Upload URL expiration in seconds
         maxFileSize: MAX_FILE_SIZE,
         allowedTypes: ['PDF', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP']
       },

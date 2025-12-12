@@ -2136,6 +2136,7 @@
                     <option value="">בחר קבלן *</option>
                 </select>
                 <input type="number" id="workCost" placeholder="עלות כוללת *" step="0.01" required>
+                <input type="date" id="workStartDate" placeholder="תאריך התחלה">
                 <textarea id="workDescription" placeholder="תיאור" rows="3"></textarea>
                 <button type="submit" class="btn-primary">שמור</button>
                 <button type="button" class="btn-secondary" onclick="closeModal('workModal')">ביטול</button>
@@ -6713,7 +6714,8 @@
                         throw new Error('Failed to upload receipt to S3');
                     }
 
-                    receiptUrl = uploadData.data.receiptUrl;
+                    // Store S3 key (not pre-signed URL) so backend can generate fresh URLs on-demand
+                    receiptUrl = uploadData.data.receiptKey;
                 }
 
                 // Create expense object
