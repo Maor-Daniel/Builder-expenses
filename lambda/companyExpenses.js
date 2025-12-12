@@ -1,6 +1,7 @@
 // lambda/companyExpenses.js
 // Company-scoped expenses management Lambda function
 
+const AWS = require('aws-sdk');
 const {
   createResponse,
   createErrorResponse,
@@ -14,6 +15,11 @@ const {
   PERMISSIONS,
   hasPermission
 } = require('./shared/company-utils');
+
+// S3 client for generating pre-signed URLs
+const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
+const RECEIPTS_BUCKET = process.env.RECEIPTS_BUCKET || 'construction-expenses-receipts-702358134603';
+const RECEIPT_URL_EXPIRY = 3600; // 1 hour expiry for on-demand URLs
 const { createLogger } = require('./shared/logger');
 const logger = createLogger('companyExpenses');
 const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
@@ -27,6 +33,105 @@ const {
 
 const { withSecureCors } = require('./shared/cors-config');
 const { validateAndSanitize, EXPENSE_SCHEMA, checkDangerousPatterns } = require('./shared/input-validator');
+
+/**
+ * Check if a receiptUrl is an S3 key (not a full URL)
+ * S3 keys look like: "companyId/receipts/receipt-timestamp-random.jpg"
+ * Full URLs start with "https://"
+ */
+function isS3Key(receiptUrl) {
+  if (!receiptUrl || typeof receiptUrl !== 'string') return false;
+  // S3 keys don't start with http/https
+  return !receiptUrl.startsWith('http://') && !receiptUrl.startsWith('https://');
+}
+
+/**
+ * Extract S3 key from an old pre-signed URL
+ * URL format: https://bucket-name.s3.amazonaws.com/path/to/file.jpg?queryParams
+ * @param {string} url - The pre-signed S3 URL
+ * @returns {string|null} The S3 key or null if extraction fails
+ */
+function extractS3KeyFromUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const urlObj = new URL(url);
+    // The pathname starts with /, so remove the leading slash
+    const s3Key = urlObj.pathname.substring(1);
+    // Decode URI components in case of special characters
+    return decodeURIComponent(s3Key);
+  } catch (error) {
+    logger.warn('Failed to extract S3 key from URL', { url, error: error.message });
+    return null;
+  }
+}
+
+/**
+ * Check if URL is our S3 bucket URL (for regenerating expired pre-signed URLs)
+ */
+function isOurS3Url(url) {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('construction-expenses-receipts') && url.includes('.s3.amazonaws.com');
+}
+
+/**
+ * Generate a fresh pre-signed URL for an S3 key
+ * @param {string} s3Key - The S3 object key (path)
+ * @returns {Promise<string>} Pre-signed URL
+ */
+async function generatePresignedUrl(s3Key) {
+  const params = {
+    Bucket: RECEIPTS_BUCKET,
+    Key: s3Key,
+    Expires: RECEIPT_URL_EXPIRY
+  };
+  return s3.getSignedUrlPromise('getObject', params);
+}
+
+/**
+ * Process receipt URLs for expenses - generates fresh pre-signed URLs
+ * Handles both:
+ * 1. New S3 keys (path only, e.g., "companyId/receipts/receipt-xxx.jpg")
+ * 2. Old pre-signed URLs (extract key and regenerate fresh URL)
+ * @param {Array} expenses - Array of expense objects
+ * @returns {Promise<Array>} Expenses with fresh receipt URLs
+ */
+async function processReceiptUrls(expenses) {
+  const processedExpenses = await Promise.all(
+    expenses.map(async (expense) => {
+      if (!expense.receiptUrl) {
+        return expense;
+      }
+
+      let s3Key = null;
+
+      // Case 1: New format - S3 key stored directly
+      if (isS3Key(expense.receiptUrl)) {
+        s3Key = expense.receiptUrl;
+      }
+      // Case 2: Old format - extract S3 key from pre-signed URL
+      else if (isOurS3Url(expense.receiptUrl)) {
+        s3Key = extractS3KeyFromUrl(expense.receiptUrl);
+      }
+
+      // Generate fresh pre-signed URL if we have an S3 key
+      if (s3Key) {
+        try {
+          expense.receiptUrl = await generatePresignedUrl(s3Key);
+        } catch (error) {
+          logger.warn('Failed to generate pre-signed URL for receipt', {
+            s3Key,
+            expenseId: expense.expenseId,
+            error: error.message
+          });
+          // Keep original URL if generation fails
+        }
+      }
+
+      return expense;
+    })
+  );
+  return processedExpenses;
+}
 
 // Wrap handler with secure CORS middleware
 exports.handler = withSecureCors(async (event, context) => {
@@ -139,20 +244,23 @@ async function getExpenses(companyId, userId, userRole, event) {
     return cleaned;
   });
 
+  // Generate fresh pre-signed URLs for receipt S3 keys
+  // This ensures receipt links never expire (URLs are generated on-demand)
+  const expensesWithUrls = await processReceiptUrls(cleanedExpenses);
 
   // Audit log for READ operation
   auditLog.logRead({
     companyId,
     userId,
     userRole,
-    count: cleanedExpenses.length,
+    count: expensesWithUrls.length,
     request: event
   });
 
   return createResponse(200, {
     success: true,
-    expenses: cleanedExpenses,
-    count: cleanedExpenses.length
+    expenses: expensesWithUrls,
+    count: expensesWithUrls.length
   });
 }
 
@@ -173,14 +281,34 @@ async function createExpense(event, companyId, userId, userRole) {
 
   const requestBody = JSON.parse(event.body || '{}');
 
-  // Security: Check for dangerous patterns in all string inputs
+  // Security: Check for dangerous patterns in string inputs
+  // Skip URL fields (receiptUrl) as they contain valid special characters (& $ = etc.)
+  const urlFields = ['receiptUrl'];
   for (const [key, value] of Object.entries(requestBody)) {
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && !urlFields.includes(key)) {
       const patternCheck = checkDangerousPatterns(value);
       if (!patternCheck.safe) {
         logger.warn('Dangerous pattern detected in expense creation', { field: key, companyId, userId });
         return createErrorResponse(400, `Invalid characters detected in ${key}`);
       }
+    }
+  }
+
+  // Validate receiptUrl if provided - accepts S3 keys OR full S3 URLs from our bucket
+  if (requestBody.receiptUrl && typeof requestBody.receiptUrl === 'string') {
+    // Check if it's a valid S3 key (new format): companyId/receipts/receipt-timestamp-random.ext
+    const validS3KeyPattern = /^[a-zA-Z0-9_-]+\/receipts\/receipt-\d+-[a-z0-9]+\.(jpg|jpeg|png|gif|webp|pdf)$/i;
+    // Check if it's a valid full S3 URL (old format for backward compatibility)
+    const validS3UrlPatterns = [
+      /^https:\/\/construction-expenses-receipts-\d+\.s3\.amazonaws\.com\//,
+      /^https:\/\/construction-expenses-receipts-\d+\.s3\.[a-z0-9-]+\.amazonaws\.com\//
+    ];
+    const isValidS3Key = validS3KeyPattern.test(requestBody.receiptUrl);
+    const isValidS3Url = validS3UrlPatterns.some(pattern => pattern.test(requestBody.receiptUrl));
+
+    if (!isValidS3Key && !isValidS3Url) {
+      logger.warn('Invalid receiptUrl pattern', { receiptUrl: requestBody.receiptUrl.substring(0, 100), companyId, userId });
+      return createErrorResponse(400, 'Invalid receipt URL format');
     }
   }
 
@@ -358,8 +486,26 @@ async function updateExpense(event, companyId, userId, userRole) {
   const expressionAttributeNames = {};
   const expressionAttributeValues = {};
   
-  const updateableFields = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date', 'description', 'status'];
-  
+  const updateableFields = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date', 'description', 'status', 'receiptUrl', 'workId'];
+
+  // Validate receiptUrl if provided - accepts S3 keys OR full S3 URLs from our bucket
+  if (requestBody.receiptUrl && typeof requestBody.receiptUrl === 'string') {
+    // Check if it's a valid S3 key (new format): companyId/receipts/receipt-timestamp-random.ext
+    const validS3KeyPattern = /^[a-zA-Z0-9_-]+\/receipts\/receipt-\d+-[a-z0-9]+\.(jpg|jpeg|png|gif|webp|pdf)$/i;
+    // Check if it's a valid full S3 URL (old format for backward compatibility)
+    const validS3UrlPatterns = [
+      /^https:\/\/construction-expenses-receipts-\d+\.s3\.amazonaws\.com\//,
+      /^https:\/\/construction-expenses-receipts-\d+\.s3\.[a-z0-9-]+\.amazonaws\.com\//
+    ];
+    const isValidS3Key = validS3KeyPattern.test(requestBody.receiptUrl);
+    const isValidS3Url = validS3UrlPatterns.some(pattern => pattern.test(requestBody.receiptUrl));
+
+    if (!isValidS3Key && !isValidS3Url) {
+      logger.warn('Invalid receiptUrl pattern in update', { receiptUrl: requestBody.receiptUrl.substring(0, 100), companyId, userId });
+      return createErrorResponse(400, 'Invalid receipt URL format');
+    }
+  }
+
   updateableFields.forEach(field => {
     if (requestBody[field] !== undefined) {
       updateExpressions.push(`#${field} = :${field}`);
