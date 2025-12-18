@@ -27,7 +27,6 @@ const auditLog = createAuditLogger(RESOURCE_TYPES.EXPENSE);
 
 const {
   checkExpenseLimit,
-  incrementExpenseCounter,
   decrementExpenseCounter
 } = require('./shared/limit-checker');
 
@@ -399,8 +398,7 @@ async function createExpense(event, companyId, userId, userRole) {
 
   await dynamoOperation('put', params);
 
-  // Increment expense counter for tier tracking
-  await incrementExpenseCounter(companyId);
+  // Note: Expense counter already incremented in checkExpenseLimit() for atomic limit checking
 
   // Clean deprecated fields before returning
   const cleaned = { ...expense };
