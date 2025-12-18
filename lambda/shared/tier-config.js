@@ -6,6 +6,23 @@
  * Aligned with pricing page specifications
  */
 const TIER_LIMITS = {
+  trial: {
+    name: 'Trial',
+    price: 0, // Free trial
+    currency: 'ILS',
+    maxUsers: 1,
+    maxProjects: 3,
+    maxExpensesPerMonth: 50,
+    maxSuppliers: -1, // -1 = unlimited
+    maxWorks: -1,
+    features: {
+      dashboard: true,
+      pdfExport: true,
+      advancedPdfExport: false,
+      autoBackups: false,
+      prioritySupport: false
+    }
+  },
   starter: {
     name: 'Starter',
     price: 100, // ILS per month
@@ -96,6 +113,10 @@ function hasFeature(tier, feature) {
  */
 function getSuggestedUpgrade(currentTier) {
   const normalizedTier = (currentTier || 'starter').toLowerCase();
+
+  if (normalizedTier === 'trial') {
+    return 'starter';
+  }
 
   if (normalizedTier === 'starter') {
     return 'professional';
