@@ -3724,6 +3724,9 @@
 
                 updateDashboard();
 
+                // Initialize OCR component now that we have company context
+                initializeExpenseOcrComponent();
+
             } catch (error) {
                 console.error('Failed to load data:', error);
                 showError('Failed to load application data');
