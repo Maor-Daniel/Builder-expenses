@@ -11,35 +11,43 @@ const {
   debugLog
 } = require('./shared/company-utils');
 const { withSecureCors } = require('./shared/cors-config');
-const { parseExpenseDocument } = require('./shared/textract-parser');
-const { processWithGoogleVision } = require('./shared/google-vision-parser');
+const { processWithClaudeOCR } = require('./shared/claude-ocr-parser');
+const { findBestContractorMatch } = require('./shared/contractor-matcher');
 
 // Initialize AWS clients
-const textract = new AWS.Textract({ region: process.env.TEXTRACT_REGION || 'us-east-1' });
 const secretsManager = new AWS.SecretsManager({ region: 'us-east-1' });
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 // Constants
-const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for Textract Bytes mode
-const OCR_CONFIDENCE_THRESHOLD = parseInt(process.env.OCR_CONFIDENCE_THRESHOLD || '80');
-const GOOGLE_VISION_SECRET_NAME = process.env.GOOGLE_VISION_API_KEY_SECRET || 'construction-expenses/google-vision-api-key';
+const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for Claude vision API
+const OCR_CONFIDENCE_THRESHOLD = parseInt(process.env.OCR_CONFIDENCE_THRESHOLD || '70');
+const OPENROUTER_API_KEY_SECRET = process.env.OPENROUTER_API_KEY_SECRET || 'construction-expenses/openrouter-api-key';
 
 /**
- * Get Google Vision API key from AWS Secrets Manager
+ * Get OpenRouter API key from environment or AWS Secrets Manager
  * @returns {Promise<string|null>} API key or null if not available
  */
-async function getGoogleVisionApiKey() {
+async function getOpenRouterApiKey() {
+  // Try environment variable first
+  if (process.env.OPENROUTER_API_KEY) {
+    debugLog('Using OpenRouter API key from environment variable');
+    return process.env.OPENROUTER_API_KEY;
+  }
+
+  // Fall back to Secrets Manager
   try {
     const response = await secretsManager.getSecretValue({
-      SecretId: GOOGLE_VISION_SECRET_NAME
+      SecretId: OPENROUTER_API_KEY_SECRET
     }).promise();
 
     if (response.SecretString) {
+      debugLog('Using OpenRouter API key from Secrets Manager');
       return response.SecretString;
     }
 
     return null;
   } catch (error) {
-    debugLog('Failed to retrieve Google Vision API key', {
+    debugLog('Failed to retrieve OpenRouter API key', {
       errorCode: error.code,
       errorMessage: error.message
     });
@@ -47,57 +55,6 @@ async function getGoogleVisionApiKey() {
   }
 }
 
-/**
- * Process receipt with AWS Textract (fallback method)
- * @param {Buffer} imageBuffer - Receipt image buffer
- * @param {string} companyId - Company ID for logging
- * @param {string} fileName - File name for logging
- * @returns {Promise<Object>} - Parsed expense fields
- */
-async function processWithTextract(imageBuffer, companyId, fileName) {
-  const textractParams = {
-    Document: {
-      Bytes: imageBuffer
-    }
-  };
-
-  debugLog('Using AWS Textract (fallback)', {
-    companyId,
-    fileName
-  });
-
-  const startTime = Date.now();
-  const textractResponse = await textract.analyzeExpense(textractParams).promise();
-  const processingTime = Date.now() - startTime;
-
-  debugLog('Textract processing complete', {
-    companyId,
-    processingTimeMs: processingTime,
-    documentPages: textractResponse.DocumentMetadata?.Pages || 1
-  });
-
-  // Parse Textract response
-  const { fields, confidence, lineItems } = parseExpenseDocument(textractResponse);
-
-  // Construct description from line items (if available)
-  if (lineItems.length > 0) {
-    const descriptions = lineItems
-      .map(item => item.description)
-      .filter(Boolean);
-
-    if (descriptions.length > 0) {
-      fields.description = descriptions.join(', ').substring(0, 500);
-    }
-  }
-
-  return {
-    fields,
-    confidence,
-    lineItems,
-    processingTime,
-    provider: 'textract'
-  };
-}
 
 exports.handler = withSecureCors(async (event) => {
 
@@ -149,44 +106,35 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Invalid base64 encoding in receiptBase64');
     }
 
-    // Try Google Vision API first, fall back to Textract
+    // Get OpenRouter API key
+    const openRouterApiKey = await getOpenRouterApiKey();
+
+    if (!openRouterApiKey) {
+      return createErrorResponse(500, 'OCR service not configured. Please contact support.');
+    }
+
+    // Process with Claude 3.5 Sonnet via OpenRouter
     let ocrResult;
     let ocrProvider = 'unknown';
 
     try {
-      // Attempt to get Google Vision API key
-      const googleApiKey = await getGoogleVisionApiKey();
+      debugLog('Processing with Claude 3.5 Sonnet via OpenRouter', { companyId });
 
-      if (googleApiKey) {
-        debugLog('Google Vision API key found, using Vision API', { companyId });
+      const startTime = Date.now();
+      ocrResult = await processWithClaudeOCR(imageBuffer, fileName, openRouterApiKey);
+      const processingTime = Date.now() - startTime;
 
-        try {
-          ocrResult = await processWithGoogleVision(imageBuffer, googleApiKey);
-          ocrProvider = 'google-vision';
+      debugLog('Claude OCR processing successful', {
+        companyId,
+        processingTimeMs: processingTime,
+        fieldsExtracted: Object.keys(ocrResult.fields).filter(k => ocrResult.fields[k] !== null)
+      });
 
-          debugLog('Google Vision API processing successful', {
-            companyId,
-            processingTimeMs: ocrResult.processingTime,
-            fieldsExtracted: Object.keys(ocrResult.fields).filter(k => ocrResult.fields[k] !== null)
-          });
-        } catch (visionError) {
-          debugLog('Google Vision API failed, falling back to Textract', {
-            companyId,
-            errorMessage: visionError.message
-          });
+      ocrProvider = 'claude-3.5-sonnet';
+      ocrResult.processingTime = processingTime;
 
-          // Fall back to Textract
-          ocrResult = await processWithTextract(imageBuffer, companyId, fileName);
-          ocrProvider = 'textract-fallback';
-        }
-      } else {
-        debugLog('Google Vision API key not available, using Textract', { companyId });
-        ocrResult = await processWithTextract(imageBuffer, companyId, fileName);
-        ocrProvider = 'textract';
-      }
     } catch (error) {
-      // If everything fails, throw error
-      debugLog('All OCR processing failed', {
+      debugLog('Claude OCR processing failed', {
         companyId,
         errorMessage: error.message
       });
@@ -194,7 +142,49 @@ exports.handler = withSecureCors(async (event) => {
     }
 
     // Extract fields from OCR result
-    const { fields, confidence, lineItems, processingTime } = ocrResult;
+    const { fields, confidence, reasoning, processingTime } = ocrResult;
+
+    // Attempt to match vendor to existing contractors
+    let contractorMatch = null;
+    if (fields.vendor) {
+      try {
+        debugLog('Attempting contractor matching', {
+          companyId,
+          vendorName: fields.vendor
+        });
+
+        const contractorsResult = await dynamodb.query({
+          TableName: 'construction-expenses-company-contractors',
+          KeyConditionExpression: 'companyId = :companyId',
+          ExpressionAttributeValues: { ':companyId': companyId }
+        }).promise();
+
+        const contractors = contractorsResult.Items || [];
+
+        if (contractors.length > 0) {
+          contractorMatch = findBestContractorMatch(
+            fields.vendor,
+            contractors,
+            70 // Minimum 70% confidence
+          );
+
+          debugLog('Contractor matching complete', {
+            companyId,
+            vendorName: fields.vendor,
+            matchFound: !!contractorMatch,
+            matchConfidence: contractorMatch?.confidence || 0
+          });
+        } else {
+          debugLog('No contractors found for matching', { companyId });
+        }
+      } catch (matchError) {
+        debugLog('Contractor matching failed (non-fatal)', {
+          companyId,
+          errorMessage: matchError.message
+        });
+        // Don't fail the entire OCR request if contractor matching fails
+      }
+    }
 
     // Check if confidence meets threshold
     const lowConfidenceFields = Object.entries(confidence)
@@ -213,7 +203,7 @@ exports.handler = withSecureCors(async (event) => {
       companyId,
       ocrProvider,
       fieldsExtracted: Object.keys(fields).filter(k => fields[k] !== null),
-      lineItemsCount: lineItems.length,
+      contractorMatched: !!contractorMatch,
       averageConfidence: Object.values(confidence).length > 0
         ? Math.round(Object.values(confidence).reduce((a, b) => a + b, 0) / Object.values(confidence).length)
         : 0
@@ -224,15 +214,20 @@ exports.handler = withSecureCors(async (event) => {
       data: {
         extractedFields: {
           ...fields,
-          confidence
+          confidence,
+          contractorMatch: contractorMatch ? {
+            contractorId: contractorMatch.contractorId,
+            name: contractorMatch.name,
+            confidence: contractorMatch.confidence
+          } : null
         },
         ocrMetadata: {
           processingTimeMs: processingTime,
           provider: ocrProvider,
           documentType: 'RECEIPT',
           fileName,
-          lineItemsCount: lineItems.length,
-          lowConfidenceFields
+          lowConfidenceFields,
+          paymentMethodReasoning: reasoning?.paymentMethod || null
         }
       },
       timestamp: getCurrentTimestamp()
