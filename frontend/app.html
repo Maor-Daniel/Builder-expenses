@@ -2803,7 +2803,13 @@
             <span class="close" onclick="closeModal('expenseModal')">&times;</span>
             <h2 id="expenseModalTitle">הוסף הוצאה חדשה</h2>
 
-            <div class="expense-form-layout">
+            <!-- OCR Upload Step (shown first) -->
+            <div id="expense-ocr-container" style="display: block;">
+                <!-- OCR component will be rendered here by ReceiptUploadWithOCR.js -->
+            </div>
+
+            <!-- Expense Form (shown after OCR completes) -->
+            <div class="expense-form-layout" id="expense-form-layout" style="display: none;">
                 <!-- Left side: Receipt Preview -->
                 <div id="expense-receipt-preview" class="expense-receipt-panel">
                     <div class="receipt-upload-area" id="receipt-upload-area">
@@ -3234,10 +3240,10 @@
     <!-- Clerk Authentication Module -->
     <script src="clerk-auth.js"></script>
 
-    <!-- OCR Component and Utilities - DISABLED for new simplified flow -->
-    <!-- <script src="utils/ocrApi.js"></script> -->
-    <!-- <script src="components/OcrFieldIndicator.js"></script> -->
-    <!-- <script src="components/ReceiptUploadWithOCR.js"></script> -->
+    <!-- OCR Component and Utilities - Smart Invoice OCR with Claude 3.5 -->
+    <script src="utils/ocrApi.js"></script>
+    <script src="components/OcrFieldIndicator.js"></script>
+    <script src="components/ReceiptUploadWithOCR.js"></script>
 
     <!-- Main Application Script -->
     <script>
@@ -6936,6 +6942,22 @@
                 userEdits: {} // Track which fields user has edited
             };
 
+            // Hide OCR container and show expense form
+            document.getElementById('expense-ocr-container').style.display = 'none';
+            document.getElementById('expense-form-layout').style.display = 'flex';
+
+            // Show receipt preview with uploaded image
+            if (expenseOcrComponent.currentFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewImg = document.getElementById('receipt-preview-img');
+                    previewImg.src = e.target.result;
+                    document.getElementById('receipt-upload-area').style.display = 'none';
+                    document.getElementById('receipt-image-preview').style.display = 'block';
+                };
+                reader.readAsDataURL(expenseOcrComponent.currentFile);
+            }
+
             // Pre-fill form fields with extracted data
             if (extractedFields.date) {
                 const dateInput = document.getElementById('expenseDate');
@@ -7367,13 +7389,14 @@
 
             await prepareExpenseModal();
 
-            // Show picture panel, expand modal
-            document.getElementById('expense-receipt-preview').style.display = 'flex';
-            document.querySelector('.expense-modal-wide').classList.remove('no-picture');
-            document.getElementById('expenseMissingReceipt').value = 'false';
+            // Show OCR upload container first
+            document.getElementById('expense-ocr-container').style.display = 'block';
+            document.getElementById('expense-form-layout').style.display = 'none';
 
-            // Reset receipt preview
-            resetReceiptPreview();
+            // Reset the OCR component if it exists
+            if (expenseOcrComponent && typeof expenseOcrComponent.reset === 'function') {
+                expenseOcrComponent.reset();
+            }
 
             document.getElementById('expenseModal').style.display = 'block';
         }
