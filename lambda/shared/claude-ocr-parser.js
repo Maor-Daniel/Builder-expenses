@@ -17,8 +17,8 @@ REQUIRED FIELDS (leave null if not found with high confidence):
 1. **amount**: Total amount as number (no currency symbols)
 2. **invoiceNum**: Invoice/receipt number (alphanumeric)
 3. **date**: Date in YYYY-MM-DD format
-4. **vendor**: Company/vendor name
-5. **description**: Brief description of items/services
+4. **vendor**: Company/vendor name (the business that issued the receipt)
+5. **description**: Look for handwritten text describing items/services, typically found in sections labeled "פריטים" or "פירוט". DO NOT use the vendor/company name as description. If no handwritten description exists, use null.
 6. **paymentMethod**: Infer from context:
    - "קופה"/"cash register"/"מזומן" → "מזומן"
    - Credit card terminal/"כרטיס"/"VISA"/"Mastercard" → "כרטיס אשראי"
@@ -98,11 +98,9 @@ async function callClaudeVisionAPI(imageBuffer, apiKey) {
             role: 'user',
             content: [
               {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
-                  data: base64Image
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mediaType};base64,${base64Image}`
                 }
               },
               {
