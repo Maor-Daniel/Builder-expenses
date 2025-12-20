@@ -6935,11 +6935,12 @@
         function handleExpenseOcrComplete(ocrResult) {
             console.log('[OCR] Processing complete:', ocrResult);
 
-            const { extractedFields, ocrMetadata } = ocrResult;
+            const { extractedFields, ocrMetadata, receiptFile, receiptBase64 } = ocrResult;
 
-            // Store OCR data globally for later use (including File object!)
+            // Store OCR data globally for later use (including File object and base64!)
             window.currentExpenseOcrData = {
-                receiptFile: expenseOcrComponent.currentFile, // The actual File object
+                receiptFile: receiptFile, // The actual File object from OCR result
+                receiptBase64: receiptBase64, // Pre-converted base64 from OCR
                 extractedFields: extractedFields,
                 ocrMetadata: ocrMetadata,
                 userEdits: {} // Track which fields user has edited
@@ -6949,16 +6950,16 @@
             document.getElementById('expense-ocr-container').style.display = 'none';
             document.getElementById('expense-form-layout').style.display = 'flex';
 
-            // Show receipt preview with uploaded image
-            if (expenseOcrComponent.currentFile) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const previewImg = document.getElementById('receipt-preview-img');
-                    previewImg.src = e.target.result;
-                    document.getElementById('receipt-upload-area').style.display = 'none';
-                    document.getElementById('receipt-image-preview').style.display = 'block';
-                };
-                reader.readAsDataURL(expenseOcrComponent.currentFile);
+            // Show receipt preview with uploaded image - use receiptBase64 directly
+            console.log('[OCR] Setting image preview, receiptBase64:', receiptBase64 ? 'present (' + receiptBase64.substring(0, 50) + '...)' : 'missing');
+            if (receiptBase64) {
+                const previewImg = document.getElementById('receipt-preview-img');
+                previewImg.src = receiptBase64;
+                document.getElementById('receipt-upload-area').style.display = 'none';
+                document.getElementById('receipt-image-preview').style.display = 'flex';
+                console.log('[OCR] Image preview set successfully using receiptBase64');
+            } else {
+                console.warn('[OCR] No receiptBase64 to preview!');
             }
 
             // Pre-fill form fields with extracted data
@@ -7396,10 +7397,9 @@
             document.getElementById('expense-ocr-container').style.display = 'block';
             document.getElementById('expense-form-layout').style.display = 'none';
 
-            // Reset the OCR component if it exists
-            if (expenseOcrComponent && typeof expenseOcrComponent.reset === 'function') {
-                expenseOcrComponent.reset();
-            }
+            // Initialize OCR component if not already initialized, or reset if it exists
+            // This ensures the component is ready even if companyId wasn't available during initial load
+            initializeExpenseOcrComponent();
 
             document.getElementById('expenseModal').style.display = 'block';
         }
