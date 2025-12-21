@@ -175,8 +175,13 @@ exports.handler = withSecureCors(async (event, context) => {
   }
 });
 
-// Get all expenses for the company
+// Get all expenses for the company (with optional pagination)
 async function getExpenses(companyId, userId, userRole, event) {
+  // Parse pagination parameters from query string
+  const queryParams = event.queryStringParameters || {};
+  const limit = parseInt(queryParams.limit) || 0; // 0 means no limit (return all)
+  const cursor = queryParams.cursor; // Base64-encoded LastEvaluatedKey
+
   const params = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
     KeyConditionExpression: 'companyId = :companyId',
@@ -184,6 +189,21 @@ async function getExpenses(companyId, userId, userRole, event) {
       ':companyId': companyId
     }
   };
+
+  // Apply pagination if limit is specified
+  if (limit > 0) {
+    params.Limit = Math.min(limit, 100); // Cap at 100 to prevent abuse
+  }
+
+  // If cursor provided, decode and use as ExclusiveStartKey
+  if (cursor) {
+    try {
+      params.ExclusiveStartKey = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'));
+    } catch (e) {
+      logger.warn('Invalid pagination cursor', { cursor, error: e.message });
+      // Ignore invalid cursor and start from beginning
+    }
+  }
 
   const result = await dynamoOperation('query', params);
 
@@ -256,11 +276,23 @@ async function getExpenses(companyId, userId, userRole, event) {
     request: event
   });
 
-  return createResponse(200, {
+  // Build response with pagination info
+  const response = {
     success: true,
     expenses: expensesWithUrls,
     count: expensesWithUrls.length
-  });
+  };
+
+  // Add pagination info if limit was specified
+  if (limit > 0 && result.LastEvaluatedKey) {
+    // Encode the cursor as Base64 for safe URL transmission
+    response.nextCursor = Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64');
+    response.hasMore = true;
+  } else {
+    response.hasMore = false;
+  }
+
+  return createResponse(200, response);
 }
 
 // Create a new expense
