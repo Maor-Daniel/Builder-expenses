@@ -11,16 +11,11 @@
     <!-- Font Awesome (with SRI) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 
-    <!-- Chart.js (with SRI) -->
+    <!-- Chart.js (with SRI) - Kept synchronous for Reports tab -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 
-    <!-- PDF Export Libraries (with SRI) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
-
-    <!-- SheetJS (xlsx) for Excel Export with Multiple Sheets (with SRI) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+    <!-- PDF/Excel Export Libraries - NOW LAZY LOADED ON DEMAND (~420KB saved on initial load) -->
+    <!-- html2canvas, jspdf, html2pdf, xlsx are loaded via loadExportLibraries() when user clicks export -->
 
     <!-- Paddle.js for payment checkout (no SRI - dynamically updated) -->
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
@@ -3247,6 +3242,190 @@
 
     <!-- Main Application Script -->
     <script>
+        // ============================================
+        // PERFORMANCE UTILITIES
+        // ============================================
+
+        /**
+         * Debounce utility - delays function execution until after wait milliseconds
+         * have elapsed since the last time the debounced function was invoked.
+         * @param {Function} fn - The function to debounce
+         * @param {number} delay - The delay in milliseconds
+         * @returns {Function} - The debounced function
+         */
+        function debounce(fn, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // Create debounced version of filterExpenses for search input (300ms delay)
+        const debouncedFilterExpenses = debounce(() => {
+            if (typeof window.filterExpenses === 'function') {
+                window.filterExpenses();
+            }
+        }, 300);
+        // Make it globally accessible for HTML oninput attribute
+        window.debouncedFilterExpenses = debouncedFilterExpenses;
+
+        /**
+         * Load a script dynamically with integrity check
+         * @param {string} src - Script URL
+         * @param {string} integrity - SRI hash (optional)
+         * @returns {Promise} - Resolves when script is loaded
+         */
+        function loadScript(src, integrity = null) {
+            return new Promise((resolve, reject) => {
+                // Check if already loaded
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = src;
+                script.crossOrigin = 'anonymous';
+                if (integrity) {
+                    script.integrity = integrity;
+                }
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Library loading state
+        let exportLibrariesLoaded = false;
+        let chartLibraryLoaded = false;
+
+        /**
+         * Lazy load Chart.js library (for reports tab)
+         * @returns {Promise}
+         */
+        async function loadChartLibrary() {
+            if (chartLibraryLoaded || typeof Chart !== 'undefined') {
+                return;
+            }
+            console.log('[Performance] Loading Chart.js on demand...');
+            await loadScript(
+                'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+                'sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g'
+            );
+            chartLibraryLoaded = true;
+            console.log('[Performance] Chart.js loaded successfully');
+        }
+
+        /**
+         * Lazy load export libraries (PDF/Excel) - ~420KB saved on initial load
+         * @returns {Promise}
+         */
+        async function loadExportLibraries() {
+            if (exportLibrariesLoaded) {
+                return;
+            }
+            console.log('[Performance] Loading export libraries on demand...');
+
+            // Load all export libraries in parallel
+            await Promise.all([
+                loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                    'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H'
+                ),
+                loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                    'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk'
+                ),
+                loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+                    'sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc'
+                ),
+                loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                    'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw'
+                )
+            ]);
+
+            exportLibrariesLoaded = true;
+            console.log('[Performance] Export libraries loaded successfully');
+        }
+
+        // Make lazy loading functions globally accessible
+        window.loadExportLibraries = loadExportLibraries;
+        window.loadChartLibrary = loadChartLibrary;
+
+        // ============================================
+        // EXPENSE LOOKUP MAPS (Performance Optimization)
+        // ============================================
+
+        // Pre-computed maps for O(1) expense lookups instead of O(n) filters
+        let expensesByProject = new Map();
+        let expensesByContractor = new Map();
+
+        /**
+         * Build expense lookup maps for fast access
+         * Call this after expenses data is loaded or modified
+         * Converts O(n) filter operations to O(1) map lookups
+         */
+        function buildExpenseMaps() {
+            console.log('[Performance] Building expense lookup maps...');
+
+            // Clear existing maps
+            expensesByProject.clear();
+            expensesByContractor.clear();
+
+            // Build maps in single pass through expenses
+            if (appData && appData.expenses) {
+                appData.expenses.forEach(expense => {
+                    // Map by projectId
+                    if (expense.projectId) {
+                        if (!expensesByProject.has(expense.projectId)) {
+                            expensesByProject.set(expense.projectId, []);
+                        }
+                        expensesByProject.get(expense.projectId).push(expense);
+                    }
+
+                    // Map by contractorId
+                    if (expense.contractorId) {
+                        if (!expensesByContractor.has(expense.contractorId)) {
+                            expensesByContractor.set(expense.contractorId, []);
+                        }
+                        expensesByContractor.get(expense.contractorId).push(expense);
+                    }
+                });
+            }
+
+            console.log(`[Performance] Expense maps built: ${expensesByProject.size} projects, ${expensesByContractor.size} contractors`);
+        }
+
+        /**
+         * Get expenses for a specific project (O(1) lookup)
+         * @param {string} projectId - The project ID
+         * @returns {Array} - Array of expenses for this project
+         */
+        function getExpensesByProject(projectId) {
+            return expensesByProject.get(projectId) || [];
+        }
+
+        /**
+         * Get expenses for a specific contractor (O(1) lookup)
+         * @param {string} contractorId - The contractor ID
+         * @returns {Array} - Array of expenses for this contractor
+         */
+        function getExpensesByContractor(contractorId) {
+            return expensesByContractor.get(contractorId) || [];
+        }
+
+        // Make lookup functions globally accessible
+        window.buildExpenseMaps = buildExpenseMaps;
+        window.getExpensesByProject = getExpensesByProject;
+        window.getExpensesByContractor = getExpensesByContractor;
+
+        // ============================================
+        // APPLICATION STATE
+        // ============================================
+
         // Pending invitation token (from URL parameter)
         let pendingInvitationToken = null;
         let pendingInvitationData = null;
@@ -3722,6 +3901,9 @@
                 appData.contractors = contractorsResp.contractors || [];
                 appData.works = worksResp.works || [];
 
+                // Build expense lookup maps for O(1) access
+                buildExpenseMaps();
+
                 updateDashboard();
 
                 // Initialize OCR component now that we have company context
@@ -4017,7 +4199,7 @@
                             <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569;">חיפוש</label>
                             <input type="text" id="expenseSearch" placeholder="חפש לפי תיאור..."
                                    style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px;"
-                                   oninput="filterExpenses()">
+                                   oninput="debouncedFilterExpenses()">
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569;">פרויקט</label>
@@ -4501,8 +4683,16 @@
         }
 
         // Export to PDF (called from popup)
-        window.exportToPDF = function() {
+        window.exportToPDF = async function() {
             closeExportPopup();
+            // Lazy load export libraries before generating PDF
+            try {
+                await loadExportLibraries();
+            } catch (error) {
+                console.error('[Performance] Failed to load export libraries:', error);
+                alert('שגיאה בטעינת ספריות הייצוא. אנא נסה שוב.');
+                return;
+            }
             exportExpensesToPDF();
         }
 
@@ -4996,8 +5186,17 @@
         // ========================================
         // EXCEL EXPORT FUNCTION
         // ========================================
-        window.exportToExcel = function() {
+        window.exportToExcel = async function() {
             closeExportPopup();
+
+            // Lazy load export libraries before generating Excel
+            try {
+                await loadExportLibraries();
+            } catch (error) {
+                console.error('[Performance] Failed to load export libraries:', error);
+                alert('שגיאה בטעינת ספריות הייצוא. אנא נסה שוב.');
+                return;
+            }
 
             const btn = document.getElementById('exportBtn');
             if (btn) {
@@ -5335,8 +5534,8 @@
                 </button>` : ''}
                 <div class="projects-grid">
                     ${appData.projects.map(project => {
-                        // Calculate total expenses for this project
-                        const projectExpenses = appData.expenses.filter(e => e.projectId === project.projectId);
+                        // Calculate total expenses for this project (O(1) lookup)
+                        const projectExpenses = getExpensesByProject(project.projectId);
                         const totalSpent = projectExpenses.reduce((sum, e) => sum + e.amount, 0);
                         const budget = project.budget || 0;
                         const percentUsed = budget > 0 ? (totalSpent / budget) * 100 : 0;
@@ -5651,8 +5850,8 @@
                 </div>
             `;
 
-            // Populate receipts tab
-            const projectExpenses = appData.expenses.filter(e => e.projectId === projectId);
+            // Populate receipts tab (O(1) lookup)
+            const projectExpenses = getExpensesByProject(projectId);
             window.renderReceipts(projectExpenses);
 
             // Reset to info tab
@@ -5687,8 +5886,8 @@
                 </div>
             `;
 
-            // Populate receipts tab
-            const contractorExpenses = appData.expenses.filter(e => e.contractorId === contractorId);
+            // Populate receipts tab (O(1) lookup)
+            const contractorExpenses = getExpensesByContractor(contractorId);
             window.renderReceipts(contractorExpenses);
 
             // Reset to info tab
@@ -8218,10 +8417,9 @@
         function showProjectBudgetReport() {
             const container = document.getElementById('tabContent');
 
-            // Calculate budget vs actual for each project
+            // Calculate budget vs actual for each project (O(1) lookup)
             const projectData = appData.projects.map(project => {
-                const spent = appData.expenses
-                    .filter(exp => exp.projectId === project.projectId)
+                const spent = getExpensesByProject(project.projectId)
                     .reduce((sum, exp) => sum + exp.amount, 0);
 
                 const budget = project.budget || 0;
@@ -8287,9 +8485,9 @@
         function showContractorReport() {
             const container = document.getElementById('tabContent');
 
-            // Calculate data per contractor
+            // Calculate data per contractor (O(1) lookup)
             const contractorData = appData.contractors.map(contractor => {
-                const expenses = appData.expenses.filter(exp => exp.contractorId === contractor.contractorId);
+                const expenses = getExpensesByContractor(contractor.contractorId);
                 const totalPaid = expenses.reduce((sum, exp) => sum + exp.amount, 0);
                 const transactionCount = expenses.length;
                 const avgTransaction = transactionCount > 0 ? totalPaid / transactionCount : 0;
