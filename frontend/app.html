@@ -6946,6 +6946,11 @@
                 userEdits: {} // Track which fields user has edited
             };
 
+            // CRITICAL: Set pendingReceiptFile so submitExpense uploads to S3
+            // This bridges the OCR flow with the standard upload flow
+            pendingReceiptFile = receiptFile;
+            console.log('[OCR] Set pendingReceiptFile for S3 upload:', receiptFile?.name);
+
             // Hide OCR container and show expense form
             document.getElementById('expense-ocr-container').style.display = 'none';
             document.getElementById('expense-form-layout').style.display = 'flex';
@@ -6954,9 +6959,18 @@
             console.log('[OCR] Setting image preview, receiptBase64:', receiptBase64 ? 'present (' + receiptBase64.substring(0, 50) + '...)' : 'missing');
             if (receiptBase64) {
                 const previewImg = document.getElementById('receipt-preview-img');
-                previewImg.src = receiptBase64;
-                document.getElementById('receipt-upload-area').style.display = 'none';
-                document.getElementById('receipt-image-preview').style.display = 'flex';
+                if (previewImg) {
+                    previewImg.src = receiptBase64;
+                }
+                // Hide upload dropzone and show image preview (consistent with handleReceiptUpload)
+                const uploadArea = document.getElementById('receipt-upload-area');
+                const dropzone = document.getElementById('receipt-dropzone');
+                const imagePreview = document.getElementById('receipt-image-preview');
+
+                if (uploadArea) uploadArea.style.display = 'none';
+                if (dropzone) dropzone.style.display = 'none';
+                if (imagePreview) imagePreview.style.display = 'flex';
+
                 console.log('[OCR] Image preview set successfully using receiptBase64');
             } else {
                 console.warn('[OCR] No receiptBase64 to preview!');
