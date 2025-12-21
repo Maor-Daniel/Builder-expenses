@@ -1,6 +1,9 @@
 // lambda/resendInvitation.js
 // Resend an invitation email to a pending user
 
+// AWS SDK v3 - modular imports for smaller bundle size
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+
 const {
   createResponse,
   createErrorResponse,
@@ -15,10 +18,9 @@ const { createLogger } = require('./shared/logger');
 const logger = createLogger('resendInvitation');
 const { withSecureCors } = require('./shared/cors-config');
 
-const AWS = require('aws-sdk');
 const crypto = require('crypto');
 
-const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
+const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Generate a new secure invitation token
 function generateNewToken() {
@@ -166,7 +168,8 @@ ${invitationUrl}
     }
   };
 
-  const result = await ses.sendEmail(emailParams).promise();
+  const command = new SendEmailCommand(emailParams);
+  const result = await ses.send(command);
   return result;
 }
 

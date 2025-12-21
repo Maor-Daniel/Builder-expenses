@@ -1,7 +1,17 @@
 // lambda/shared/utils.js
 // Shared utilities for Lambda functions
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand
+} = require('@aws-sdk/lib-dynamodb');
+
 const { mockDynamoDB } = require('./mock-db');
 const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
 
@@ -11,17 +21,27 @@ const isLocal = process.env.NODE_ENV === 'development' || process.env.IS_LOCAL =
 const dynamoConfig = isLocal ? {
   region: 'localhost',
   endpoint: 'http://localhost:8001',
-  accessKeyId: 'fakeMyKeyId',
-  secretAccessKey: 'fakeSecretAccessKey'
+  credentials: {
+    accessKeyId: 'fakeMyKeyId',
+    secretAccessKey: 'fakeSecretAccessKey'
+  }
 } : {
   region: process.env.AWS_REGION || 'us-east-1'
 };
 
-// Use mock DB if no real DynamoDB is available, otherwise use AWS SDK
+// Use mock DB if no real DynamoDB is available, otherwise use AWS SDK v3
 let dynamodb;
 try {
-  dynamodb = isLocal ? mockDynamoDB : new AWS.DynamoDB.DocumentClient(dynamoConfig);
   if (isLocal) {
+    dynamodb = mockDynamoDB;
+  } else {
+    const ddbClient = new DynamoDBClient(dynamoConfig);
+    dynamodb = DynamoDBDocumentClient.from(ddbClient, {
+      marshallOptions: {
+        convertEmptyValues: false,
+        removeUndefinedValues: true
+      }
+    });
   }
 } catch (error) {
   dynamodb = mockDynamoDB;
@@ -125,31 +145,59 @@ function debugLog(message, data = null) {
 
 /**
  * Handle DynamoDB operations with error handling
+ * Uses AWS SDK v3 command pattern for production, mock for local
  */
 async function dynamoOperation(operation, params) {
-  
+
   try {
-    let result;
+    // For local/mock mode, use the mock interface
+    if (isLocal && dynamodb === mockDynamoDB) {
+      let result;
+      switch (operation.toLowerCase()) {
+        case 'query':
+          result = await dynamodb.query(params).promise();
+          break;
+        case 'get':
+          result = await dynamodb.get(params).promise();
+          break;
+        case 'put':
+          result = await dynamodb.put(params).promise();
+          break;
+        case 'update':
+          result = await dynamodb.update(params).promise();
+          break;
+        case 'delete':
+          result = await dynamodb.delete(params).promise();
+          break;
+        default:
+          throw new Error(`Unsupported DynamoDB operation: ${operation}`);
+      }
+      return result;
+    }
+
+    // Production mode: use SDK v3 command pattern
+    let command;
     switch (operation.toLowerCase()) {
       case 'query':
-        result = await dynamodb.query(params).promise();
+        command = new QueryCommand(params);
         break;
       case 'get':
-        result = await dynamodb.get(params).promise();
+        command = new GetCommand(params);
         break;
       case 'put':
-        result = await dynamodb.put(params).promise();
+        command = new PutCommand(params);
         break;
       case 'update':
-        result = await dynamodb.update(params).promise();
+        command = new UpdateCommand(params);
         break;
       case 'delete':
-        result = await dynamodb.delete(params).promise();
+        command = new DeleteCommand(params);
         break;
       default:
         throw new Error(`Unsupported DynamoDB operation: ${operation}`);
     }
-    
+
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     throw error;

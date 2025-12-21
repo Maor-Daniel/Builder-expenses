@@ -1,7 +1,10 @@
 // lambda/companyExpenses.js
 // Company-scoped expenses management Lambda function
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
 const {
   createResponse,
   createErrorResponse,
@@ -17,7 +20,7 @@ const {
 } = require('./shared/company-utils');
 
 // S3 client for generating pre-signed URLs
-const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 const RECEIPTS_BUCKET = process.env.RECEIPTS_BUCKET || 'construction-expenses-receipts-702358134603';
 const RECEIPT_URL_EXPIRY = 3600; // 1 hour expiry for on-demand URLs
 const { createLogger } = require('./shared/logger');
@@ -78,12 +81,11 @@ function isOurS3Url(url) {
  * @returns {Promise<string>} Pre-signed URL
  */
 async function generatePresignedUrl(s3Key) {
-  const params = {
+  const command = new GetObjectCommand({
     Bucket: RECEIPTS_BUCKET,
-    Key: s3Key,
-    Expires: RECEIPT_URL_EXPIRY
-  };
-  return s3.getSignedUrlPromise('getObject', params);
+    Key: s3Key
+  });
+  return getSignedUrl(s3, command, { expiresIn: RECEIPT_URL_EXPIRY });
 }
 
 /**

@@ -14,8 +14,9 @@ const {
 } = require('./shared/company-utils');
 const { withSecureCors } = require('./shared/cors-config');
 
-const AWS = require('aws-sdk');
-const cognito = new AWS.CognitoIdentityServiceProvider();
+// AWS SDK v3 - modular imports for smaller bundle size
+const { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand, AdminDisableUserCommand, AdminEnableUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Validate role change is allowed
 async function validateRoleChange(companyId, targetUserId, newRole, currentAdminId) {
@@ -174,7 +175,7 @@ exports.handler = withSecureCors(async (event) => {
     // Update Cognito custom attributes if role changed
     if (newRole && newRole !== currentUser.role) {
       try {
-        await cognito.adminUpdateUserAttributes({
+        const updateAttributesCommand = new AdminUpdateUserAttributesCommand({
           UserPoolId: process.env.USER_POOL_ID,
           Username: targetUserId,
           UserAttributes: [
@@ -183,7 +184,8 @@ exports.handler = withSecureCors(async (event) => {
               Value: newRole
             }
           ]
-        }).promise();
+        });
+        await cognito.send(updateAttributesCommand);
 
       } catch (cognitoError) {
         // Continue anyway - DynamoDB is source of truth
@@ -194,15 +196,17 @@ exports.handler = withSecureCors(async (event) => {
     if (newStatus && newStatus !== currentUser.status) {
       try {
         if (newStatus === 'inactive') {
-          await cognito.adminDisableUser({
+          const disableCommand = new AdminDisableUserCommand({
             UserPoolId: process.env.USER_POOL_ID,
             Username: targetUserId
-          }).promise();
+          });
+          await cognito.send(disableCommand);
         } else if (newStatus === 'active') {
-          await cognito.adminEnableUser({
+          const enableCommand = new AdminEnableUserCommand({
             UserPoolId: process.env.USER_POOL_ID,
             Username: targetUserId
-          }).promise();
+          });
+          await cognito.send(enableCommand);
         }
 
       } catch (cognitoError) {

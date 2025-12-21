@@ -2,10 +2,14 @@
   "name": "lambda-function",
   "version": "1.0.0",
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.940.0",
     "@aws-sdk/client-dynamodb": "^3.940.0",
+    "@aws-sdk/client-s3": "^3.940.0",
+    "@aws-sdk/client-secrets-manager": "^3.940.0",
+    "@aws-sdk/client-ses": "^3.940.0",
     "@aws-sdk/lib-dynamodb": "^3.940.0",
+    "@aws-sdk/s3-request-presigner": "^3.940.0",
     "@clerk/backend": "^1.0.0",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.13.2",
     "file-type": "^16.5.4",
     "svix": "^1.0.0"

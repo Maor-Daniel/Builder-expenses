@@ -1,7 +1,20 @@
 // lambda/shared/multi-table-utils.js
 // Multi-table utilities for Lambda functions
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand,
+  ScanCommand,
+  BatchGetCommand,
+  BatchWriteCommand
+} = require('@aws-sdk/lib-dynamodb');
+
 const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
 
 // Always use real AWS DynamoDB - no mock databases
@@ -9,8 +22,14 @@ const dynamoConfig = {
   region: process.env.AWS_REGION || 'us-east-1'
 };
 
-// Initialize DynamoDB client - always real AWS
-const dynamodb = new AWS.DynamoDB.DocumentClient(dynamoConfig);
+// Initialize DynamoDB client with SDK v3
+const ddbClient = new DynamoDBClient(dynamoConfig);
+const dynamodb = DynamoDBDocumentClient.from(ddbClient, {
+  marshallOptions: {
+    convertEmptyValues: false,
+    removeUndefinedValues: true
+  }
+});
 
 // Table names - production company-scoped tables
 const TABLE_NAMES = {
@@ -257,40 +276,42 @@ function debugLog(message, data = null) {
 
 /**
  * Handle DynamoDB operations with error handling
+ * Uses AWS SDK v3 command pattern for better performance
  */
 async function dynamoOperation(operation, params) {
-  
+
   try {
-    let result;
+    let command;
     switch (operation.toLowerCase()) {
       case 'query':
-        result = await dynamodb.query(params).promise();
+        command = new QueryCommand(params);
         break;
       case 'get':
-        result = await dynamodb.get(params).promise();
+        command = new GetCommand(params);
         break;
       case 'put':
-        result = await dynamodb.put(params).promise();
+        command = new PutCommand(params);
         break;
       case 'update':
-        result = await dynamodb.update(params).promise();
+        command = new UpdateCommand(params);
         break;
       case 'delete':
-        result = await dynamodb.delete(params).promise();
+        command = new DeleteCommand(params);
         break;
       case 'scan':
-        result = await dynamodb.scan(params).promise();
+        command = new ScanCommand(params);
         break;
       case 'batchget':
-        result = await dynamodb.batchGet(params).promise();
+        command = new BatchGetCommand(params);
         break;
       case 'batchwrite':
-        result = await dynamodb.batchWrite(params).promise();
+        command = new BatchWriteCommand(params);
         break;
       default:
         throw new Error(`Unsupported DynamoDB operation: ${operation}`);
     }
-    
+
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     throw error;
