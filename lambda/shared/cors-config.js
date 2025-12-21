@@ -25,14 +25,20 @@ const PRODUCTION_ORIGINS = [
   'https://builder-expenses.clerk.accounts.dev'
 ];
 
+// Allow all origins flag for mobile development
+// SECURITY: Endpoints are still protected by Clerk JWT authentication
+const ALLOW_ALL_ORIGINS = true;
+
 // Development origins (only in non-production environments)
 const DEVELOPMENT_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:8080',
   'http://localhost:8000',
+  'http://localhost:8081',  // Expo React Native dev server
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
-  'http://127.0.0.1:8000'
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:8081'   // Expo React Native dev server
 ];
 
 /**
@@ -67,6 +73,11 @@ function getAllowedOrigins() {
  * @returns {boolean} True if origin is allowed
  */
 function isOriginAllowed(origin) {
+  // Allow all origins if flag is set (for mobile development)
+  if (ALLOW_ALL_ORIGINS) {
+    return true;
+  }
+
   if (!origin) {
     // No origin header - could be same-origin request or non-browser client
     // For API calls, we'll be strict and require origin in production
@@ -85,12 +96,23 @@ function isOriginAllowed(origin) {
 
 /**
  * Get CORS headers for response
- * SECURITY: Only allows pre-approved origins, never wildcard (*)
  *
  * @param {string|undefined} requestOrigin - Origin from request headers
  * @returns {Object} CORS headers object
  */
 function getCorsHeaders(requestOrigin) {
+  // If allowing all origins, use wildcard
+  if (ALLOW_ALL_ORIGINS) {
+    console.log('[CORS] ALLOW_ALL_ORIGINS enabled - returning wildcard');
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS,PATCH',
+      'Access-Control-Max-Age': '3600',
+      'Content-Type': 'application/json'
+    };
+  }
+
   const allowedOrigins = getAllowedOrigins();
 
   // Debug logging for CORS troubleshooting
@@ -171,6 +193,15 @@ function createCorsErrorResponse(statusCode, message, requestOrigin, error = nul
  * @returns {Object} Lambda response object
  */
 function createOptionsResponse(requestOrigin) {
+  // If allowing all origins, skip origin check
+  if (ALLOW_ALL_ORIGINS) {
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(requestOrigin),
+      body: ''
+    };
+  }
+
   // Check if origin is allowed
   if (!isOriginAllowed(requestOrigin)) {
     // Log security violation
@@ -270,12 +301,28 @@ function validateBodySize(event, maxSize = MAX_BODY_SIZE_BYTES) {
 }
 
 /**
+ * Default cache durations for different data types
+ */
+const CACHE_DURATIONS = {
+  // Data that changes frequently (expenses can be added/edited anytime)
+  EXPENSES: 0, // No caching for expenses - always fresh
+  // Reference data that rarely changes
+  PROJECTS: 60, // 1 minute cache for projects list
+  CONTRACTORS: 60, // 1 minute cache for contractors list
+  WORKS: 60, // 1 minute cache for works list
+  COMPANY: 300, // 5 minutes cache for company info
+  // Default for other GET endpoints
+  DEFAULT: 30 // 30 seconds default
+};
+
+/**
  * Middleware wrapper for Lambda handlers to enforce CORS security
  *
  * @param {Function} handler - Lambda handler function
  * @param {Object} options - Configuration options
  * @param {boolean} options.requireOrigin - If true, blocks requests without origin header in production
  * @param {number} options.maxBodySize - Maximum body size in bytes (default: 1MB)
+ * @param {number} options.cacheMaxAge - Cache duration in seconds for GET requests (default: 0 = no cache)
  * @returns {Function} Wrapped handler with CORS enforcement
  */
 function withSecureCors(handler, options = {}) {
@@ -335,6 +382,38 @@ function withSecureCors(handler, options = {}) {
         } else {
           console.log(`[CORS] ${functionName} - Response already has CORS headers:`, result.headers['Access-Control-Allow-Origin']);
         }
+
+        // Add cache headers for successful GET requests
+        const httpMethod = event.httpMethod || event.requestContext?.httpMethod;
+        if (httpMethod === 'GET' && result.statusCode >= 200 && result.statusCode < 300) {
+          // Determine cache duration based on function name or explicit option
+          let cacheMaxAge = options.cacheMaxAge;
+          if (cacheMaxAge === undefined) {
+            // Auto-detect cache duration based on function name
+            if (functionName.includes('project')) {
+              cacheMaxAge = CACHE_DURATIONS.PROJECTS;
+            } else if (functionName.includes('contractor')) {
+              cacheMaxAge = CACHE_DURATIONS.CONTRACTORS;
+            } else if (functionName.includes('work')) {
+              cacheMaxAge = CACHE_DURATIONS.WORKS;
+            } else if (functionName.includes('company') && !functionName.includes('expense')) {
+              cacheMaxAge = CACHE_DURATIONS.COMPANY;
+            } else if (functionName.includes('expense')) {
+              cacheMaxAge = CACHE_DURATIONS.EXPENSES; // 0 - no cache
+            } else {
+              cacheMaxAge = CACHE_DURATIONS.DEFAULT;
+            }
+          }
+
+          if (cacheMaxAge > 0) {
+            result.headers['Cache-Control'] = `private, max-age=${cacheMaxAge}`;
+            result.headers['Vary'] = 'Authorization, Origin';
+            console.log(`[CORS] ${functionName} - Added cache headers: max-age=${cacheMaxAge}`);
+          } else {
+            // No cache for dynamic/sensitive data
+            result.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate';
+          }
+        }
       }
 
       return result;
@@ -358,6 +437,8 @@ module.exports = {
   DEVELOPMENT_ORIGINS,
   IS_PRODUCTION,
   MAX_BODY_SIZE_BYTES,
+  ALLOW_ALL_ORIGINS,
+  CACHE_DURATIONS,
 
   // Core functions
   getAllowedOrigins,
