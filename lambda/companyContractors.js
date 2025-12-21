@@ -18,8 +18,9 @@ const { createLogger } = require('./shared/logger');
 const logger = createLogger('companyContractors');
 const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
 const auditLog = createAuditLogger(RESOURCE_TYPES.CONTRACTOR);
-const { withSecureCors } = require('./shared/cors-config');
+const { withSecureCors, CACHE_DURATIONS } = require('./shared/cors-config');
 
+// Apply 60 second cache for GET requests (contractors rarely change)
 exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
@@ -56,6 +57,12 @@ exports.handler = withSecureCors(async (event) => {
         return createErrorResponse(405, `Method ${event.httpMethod} not allowed`);
     }
   } catch (error) {
+    logger.error('Contractors operation failed', {
+      error: error.message,
+      stack: error.stack,
+      method: event.httpMethod,
+      path: event.path
+    });
     return createErrorResponse(500, 'Internal server error during contractors operation');
   }
 });

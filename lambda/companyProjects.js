@@ -24,8 +24,9 @@ const {
   incrementProjectCounter,
   decrementProjectCounter
 } = require('./shared/limit-checker');
-const { withSecureCors } = require('./shared/cors-config');
+const { withSecureCors, CACHE_DURATIONS } = require('./shared/cors-config');
 
+// Apply 60 second cache for GET requests (projects rarely change)
 exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight

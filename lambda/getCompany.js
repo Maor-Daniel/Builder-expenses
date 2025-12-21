@@ -14,8 +14,9 @@ const { createLogger } = require('./shared/logger');
 const logger = createLogger('getCompany');
 
 const { PADDLE_TABLE_NAMES } = require('./shared/paddle-utils');
-const { withSecureCors } = require('./shared/cors-config');
+const { withSecureCors, CACHE_DURATIONS } = require('./shared/cors-config');
 
+// Apply 5 minute cache for company info (rarely changes)
 exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight

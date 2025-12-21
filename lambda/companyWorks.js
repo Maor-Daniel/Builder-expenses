@@ -18,8 +18,9 @@ const { createLogger } = require('./shared/logger');
 const logger = createLogger('companyWorks');
 const { createAuditLogger, RESOURCE_TYPES } = require('./shared/audit-logger');
 const auditLog = createAuditLogger(RESOURCE_TYPES.WORK);
-const { withSecureCors } = require('./shared/cors-config');
+const { withSecureCors, CACHE_DURATIONS } = require('./shared/cors-config');
 
+// Apply 60 second cache for GET requests (works rarely change)
 exports.handler = withSecureCors(async (event) => {
 
   // Handle CORS preflight
