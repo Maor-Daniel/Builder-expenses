@@ -204,8 +204,8 @@ exports.handler = async (event) => {
   }, 'INFO');
 
   try {
-    // Extract token from Authorization header
-    const token = event.authorizationToken?.replace('Bearer ', '');
+    // Extract token from Authorization header (remove Bearer prefix with regex for robustness)
+    const token = event.authorizationToken?.replace(/^Bearer\s+/i, '').trim();
 
     if (!token) {
       logSecurityEvent('AUTHORIZATION_FAILED', {
@@ -366,10 +366,11 @@ exports.JWT_CONFIG = JWT_CONFIG;
  */
 async function findUserCompanyMembership(userId) {
   try {
-    // Scan company-users table for any record with this userId
-    const result = await dynamodb.scan({
+    // Query company-users table using userId-index GSI for O(1) lookup instead of O(n) scan
+    const result = await dynamodb.query({
       TableName: process.env.COMPANY_USERS_TABLE || 'construction-expenses-company-users',
-      FilterExpression: 'userId = :userId',
+      IndexName: 'userId-index',
+      KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: {
         ':userId': userId
       },
