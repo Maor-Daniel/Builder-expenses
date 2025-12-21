@@ -1,7 +1,10 @@
 // lambda/uploadCompanyLogo.js
 // Generate pre-signed URL for company logo upload with comprehensive security validation
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
 const {
   createResponse,
   createErrorResponse,
@@ -20,7 +23,7 @@ const {
 } = require('./shared/file-validator');
 const { withSecureCors } = require('./shared/cors-config');
 
-const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 const LOGO_BUCKET = process.env.LOGO_BUCKET || 'construction-expenses-company-logos-702358134603';
 const MAX_FILE_SIZE = FILE_SIZE_LIMITS.LOGO; // 5MB for company logos
@@ -105,17 +108,16 @@ exports.handler = withSecureCors(async (event) => {
     });
 
     // Generate pre-signed URL for upload with size limit enforcement
-    const uploadParams = {
+    // Note: ContentLengthRange is not directly supported in SDK v3 presigned URLs
+    // Size enforcement should be done via S3 bucket policies or frontend validation
+    const putCommand = new PutObjectCommand({
       Bucket: LOGO_BUCKET,
       Key: uniqueFileName,
-      Expires: 300, // URL valid for 5 minutes
       ContentType: validation.mimeType,
-      ACL: 'public-read', // Make the logo publicly readable
-      // SECURITY: Enforce file size limit in S3
-      ContentLengthRange: [1, MAX_FILE_SIZE] // Min 1 byte, Max 5MB
-    };
+      ACL: 'public-read' // Make the logo publicly readable
+    });
 
-    const uploadUrl = await s3.getSignedUrlPromise('putObject', uploadParams);
+    const uploadUrl = await getSignedUrl(s3, putCommand, { expiresIn: 300 }); // 5 minutes
 
     // Generate the public URL where the logo will be accessible
     const logoUrl = `https://${LOGO_BUCKET}.s3.amazonaws.com/${uniqueFileName}`;

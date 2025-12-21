@@ -15,8 +15,9 @@ const { createLogger } = require('./shared/logger');
 const logger = createLogger('listUsers');
 const { withSecureCors } = require('./shared/cors-config');
 
-const AWS = require('aws-sdk');
-const cognito = new AWS.CognitoIdentityServiceProvider();
+// AWS SDK v3 - modular imports for smaller bundle size
+const { CognitoIdentityProviderClient, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 exports.handler = withSecureCors(async (event) => {
 
@@ -80,10 +81,11 @@ exports.handler = withSecureCors(async (event) => {
       users.map(async (user) => {
         try {
           // Get user details from Cognito for the most up-to-date info
-          const cognitoUser = await cognito.adminGetUser({
+          const command = new AdminGetUserCommand({
             UserPoolId: process.env.USER_POOL_ID,
             Username: user.userId
-          }).promise();
+          });
+          const cognitoUser = await cognito.send(command);
 
           // Extract attributes
           const attributes = {};

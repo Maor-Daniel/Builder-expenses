@@ -1,7 +1,9 @@
 // lambda/sendInvitation.js
 // Send user invitation to join company
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+
 const {
   createResponse,
   createErrorResponse,
@@ -25,7 +27,7 @@ const {
 } = require('./shared/limit-checker');
 const { withSecureCors } = require('./shared/cors-config');
 
-const ses = new AWS.SES({ region: process.env.AWS_REGION || 'us-east-1' });
+const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 exports.handler = withSecureCors(async (event) => {
 
@@ -238,7 +240,8 @@ ${invitationUrl}
     };
 
     try {
-      await ses.sendEmail(emailParams).promise();
+      const command = new SendEmailCommand(emailParams);
+      await ses.send(command);
     } catch (emailError) {
       // Don't fail the entire operation if email fails
       // The invitation record is still created and the user can be invited manually

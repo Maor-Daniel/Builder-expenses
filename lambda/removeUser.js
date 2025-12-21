@@ -19,8 +19,9 @@ const {
 } = require('./shared/limit-checker');
 const { withSecureCors } = require('./shared/cors-config');
 
-const AWS = require('aws-sdk');
-const cognito = new AWS.CognitoIdentityServiceProvider();
+// AWS SDK v3 - modular imports for smaller bundle size
+const { CognitoIdentityProviderClient, AdminDisableUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Validate user can be removed
 async function validateUserRemoval(companyId, targetUserId, currentAdminId) {
@@ -253,10 +254,11 @@ exports.handler = withSecureCors(async (event) => {
 
       // Disable user in Cognito (they can't login anymore)
       try {
-        await cognito.adminDisableUser({
+        const disableCommand = new AdminDisableUserCommand({
           UserPoolId: process.env.USER_POOL_ID,
           Username: targetUserId
-        }).promise();
+        });
+        await cognito.send(disableCommand);
 
       } catch (cognitoError) {
         // Continue anyway - DynamoDB status is what matters

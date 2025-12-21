@@ -1,8 +1,9 @@
 // lambda/shared/email-utils.js
 // Email utility functions for sending emails via AWS SES
 
-const AWS = require('aws-sdk');
-const ses = new AWS.SES({ region: 'us-east-1' });
+// AWS SDK v3 - modular imports for smaller bundle size
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const ses = new SESClient({ region: 'us-east-1' });
 
 /**
  * Send a welcome email to a new user after company registration
@@ -186,7 +187,8 @@ async function sendWelcomeEmail(email, userName, companyName) {
   };
 
   try {
-    const result = await ses.sendEmail(params).promise();
+    const command = new SendEmailCommand(params);
+    const result = await ses.send(command);
     console.log('[EMAIL] Welcome email sent successfully to', email, '- MessageId:', result.MessageId);
     return result;
   } catch (error) {
@@ -255,7 +257,8 @@ async function sendPasswordResetEmail(email, userName, resetToken) {
   };
 
   try {
-    const result = await ses.sendEmail(params).promise();
+    const command = new SendEmailCommand(params);
+    const result = await ses.send(command);
     console.log('[EMAIL] Password reset email sent to', email);
     return result;
   } catch (error) {
@@ -325,7 +328,8 @@ async function sendInvitationEmail(email, inviterName, companyName, invitationTo
   };
 
   try {
-    const result = await ses.sendEmail(params).promise();
+    const command = new SendEmailCommand(params);
+    const result = await ses.send(command);
     console.log('[EMAIL] Invitation email sent to', email);
     return result;
   } catch (error) {

@@ -1,7 +1,10 @@
 // lambda/uploadReceipt.js
 // Generate pre-signed URL for expense receipt upload with comprehensive security validation
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
 const {
   createResponse,
   createErrorResponse,
@@ -17,7 +20,7 @@ const {
 } = require('./shared/file-validator');
 const { withSecureCors } = require('./shared/cors-config');
 
-const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 const RECEIPTS_BUCKET = process.env.RECEIPTS_BUCKET || 'construction-expenses-receipts-702358134603';
 const MAX_FILE_SIZE = FILE_SIZE_LIMITS.RECEIPT; // 10MB for receipts
@@ -82,22 +85,20 @@ exports.handler = withSecureCors(async (event) => {
     // Generate pre-signed URL for upload
     // Note: ACL removed since bucket has BlockPublicAcls enabled
     // Note: ContentLengthRange is not valid for putObject signed URLs
-    const uploadParams = {
+    const putCommand = new PutObjectCommand({
       Bucket: RECEIPTS_BUCKET,
       Key: uniqueFileName,
-      Expires: 300, // URL valid for 5 minutes
       ContentType: validation.mimeType
-    };
+    });
 
-    const uploadUrl = await s3.getSignedUrlPromise('putObject', uploadParams);
+    const uploadUrl = await getSignedUrl(s3, putCommand, { expiresIn: 300 }); // 5 minutes
 
     // Generate pre-signed URL for reading the receipt (since public access is blocked)
-    const readParams = {
+    const getCommand = new GetObjectCommand({
       Bucket: RECEIPTS_BUCKET,
-      Key: uniqueFileName,
-      Expires: 86400 * 7 // 7 days for reading
-    };
-    const receiptUrl = await s3.getSignedUrlPromise('getObject', readParams);
+      Key: uniqueFileName
+    });
+    const receiptUrl = await getSignedUrl(s3, getCommand, { expiresIn: 86400 * 7 }); // 7 days
 
 
     return createResponse(200, {

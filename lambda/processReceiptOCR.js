@@ -2,7 +2,11 @@
 // Process receipt image with Google Cloud Vision API (primary) or AWS Textract (fallback)
 // Uses Bytes mode (not S3) - receipt stays in memory until form submission
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+
 const {
   createResponse,
   createErrorResponse,
@@ -14,9 +18,10 @@ const { withSecureCors } = require('./shared/cors-config');
 const { processWithClaudeOCR } = require('./shared/claude-ocr-parser');
 const { findBestContractorMatch } = require('./shared/contractor-matcher');
 
-// Initialize AWS clients
-const secretsManager = new AWS.SecretsManager({ region: 'us-east-1' });
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+// Initialize AWS clients with SDK v3
+const secretsManager = new SecretsManagerClient({ region: 'us-east-1' });
+const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const dynamodb = DynamoDBDocumentClient.from(ddbClient);
 
 // Constants
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for Claude vision API
@@ -36,9 +41,10 @@ async function getOpenRouterApiKey() {
 
   // Fall back to Secrets Manager
   try {
-    const response = await secretsManager.getSecretValue({
+    const command = new GetSecretValueCommand({
       SecretId: OPENROUTER_API_KEY_SECRET
-    }).promise();
+    });
+    const response = await secretsManager.send(command);
 
     if (response.SecretString) {
       debugLog('Using OpenRouter API key from Secrets Manager');
@@ -153,11 +159,11 @@ exports.handler = withSecureCors(async (event) => {
           vendorName: fields.vendor
         });
 
-        const contractorsResult = await dynamodb.query({
+        const contractorsResult = await dynamodb.send(new QueryCommand({
           TableName: 'construction-expenses-company-contractors',
           KeyConditionExpression: 'companyId = :companyId',
           ExpressionAttributeValues: { ':companyId': companyId }
-        }).promise();
+        }));
 
         const contractors = contractorsResult.Items || [];
 

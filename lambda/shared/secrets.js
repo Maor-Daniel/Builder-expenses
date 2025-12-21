@@ -11,10 +11,11 @@
  * - Use this for ALL sensitive credentials (API keys, tokens, etc.)
  */
 
-const AWS = require('aws-sdk');
+// AWS SDK v3 - modular imports for smaller bundle size
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 // Initialize AWS Secrets Manager client
-const secretsManager = new AWS.SecretsManager({
+const secretsManager = new SecretsManagerClient({
     region: process.env.AWS_REGION || 'us-east-1'
 });
 
@@ -45,9 +46,10 @@ async function getSecret(secretPath) {
     try {
         console.log(`Fetching secret from AWS Secrets Manager: ${fullSecretName}`);
 
-        const data = await secretsManager.getSecretValue({
+        const command = new GetSecretValueCommand({
             SecretId: fullSecretName
-        }).promise();
+        });
+        const data = await secretsManager.send(command);
 
         const secret = data.SecretString;
 
