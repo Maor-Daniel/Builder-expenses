@@ -7403,6 +7403,22 @@
                     // Clear receipt preview and pending file
                     pendingReceiptFile = null;
                     resetReceiptPreview();
+
+                    // Reset form layout states to initial values
+                    const ocrContainer = document.getElementById('expense-ocr-container');
+                    const formLayout = document.getElementById('expense-form-layout');
+                    const receiptPreview = document.getElementById('expense-receipt-preview');
+                    const modalWide = document.querySelector('.expense-modal-wide');
+
+                    if (ocrContainer) ocrContainer.style.display = 'block';
+                    if (formLayout) formLayout.style.display = 'none';
+                    if (receiptPreview) receiptPreview.style.display = 'flex';
+                    if (modalWide) modalWide.classList.remove('no-picture');
+
+                    // Reset OCR component state if it exists
+                    if (expenseOcrComponent && typeof expenseOcrComponent.reset === 'function') {
+                        expenseOcrComponent.reset();
+                    }
                 }
             }
         }
