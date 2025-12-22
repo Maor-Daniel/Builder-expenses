@@ -7190,11 +7190,16 @@
                 updateConfidenceIndicator('expenseAmount', extractedFields.confidence?.amount || 0);
             }
 
-            if (extractedFields.vendor) {
+            // Fill description field - prefer handwritten description, fall back to vendor name
+            if (extractedFields.description || extractedFields.vendor) {
                 const descInput = document.getElementById('expenseDescription');
-                descInput.value = extractedFields.vendor;
+                descInput.value = extractedFields.description || extractedFields.vendor;
                 descInput.classList.add('ocr-filled');
-                updateConfidenceIndicator('expenseDescription', extractedFields.confidence?.vendor || 0);
+                updateConfidenceIndicator('expenseDescription',
+                    extractedFields.description
+                        ? (extractedFields.confidence?.description || 0)
+                        : (extractedFields.confidence?.vendor || 0)
+                );
             }
 
             if (extractedFields.invoiceNum) {

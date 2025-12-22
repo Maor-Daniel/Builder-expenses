@@ -18,7 +18,7 @@ REQUIRED FIELDS (leave null if not found with high confidence):
 2. **invoiceNum**: Invoice/receipt number (alphanumeric)
 3. **date**: Date in YYYY-MM-DD format
 4. **vendor**: Company/vendor name (the business that issued the receipt)
-5. **description**: Look for handwritten text describing items/services, typically found in sections labeled "פריטים" or "פירוט". DO NOT use the vendor/company name as description. If no handwritten description exists, use null.
+5. **description**: The description of the PAID SERVICES or purchased items - this is usually the LARGEST section/square on the invoice containing the line items or work details. Look for handwritten text or line items describing what was purchased/delivered, typically found in sections labeled "פריטים", "פירוט", or "תיאור העבודה". This is NOT the company description or tagline. DO NOT use the vendor/company name or the company's business description. If no service/item description exists, use null.
 6. **paymentMethod**: Infer from context:
    - "קופה"/"cash register"/"מזומן" → "מזומן"
    - Credit card terminal/"כרטיס"/"VISA"/"Mastercard" → "כרטיס אשראי"
