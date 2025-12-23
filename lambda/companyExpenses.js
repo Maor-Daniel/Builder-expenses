@@ -389,13 +389,14 @@ async function createExpense(event, companyId, userId, userRole) {
   }
 
   // Efficient duplicate invoice check using GSI (O(1) instead of O(n))
-  // Uses invoiceNum-index GSI for fast lookups by companyId + invoiceNum
+  // Uses contractor-invoiceNum-index GSI for fast lookups by contractorId + invoiceNum
+  // Invoice numbers are unique per contractor (different contractors can have same invoice number)
   const duplicateCheckParams = {
     TableName: COMPANY_TABLE_NAMES.EXPENSES,
-    IndexName: 'invoiceNum-index',
-    KeyConditionExpression: 'companyId = :companyId AND invoiceNum = :invoiceNum',
+    IndexName: 'contractor-invoiceNum-index',
+    KeyConditionExpression: 'contractorId = :contractorId AND invoiceNum = :invoiceNum',
     ExpressionAttributeValues: {
-      ':companyId': companyId,
+      ':contractorId': requestBody.contractorId,
       ':invoiceNum': requestBody.invoiceNum
     },
     Limit: 1  // We only need to know if one exists
@@ -403,7 +404,7 @@ async function createExpense(event, companyId, userId, userRole) {
 
   const duplicateCheck = await dynamoOperation('query', duplicateCheckParams);
   if (duplicateCheck.Items && duplicateCheck.Items.length > 0) {
-    return createErrorResponse(409, `Invoice number ${requestBody.invoiceNum} already exists`);
+    return createErrorResponse(409, `Invoice number ${requestBody.invoiceNum} already exists for this contractor`);
   }
 
   const expense = {
