@@ -2842,7 +2842,7 @@
                             <option value="">בחר עבודה (ממלא אוטומטית פרויקט וקבלן)</option>
                         </select>
                         <select id="expenseProjectId">
-                            <option value="">בחר פרויקט (אופציונלי)</option>
+                            <option value="">הוצאות כלליות (ברירת מחדל)</option>
                         </select>
                         <select id="expenseContractorId">
                             <option value="">בחר קבלן (אופציונלי)</option>
@@ -3015,6 +3015,38 @@
                     <p style="color: #718096; font-size: 13px; margin-top: 15px;">נדרש אימות כרטיס אשראי • ללא חיוב ל-30 יום</p>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Invitation Choice Modal - Professional Design -->
+    <div id="invitationChoiceModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 520px; padding: 0; overflow: hidden; border-radius: 16px;">
+            <!-- Header Section -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 25px; text-align: center;">
+                <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i class="fas fa-user-plus" style="font-size: 24px; color: white;"></i>
+                </div>
+                <h2 style="color: white; margin: 0 0 8px 0; font-size: 22px; font-weight: 600;">הוזמנת להצטרף!</h2>
+                <p style="color: rgba(255,255,255,0.85); font-size: 15px; margin: 0;">בחר לאיזו חברה תרצה להצטרף</p>
+            </div>
+
+            <!-- Invitations List -->
+            <div style="padding: 24px;">
+                <div id="invitationsList" style="max-height: 300px; overflow-y: auto;"></div>
+
+                <!-- Divider -->
+                <div style="display: flex; align-items: center; margin: 24px 0 20px; gap: 12px;">
+                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                    <span style="color: #a0aec0; font-size: 13px;">או</span>
+                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                </div>
+
+                <!-- Create New Company Option -->
+                <button onclick="skipInvitationsAndCreateCompany()" style="width: 100%; padding: 14px 20px; background: white; border: 2px dashed #cbd5e0; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; color: #4a5568; font-size: 15px; font-weight: 500;">
+                    <i class="fas fa-building" style="color: #718096;"></i>
+                    הקם חברה חדשה משלך
+                </button>
+            </div>
         </div>
     </div>
 
@@ -3723,6 +3755,7 @@
                     sessionStorage.removeItem('paddle_checkout_in_progress');
                     sessionStorage.removeItem('paddle_company_name');
                     sessionStorage.removeItem('paddle_tier');
+                    sessionStorage.removeItem('skip_invitation_check');
 
                     // Close the onboarding modal
                     document.getElementById('onboardingModal').style.display = 'none';
@@ -3772,6 +3805,7 @@
                     sessionStorage.removeItem('paddle_checkout_in_progress');
                     sessionStorage.removeItem('paddle_company_name');
                     sessionStorage.removeItem('paddle_tier');
+                    sessionStorage.removeItem('skip_invitation_check');
 
                     // Show success message
                     showSuccess(`ברוך הבא! החברה ${companyName} נוצרה בהצלחה! תקופת ניסיון של 30 יום החלה.`);
@@ -3791,6 +3825,7 @@
                         sessionStorage.removeItem('paddle_checkout_in_progress');
                         sessionStorage.removeItem('paddle_company_name');
                         sessionStorage.removeItem('paddle_tier');
+                        sessionStorage.removeItem('skip_invitation_check');
 
                         showError('תשלום בוצע, אך יצירת החברה לוקחת יותר זמן מהרגיל. נסה לטעון מחדש את הדף בעוד כמה שניות.');
 
@@ -3860,9 +3895,31 @@
                 // Check if company exists and load company data
                 const companyResp = await apiCall('/get-company');
 
-                // If company doesn't exist, show onboarding modal
+                // If company doesn't exist, check for pending invitations first
                 if (!companyResp.companyExists) {
-                    console.log('[ONBOARDING] No company found - showing onboarding modal');
+                    console.log('[ONBOARDING] No company found - checking for pending invitations');
+
+                    // Check if user explicitly chose to skip invitations and create new company
+                    const skipInvitationCheck = sessionStorage.getItem('skip_invitation_check') === 'true';
+
+                    if (skipInvitationCheck) {
+                        console.log('[ONBOARDING] User chose to create new company - skipping invitation check');
+                        showOnboardingModal();
+                        return;
+                    }
+
+                    // Get user email for invitation check
+                    const userEmail = window.currentUser?.email || window.currentUser?.primaryEmailAddress?.emailAddress;
+                    if (userEmail) {
+                        const pendingInvitations = await checkPendingInvitationsByEmail(userEmail);
+                        if (pendingInvitations && pendingInvitations.length > 0) {
+                            console.log('[ONBOARDING] Found pending invitations:', pendingInvitations.length);
+                            showInvitationChoiceModal(pendingInvitations);
+                            return;
+                        }
+                    }
+
+                    console.log('[ONBOARDING] No pending invitations - showing onboarding modal');
                     showOnboardingModal();
                     return;
                 }
@@ -7562,6 +7619,104 @@
             document.getElementById('onboardingModal').style.display = 'block';
         }
 
+        // Helper function to escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Invitation Choice Modal Functions
+        function showInvitationChoiceModal(invitations) {
+            const listContainer = document.getElementById('invitationsList');
+            listContainer.innerHTML = invitations.map((inv, index) => `
+                <div style="background: white; border: 2px solid ${index === 0 ? '#667eea' : '#e2e8f0'}; border-radius: 12px; padding: 18px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; position: relative; ${index === 0 ? 'box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);' : ''}"
+                     onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.15)';"
+                     onmouseout="this.style.borderColor='${index === 0 ? '#667eea' : '#e2e8f0'}'; ${index === 0 ? '' : "this.style.boxShadow='none';"}">
+                    ${index === 0 ? '<div style="position: absolute; top: -10px; right: 15px; background: #667eea; color: white; font-size: 11px; padding: 3px 10px; border-radius: 10px; font-weight: 500;">מומלץ</div>' : ''}
+                    <div style="display: flex; align-items: flex-start; gap: 14px; text-align: right;">
+                        <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-building" style="color: white; font-size: 18px;"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; font-size: 17px; color: #1a202c; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${escapeHtml(inv.companyName)}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; color: #718096; font-size: 13px;">
+                                <span style="background: #edf2f7; padding: 2px 8px; border-radius: 4px; font-weight: 500;">
+                                    ${getRoleDisplayName(inv.role)}
+                                </span>
+                                ${inv.invitedBy ? `<span>הוזמנת ע"י ${escapeHtml(inv.invitedBy.split('@')[0])}</span>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="acceptInvitationFromChoice('${inv.invitationId}'); event.stopPropagation();"
+                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: transform 0.2s, box-shadow 0.2s;"
+                                onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';"
+                                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                            הצטרף
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('invitationChoiceModal').style.display = 'flex';
+            // Store invitations for later reference
+            window.pendingEmailInvitations = invitations;
+        }
+
+        function getRoleDisplayName(role) {
+            const roleNames = {
+                'owner': 'בעלים',
+                'admin': 'מנהל',
+                'manager': 'מנהל פרויקטים',
+                'member': 'חבר צוות',
+                'viewer': 'צופה',
+                'editor': 'עורך'
+            };
+            return roleNames[role] || role;
+        }
+
+        async function acceptInvitationFromChoice(invitationId) {
+            try {
+                showNotification('מצטרף לחברה...', 'info');
+                const response = await apiCall(`/invitations/${invitationId}/accept`, 'POST');
+
+                if (response.success) {
+                    document.getElementById('invitationChoiceModal').style.display = 'none';
+                    // Clear the skip flag since user successfully joined
+                    sessionStorage.removeItem('skip_invitation_check');
+                    showNotification('הצטרפת לחברה בהצלחה!', 'success');
+                    // Reload the app to load company data
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification(response.message || 'שגיאה בהצטרפות לחברה', 'error');
+                }
+            } catch (error) {
+                console.error('Error accepting invitation:', error);
+                showNotification('שגיאה בהצטרפות לחברה', 'error');
+            }
+        }
+
+        function skipInvitationsAndCreateCompany() {
+            // Set flag to skip invitation check on subsequent loads
+            sessionStorage.setItem('skip_invitation_check', 'true');
+            document.getElementById('invitationChoiceModal').style.display = 'none';
+            showOnboardingModal();
+        }
+
+        async function checkPendingInvitationsByEmail(email) {
+            try {
+                const response = await apiCall(`/check-pending-invitations?email=${encodeURIComponent(email)}`, 'GET');
+                if (response.success && response.hasInvitations && response.invitations.length > 0) {
+                    return response.invitations;
+                }
+                return null;
+            } catch (error) {
+                console.error('Error checking pending invitations:', error);
+                return null;
+            }
+        }
+
         // Form Display Functions - Open Modals
         function showAddProjectForm() {
             document.getElementById('projectModal').style.display = 'block';
@@ -7674,9 +7829,12 @@
                 }
 
                 const projectSelect = document.getElementById('expenseProjectId');
-                projectSelect.innerHTML = '<option value="">בחר פרויקט (אופציונלי)</option>';
+                projectSelect.innerHTML = '<option value="">הוצאות כלליות (ברירת מחדל)</option>';
                 if (projects.projects) {
                     projects.projects.forEach(p => {
+                        // Skip system projects (like General Expenses) - represented by default option
+                        if (p.isSystemProject) return;
+
                         const option = document.createElement('option');
                         option.value = p.projectId;
                         option.textContent = p.name;
@@ -8202,13 +8360,18 @@
 
                 // Populate project dropdown
                 const projectSelect = document.getElementById('expenseProjectId');
-                projectSelect.innerHTML = '<option value="">בחר פרויקט *</option>';
+                // Check if expense is assigned to General Expenses (system project)
+                const isGeneralExpenses = expense.projectId === 'proj_GENERAL_EXPENSES';
+                projectSelect.innerHTML = '<option value=""' + (isGeneralExpenses ? ' selected' : '') + '>הוצאות כלליות (ברירת מחדל)</option>';
                 if (projects.projects) {
                     projects.projects.forEach(p => {
+                        // Skip system projects (like General Expenses) - represented by default option
+                        if (p.isSystemProject) return;
+
                         const option = document.createElement('option');
                         option.value = p.projectId;
                         option.textContent = p.name;
-                        if (p.projectId === expense.projectId) option.selected = true;
+                        if (p.projectId === expense.projectId && !isGeneralExpenses) option.selected = true;
                         projectSelect.appendChild(option);
                     });
                 }
