@@ -10,6 +10,7 @@ const {
   debugLog,
   dynamoOperation,
   COMPANY_TABLE_NAMES,
+  SYSTEM_PROJECTS,
   USER_ROLES,
   SUBSCRIPTION_TIERS
 } = require('./shared/company-utils');
@@ -63,6 +64,7 @@ exports.handler = withSecureCors(async (event) => {
       companyPhone: '',
       logoUrl: '',
       subscriptionTier: subscriptionTier.toLowerCase(),
+      subscriptionStatus: 'trialing',
       // Initialize usage counters
       currentProjects: 0,
       currentUsers: 1, // The creator
@@ -106,7 +108,31 @@ exports.handler = withSecureCors(async (event) => {
       Item: adminUser
     });
 
-    console.log(`Company created successfully: ${companyId} for user: ${userId}`);
+    // Create system "General Expenses" project for unassigned expenses
+    const generalExpensesProject = {
+      companyId,
+      projectId: SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId,
+      userId: userId,
+      name: SYSTEM_PROJECTS.GENERAL_EXPENSES.name,
+      description: SYSTEM_PROJECTS.GENERAL_EXPENSES.description,
+      isSystemProject: true,
+      startDate: timestamp.substring(0, 10), // YYYY-MM-DD format
+      endDate: null,
+      status: 'active',
+      budget: 0,
+      spentAmount: 0,
+      location: '',
+      clientName: '',
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    await dynamoOperation('put', {
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      Item: generalExpensesProject
+    });
+
+    console.log(`Company created successfully: ${companyId} for user: ${userId} with General Expenses project`);
 
     return createResponse(201, {
       success: true,

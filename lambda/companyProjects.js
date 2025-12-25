@@ -10,6 +10,7 @@ const {
   debugLog,
   dynamoOperation,
   COMPANY_TABLE_NAMES,
+  SYSTEM_PROJECTS,
   USER_ROLES,
   PERMISSIONS,
   hasPermission
@@ -86,7 +87,16 @@ async function getProjects(companyId, userId, userRole, event) {
   const result = await dynamoOperation('query', params);
 
   // All authenticated users can view all projects in the company
-  const projects = result.Items || [];
+  let projects = result.Items || [];
+
+  // Sort projects: system projects first (like General Expenses), then by creation date (newest first)
+  projects = projects.sort((a, b) => {
+    // System projects come first
+    if (a.isSystemProject && !b.isSystemProject) return -1;
+    if (!a.isSystemProject && b.isSystemProject) return 1;
+    // Then sort by creation date (newest first)
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
 
   // Audit log for READ operation
   auditLog.logRead({
@@ -205,6 +215,15 @@ async function updateProject(event, companyId, userId, userRole) {
 
   const existingProject = existingProjectResult.Item;
 
+  // Prevent editing critical fields of system projects (like General Expenses)
+  if (existingProject.isSystemProject) {
+    const forbiddenFields = ['name', 'projectId', 'isSystemProject'];
+    const attemptedForbiddenUpdates = forbiddenFields.filter(f => requestBody[f] !== undefined);
+    if (attemptedForbiddenUpdates.length > 0) {
+      return createErrorResponse(403, 'לא ניתן לערוך שדות מערכת בפרויקט הוצאות כלליות');
+    }
+  }
+
   // For users with only EDIT_OWN permission, verify they own this project
   if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_PROJECTS)) {
     if (existingProject.userId !== userId) {
@@ -275,11 +294,15 @@ async function updateProject(event, companyId, userId, userRole) {
 // Delete a project
 async function deleteProject(event, companyId, userId, userRole) {
   const projectId = event.pathParameters?.projectId || event.queryStringParameters?.projectId;
-  
+
   if (!projectId) {
     return createErrorResponse(400, 'Missing projectId');
   }
 
+  // Prevent deletion of system projects (like General Expenses)
+  if (projectId === SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId) {
+    return createErrorResponse(403, 'לא ניתן למחוק את פרויקט הוצאות כלליות - זהו פרויקט מערכת');
+  }
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.PROJECTS,

@@ -29,13 +29,24 @@ exports.handler = withSecureCors(async (event) => {
   }
 
   try {
+    // DEBUG: Log the full authorizer context to understand permission issues
+    console.log('[listUsers] event.requestContext.authorizer:', JSON.stringify(event.requestContext?.authorizer, null, 2));
+
     // Get company context from authenticated user
     const { companyId, userId, userRole } = getCompanyContextFromEvent(event);
 
+    // DEBUG: Log extracted values
+    console.log('[listUsers] Extracted context:', { companyId, userId, userRole });
+    console.log('[listUsers] USER_ROLES.ADMIN:', USER_ROLES.ADMIN, '| USER_ROLES.MANAGER:', USER_ROLES.MANAGER);
+    console.log('[listUsers] Role check result:', [USER_ROLES.ADMIN, USER_ROLES.MANAGER].includes(userRole));
+
     // Only admins and managers can view the full user list
     if (![USER_ROLES.ADMIN, USER_ROLES.MANAGER].includes(userRole)) {
+      console.log('[listUsers] ACCESS DENIED - userRole:', userRole, 'is not admin or manager');
       return createErrorResponse(403, 'Admin or Manager privileges required to view users');
     }
+
+    console.log('[listUsers] ACCESS GRANTED - proceeding with user list');
 
     // Parse query parameters for filtering and sorting
     const queryParams = event.queryStringParameters || {};

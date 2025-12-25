@@ -314,6 +314,13 @@ exports.handler = async (event) => {
       orgRole
     });
 
+    // DEBUG: Log the exact role being set
+    console.log('[clerk-authorizer] SETTING ROLE IN POLICY CONTEXT:', {
+      appRole,
+      appRoleType: typeof appRole,
+      appRoleLength: appRole?.length
+    });
+
     // Generate IAM policy with enhanced context
     const policy = generatePolicy(userId, 'Allow', event.methodArn, {
       userId,

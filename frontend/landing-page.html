@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת מעקב הוצאות בניה - נהל את הפרויקטים שלך בקלות</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            direction: rtl;
+        }
+
+        /* Header / Navigation */
+        .header {
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #34495e;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #f39c12;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid white;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            border-color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 5rem 2rem;
+            background: #f9fafb;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 3rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .section-header p {
+            font-size: 1.1rem;
+            color: #6b7280;
+        }
+
+        .features-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 5rem 2rem;
+            background: white;
+        }
+
+        .steps-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto 1.5rem;
+        }
+
+        .step h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .step p {
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 5rem 2rem;
+            background: #f9fafb;
+        }
+
+        .pricing-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card.featured {
+            transform: scale(1.05);
+            border: 3px solid #34495e;
+            position: relative;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -15px;
+            right: 50%;
+            transform: translateX(50%);
+            background: #34495e;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-period {
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .trial-badge {
+            background: #27ae60;
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        .features-list {
+            list-style: none;
+            margin-bottom: 2rem;
+            text-align: right;
+        }
+
+        .features-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+        }
+
+        .features-list li i {
+            color: #10b981;
+            margin-left: 0.5rem;
+        }
+
+        .pricing-card .btn {
+            margin-top: auto;
+            width: 100%;
+        }
+
+        /* FAQ Section */
+        .faq {
+            padding: 5rem 2rem;
+            background: #f9fafb;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: white;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+        }
+
+        .faq-question {
+            padding: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #1f2937;
+            transition: background 0.3s;
+        }
+
+        .faq-question:hover {
+            background: #f9fafb;
+        }
+
+        .faq-answer {
+            padding: 0 1.5rem 1.5rem;
+            color: #6b7280;
+            line-height: 1.8;
+            display: none;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .faq-item.active .faq-question i {
+            transform: rotate(180deg);
+        }
+
+        .faq-question i {
+            transition: transform 0.3s;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .footer {
+            background: #1f2937;
+            color: #9ca3af;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section a {
+            color: #9ca3af;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            border-top: 1px solid #374151;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .section-header h2 {
+                font-size: 2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+        }
+
+        /* Invitation Choice Modal */
+        .invitation-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .invitation-modal-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .invitation-modal-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .invitation-modal-title {
+            color: #2d3748;
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+        }
+
+        .invitation-modal-subtitle {
+            color: #718096;
+            font-size: 1rem;
+            margin-bottom: 25px;
+        }
+
+        .invitation-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .invitation-card:hover {
+            border-color: #f39c12;
+            background: #fffbeb;
+        }
+
+        .invitation-company-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .invitation-role {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .invitation-accept-btn {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .invitation-accept-btn:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+
+        .invitation-accept-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .invitation-skip-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .invitation-skip-btn {
+            background: transparent;
+            border: 2px solid #e2e8f0;
+            color: #6b7280;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .invitation-skip-btn:hover {
+            border-color: #9ca3af;
+            color: #4b5563;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #f39c12;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-hard-hat"></i>
+                מערכת מעקב הוצאות בניה
+            </div>
+            <nav class="nav-links">
+                <a href="#features">תכונות</a>
+                <a href="#how-it-works">איך זה עובד</a>
+                <a href="#pricing">תמחור</a>
+                <a href="#faq">שאלות נפוצות</a>
+                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחבר</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>נהל את הוצאות הבניה שלך בקלות ובמקצועיות</h1>
+            <p>מערכת מתקדמת למעקב אחר כל הוצאה, פרויקט וקבלן. חסוך זמן, שמור על תקציב ושלוט במלוא המידע.</p>
+            <div class="hero-buttons">
+                <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל עכשיו בחינם</button>
+                <a href="#how-it-works" class="btn btn-secondary btn-large">גלה איך זה עובד</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="section-header">
+            <h2>כל מה שאתה צריך לניהול הוצאות בניה</h2>
+            <p>מערכת מקיפה שמאפשרת לך לנהל כל היבט של הוצאות הבניה במקום אחד</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-project-diagram"></i>
+                </div>
+                <h3>ניהול פרויקטים</h3>
+                <p>עקוב אחר מספר פרויקטים במקביל, הגדר תקציבים ועקוב אחר השימוש בתקציב בזמן אמת עם התראות חכמות.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>ניהול קבלנים</h3>
+                <p>שמור מידע מפורט על כל הקבלנים, עקוב אחר העבודות שהם ביצעו וההוצאות הקשורות אליהם.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <h3>העלאת קבלות</h3>
+                <p>העלה תמונות של קבלות ישירות למערכת, כולל תמיכה בצילום ממכשיר נייד לנוחיות מקסימלית.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>דוחות מתקדמים</h3>
+                <p>ייצא דוחות מפורטים לאקסל, קבל סיכומים לפי פרויקט וקבלן, וצפה בניתוח כלכלי מלא.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>חיפוש וסינון</h3>
+                <p>מצא כל הוצאה תוך שניות עם חיפוש מתקדם, סינון לפי תאריכים, פרויקטים וקבלנים.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <h3>התראות חכמות</h3>
+                <p>קבל התראות כאשר הפרויקט מתקרב לתקציב המקסימלי או עובר אותו, ושמור על שליטה מלאה.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="section-header">
+            <h2>התחל בשלושה שלבים פשוטים</h2>
+            <p>הקמת המערכת לוקחת פחות מ-5 דקות</p>
+        </div>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>הירשם והתחבר</h3>
+                <p>צור חשבון חינמי תוך שניות והתחבר למערכת באמצעות אימייל.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>הוסף פרויקטים וקבלנים</h3>
+                <p>הזן את הפרויקטים והקבלנים שלך, הגדר תקציבים ופרטים נוספים.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>התחל לעקוב אחר הוצאות</h3>
+                <p>הוסף הוצאות, העלה קבלות וצפה בדוחות מפורטים בזמן אמת.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing">
+        <div class="section-header">
+            <h2>תמחור פשוט ושקוף</h2>
+            <p>בחר את התוכנית המתאימה לך • 30 יום ניסיון חינם לכל תוכנית (נדרש כרטיס אשראי)</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <h3>בסיסי</h3>
+                <div class="price">₪100</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> משתמש אחד</li>
+                    <li><i class="fas fa-check"></i> עד 3 פרויקטים</li>
+                    <li><i class="fas fa-check"></i> עד 50 הוצאות בחודש</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> תמיכה בסיסית</li>
+                </ul>
+                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
+            </div>
+
+            <div class="pricing-card featured">
+                <div class="featured-badge">מומלץ ביותר</div>
+                <h3>מקצועי</h3>
+                <div class="price">₪200</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> עד 3 משתמשים</li>
+                    <li><i class="fas fa-check"></i> עד 10 פרויקטים</li>
+                    <li><i class="fas fa-check"></i> הוצאות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF מתקדם</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
+                </ul>
+                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחל ניסיון חינם</button>
+            </div>
+
+            <div class="pricing-card">
+                <h3>ארגוני</h3>
+                <div class="price">₪300</div>
+                <div class="price-period">לחודש</div>
+                <div class="trial-badge">30 יום ניסיון חינם</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> עד 10 משתמשים</li>
+                    <li><i class="fas fa-check"></i> פרויקטים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> הוצאות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ספקים ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> עבודות ללא הגבלה</li>
+                    <li><i class="fas fa-check"></i> ייצוא PDF מתקדם</li>
+                    <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
+                    <li><i class="fas fa-check"></i> גיבויים אוטומטיים</li>
+                    <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
+                </ul>
+                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="pricing.html" class="btn btn-secondary">ראה פירוט מלא של התוכניות</a>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="section-header">
+            <h2>שאלות נפוצות</h2>
+            <p>מצא תשובות לשאלות הנפוצות ביותר</p>
+        </div>
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם המערכת מתאימה גם לפרויקטים קטנים?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן! המערכת מתאימה לכל סוגי הפרויקטים, מפרויקטים קטנים של שיפוץ דירה ועד פרויקטים גדולים של בניה מסחרית. החבילה החינמית מושלמת לפרויקטים קטנים.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם אני יכול לייצא את הנתונים שלי?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    בהחלט! ניתן לייצא את כל הנתונים לקובץ CSV/Excel, כולל כל המידע על הוצאות, פרויקטים, קבלנים וקבלות.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם הקבלות שלי מאוחסנות בצורה מאובטחת?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כל הקבלות מאוחסנות באמזון S3 עם הצפנה מלאה. המערכת עומדת בכל תקני האבטחה הנדרשים ומבטיחה שהמידע שלך מוגן.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם אני יכול לבטל את המנוי בכל עת?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן, אין התחייבות. ניתן לבטל את המנוי בכל עת מתוך הגדרות החשבון, והחיוב יפסק באופן מיידי.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם יש תמיכה טכנית?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    כן! משתמשי החבילה החינמית מקבלים תמיכה בסיסית באימייל, משתמשי החבילה המקצועית מקבלים תמיכה מועדפת, ומשתמשי החבילה הארגונית מקבלים תמיכה 24/7.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>האם המערכת עובדת גם בנייד?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    בהחלט! המערכת מותאמת לחלוטין לשימוש בנייד ובטאבלט, כך שתוכל לנהל את ההוצאות שלך מכל מקום.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2>מוכנים להתחיל?</h2>
+        <p>הצטרפו עכשיו ותתחילו לנהל את הוצאות הבניה שלכם בצורה מקצועית</p>
+        <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל בחינם עכשיו</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>על המערכת</h4>
+                <ul>
+                    <li><a href="#features">תכונות</a></li>
+                    <li><a href="#how-it-works">איך זה עובד</a></li>
+                    <li><a href="pricing.html">תמחור</a></li>
+                    <li><a href="#faq">שאלות נפוצות</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>תמיכה</h4>
+                <ul>
+                    <li><a href="#">צור קשר</a></li>
+                    <li><a href="#">מרכז עזרה</a></li>
+                    <li><a href="#">דווח על בעיה</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>חוקי</h4>
+                <ul>
+                    <li><a href="terms.html">תנאי שימוש</a></li>
+                    <li><a href="privacy.html">מדיניות פרטיות</a></li>
+                    <li><a href="refund.html">מדיניות ביטולים</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 מערכת מעקב הוצאות בניה. כל הזכויות שמורות.</p>
+        </div>
+    </footer>
+
+    <!-- Invitation Choice Modal -->
+    <div id="invitationChoiceModal" class="invitation-modal-overlay">
+        <div class="invitation-modal-content">
+            <div class="invitation-modal-icon">📨</div>
+            <h2 class="invitation-modal-title">יש לך הזמנות ממתינות!</h2>
+            <p class="invitation-modal-subtitle">נמצאו הזמנות לחברות קיימות. מה תרצה לעשות?</p>
+            <div id="invitationsList"></div>
+            <div class="invitation-skip-section">
+                <button onclick="skipInvitationsAndCreateCompany()" class="invitation-skip-btn">
+                    התעלם והקם חברה חדשה
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleFaq(element) {
+            const faqItem = element.parentElement;
+            const wasActive = faqItem.classList.contains('active');
+
+            // Close all FAQ items
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Open clicked item if it wasn't active
+            if (!wasActive) {
+                faqItem.classList.add('active');
+            }
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Clerk authentication handling
+        let clerk = null;
+        let isClerkReady = false;
+        let isCheckingInvitations = false;
+        const API_BASE_URL = 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/prod';
+
+        // Role display names
+        function getRoleDisplayName(role) {
+            const roleNames = {
+                'admin': 'מנהל',
+                'manager': 'מנהל פרויקט',
+                'viewer': 'צופה',
+                'accountant': 'רואה חשבון'
+            };
+            return roleNames[role] || role;
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check for pending invitations by email
+        async function checkPendingInvitations(email, token) {
+            try {
+                console.log('[LANDING PAGE] Checking pending invitations for:', email);
+                const response = await fetch(
+                    `${API_BASE_URL}/check-pending-invitations?email=${encodeURIComponent(email)}`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+
+                if (!response.ok) {
+                    console.log('[LANDING PAGE] Check invitations failed:', response.status);
+                    return null;
+                }
+
+                const data = await response.json();
+                console.log('[LANDING PAGE] Invitation check result:', data);
+                return data;
+            } catch (error) {
+                console.error('[LANDING PAGE] Error checking invitations:', error);
+                return null;
+            }
+        }
+
+        // Show invitation choice modal
+        function showInvitationChoiceModal(invitations) {
+            console.log('[LANDING PAGE] Showing invitation choice modal with', invitations.length, 'invitations');
+            const listContainer = document.getElementById('invitationsList');
+            listContainer.innerHTML = invitations.map(inv => `
+                <div class="invitation-card">
+                    <div class="invitation-company-name">${escapeHtml(inv.companyName)}</div>
+                    <div class="invitation-role">תפקיד: ${getRoleDisplayName(inv.role)}</div>
+                    <button onclick="acceptInvitationFromChoice('${inv.invitationId}')" class="invitation-accept-btn" id="accept-btn-${inv.invitationId}">
+                        הצטרף לחברה זו
+                    </button>
+                </div>
+            `).join('');
+            document.getElementById('invitationChoiceModal').style.display = 'flex';
+        }
+
+        // Hide invitation modal
+        function hideInvitationModal() {
+            document.getElementById('invitationChoiceModal').style.display = 'none';
+        }
+
+        // Accept invitation and join company
+        async function acceptInvitationFromChoice(invitationId) {
+            console.log('[LANDING PAGE] Accepting invitation:', invitationId);
+            const btn = document.getElementById(`accept-btn-${invitationId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = 'מצטרף... <span class="loading-spinner"></span>';
+            }
+
+            try {
+                const token = await clerk.session.getToken();
+                const response = await fetch(`${API_BASE_URL}/acceptInvitation`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: invitationId })
+                });
+
+                if (response.ok) {
+                    console.log('[LANDING PAGE] Successfully joined company');
+                    hideInvitationModal();
+                    // Redirect to app with success message
+                    window.location.href = 'app.html?joined=true';
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('[LANDING PAGE] Failed to join company:', errorData);
+                    alert('שגיאה בהצטרפות לחברה. אנא נסה שוב.');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'הצטרף לחברה זו';
+                    }
+                }
+            } catch (error) {
+                console.error('[LANDING PAGE] Error accepting invitation:', error);
+                alert('שגיאה בהצטרפות לחברה. אנא נסה שוב.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'הצטרף לחברה זו';
+                }
+            }
+        }
+
+        // Skip invitations and create new company
+        function skipInvitationsAndCreateCompany() {
+            console.log('[LANDING PAGE] User chose to create new company');
+            hideInvitationModal();
+            window.location.href = 'app.html?newCompany=true';
+        }
+
+        // Handle user authentication - check for invitations before redirect
+        async function handleUserAuthenticated(user) {
+            if (isCheckingInvitations) {
+                console.log('[LANDING PAGE] Already checking invitations, skipping...');
+                return;
+            }
+
+            isCheckingInvitations = true;
+            console.log('[LANDING PAGE] User authenticated:', user.primaryEmailAddress?.emailAddress);
+
+            try {
+                const email = user.primaryEmailAddress?.emailAddress;
+                if (!email) {
+                    console.log('[LANDING PAGE] No email found, redirecting to app.html');
+                    window.location.href = 'app.html';
+                    return;
+                }
+
+                const token = await clerk.session.getToken();
+
+                // First, check if user already has a company
+                try {
+                    const companyResponse = await fetch(`${API_BASE_URL}/company`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (companyResponse.ok) {
+                        const companyData = await companyResponse.json();
+                        if (companyData.companyExists || companyData.success) {
+                            console.log('[LANDING PAGE] User already has company, redirecting to app.html');
+                            window.location.href = 'app.html';
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.log('[LANDING PAGE] Company check failed (likely no company):', e.message);
+                }
+
+                // Check for pending invitations
+                const invitationData = await checkPendingInvitations(email, token);
+
+                if (invitationData && invitationData.hasInvitations && invitationData.invitations.length > 0) {
+                    console.log('[LANDING PAGE] Found pending invitations, showing modal');
+                    showInvitationChoiceModal(invitationData.invitations);
+                } else {
+                    console.log('[LANDING PAGE] No pending invitations, redirecting to app.html');
+                    window.location.href = 'app.html';
+                }
+            } catch (error) {
+                console.error('[LANDING PAGE] Error in auth flow:', error);
+                // On error, just redirect to app.html which will handle registration
+                window.location.href = 'app.html';
+            }
+        }
+
+        // Initialize Clerk on page load
+        async function initializeClerk() {
+            try {
+                console.log('[LANDING PAGE] Initializing Clerk...');
+                const CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+                // Import Clerk using ESM
+                const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
+
+                // Initialize Clerk instance
+                clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
+                await clerk.load();
+
+                isClerkReady = true;
+                console.log('[LANDING PAGE] Clerk initialized successfully');
+
+                // Set up listener for authentication changes
+                clerk.addListener((clerkInstance) => {
+                    if (clerkInstance.session && clerkInstance.user) {
+                        console.log('[LANDING PAGE] User authenticated, checking for invitations...');
+                        handleUserAuthenticated(clerkInstance.user);
+                    }
+                });
+
+            } catch (error) {
+                console.error('[LANDING PAGE] Failed to initialize Clerk:', error);
+            }
+        }
+
+        // Handle login button click
+        async function handleLogin() {
+            try {
+                console.log('[LANDING PAGE] Login button clicked');
+
+                // Initialize Clerk if not already done
+                if (!isClerkReady || !clerk) {
+                    await initializeClerk();
+                }
+
+                // Show Clerk sign-in modal
+                console.log('[LANDING PAGE] Opening Clerk sign-in modal');
+                clerk.openSignIn({
+                    appearance: {
+                        variables: {
+                            colorPrimary: '#f39c12',
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                        }
+                    },
+                    routing: 'virtual'
+                });
+
+            } catch (error) {
+                console.error('[LANDING PAGE] Error handling login:', error);
+                alert('שגיאה בפתיחת חלון ההתחברות. אנא נסה שוב.');
+            }
+        }
+
+        // Initialize Clerk when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[LANDING PAGE] Page loaded, pre-initializing Clerk...');
+            initializeClerk();
+        });
+    </script>
+</body>
+</html>

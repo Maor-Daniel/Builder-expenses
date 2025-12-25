@@ -1,0 +1,800 @@
+/**
+ * ReceiptUploadWithOCR Component Styles
+ *
+ * Complete styling for receipt upload with OCR processing
+ * Includes: upload zone, progress indicators, preview, error states
+ *
+ * @author Construction Expense Tracking System
+ * @version 1.0.0
+ */
+
+/* ============================================
+   Container
+   ============================================ */
+
+.receipt-upload-ocr {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  direction: rtl;
+}
+
+/* ============================================
+   Upload Zone (Idle State)
+   ============================================ */
+
+.ocr-upload-zone {
+  border: 2px dashed #cbd5e0;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.ocr-upload-zone:hover {
+  border-color: #3182ce;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.15);
+}
+
+.ocr-upload-zone:focus {
+  outline: 3px solid #3182ce;
+  outline-offset: 2px;
+}
+
+.ocr-upload-zone.drag-over {
+  border-color: #2c5282;
+  background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%);
+  box-shadow: 0 0 20px rgba(49, 130, 206, 0.3);
+}
+
+.ocr-upload-zone .upload-icon {
+  font-size: 4rem;
+  color: #3182ce;
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.ocr-upload-zone .upload-text .primary-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.ocr-upload-zone .upload-text .secondary-text {
+  font-size: 0.9rem;
+  color: #718096;
+  margin-bottom: 1rem;
+}
+
+.ocr-upload-zone .upload-text .ocr-info-text {
+  font-size: 0.85rem;
+  color: #805ad5;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background: rgba(128, 90, 213, 0.1);
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.ocr-upload-zone .upload-text .ocr-info-text i {
+  margin-left: 0.5rem;
+  color: #9f7aea;
+}
+
+/* ============================================
+   Progress Bar (Processing State)
+   ============================================ */
+
+.ocr-progress-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.ocr-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ocr-progress-header .progress-icon {
+  font-size: 2rem;
+  color: #3182ce;
+}
+
+.ocr-progress-header .progress-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.progress-bar-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 30px;
+  background: #e2e8f0;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce 0%, #63b3ed 100%);
+  border-radius: 15px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-percent {
+  position: absolute;
+  top: 50%;
+  right: 50%;
+  transform: translate(50%, -50%);
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+}
+
+.progress-subtext {
+  color: #718096;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* ============================================
+   Preview (Success State)
+   ============================================ */
+
+.ocr-preview-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.preview-success-icon {
+  font-size: 2.5rem;
+  color: #10b981;
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.preview-header h3 {
+  font-size: 1.5rem;
+  color: #2d3748;
+  margin: 0;
+  flex: 1;
+}
+
+.clear-receipt-btn {
+  background: transparent;
+  border: none;
+  color: #718096;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.clear-receipt-btn:hover {
+  background: #f7fafc;
+  color: #2d3748;
+}
+
+.preview-thumbnail {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 1.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.preview-thumbnail img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.thumbnail-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  padding: 1rem;
+  color: white;
+}
+
+.thumbnail-overlay .file-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   Extracted Fields Summary
+   ============================================ */
+
+.extracted-fields-summary {
+  margin-bottom: 1.5rem;
+}
+
+.extracted-fields-summary h4 {
+  font-size: 1.1rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* ============================================
+   Field Indicator
+   ============================================ */
+
+.field-indicator {
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.field-indicator[data-confidence="high"] {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.field-indicator[data-confidence="medium"] {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.field-indicator[data-confidence="low"] {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.field-indicator .field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+.field-indicator .confidence-icon {
+  font-size: 1rem;
+}
+
+.field-indicator[data-confidence="high"] .confidence-icon {
+  color: #10b981;
+}
+
+.field-indicator[data-confidence="medium"] .confidence-icon {
+  color: #f59e0b;
+}
+
+.field-indicator[data-confidence="low"] .confidence-icon {
+  color: #ef4444;
+}
+
+.field-indicator .field-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 0.3rem;
+  word-break: break-word;
+}
+
+.field-indicator .field-confidence {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+/* ============================================
+   Low Confidence Warning
+   ============================================ */
+
+.low-confidence-warning {
+  background: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.low-confidence-warning i {
+  font-size: 1.5rem;
+  color: #f59e0b;
+}
+
+/* ============================================
+   Preview Actions
+   ============================================ */
+
+.preview-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn-change-receipt {
+  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
+}
+
+.btn-change-receipt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+}
+
+.btn-change-receipt:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   Error State
+   ============================================ */
+
+.ocr-error-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.ocr-error-container .error-icon {
+  font-size: 4rem;
+  color: #ef4444;
+  margin-bottom: 1rem;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
+}
+
+.ocr-error-container h3 {
+  font-size: 1.5rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.ocr-error-container .error-message {
+  color: #718096;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-retry {
+  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-retry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+}
+
+.btn-cancel {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 2px solid #cbd5e0;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-cancel:hover {
+  background: #edf2f7;
+  border-color: #a0aec0;
+}
+
+/* ============================================
+   OcrFieldIndicator Component Styles
+   ============================================ */
+
+.ocr-field-indicator {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+
+.ocr-field-indicator:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.ocr-field-indicator[data-low-confidence="true"] {
+  border: 2px solid #ef4444;
+}
+
+.field-indicator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.field-indicator-header .field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.field-indicator-header .confidence-badge {
+  font-size: 1.25rem;
+}
+
+.ocr-field-indicator .field-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 0.75rem;
+}
+
+.ocr-field-indicator .field-value[data-empty="true"] {
+  color: #a0aec0;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.field-confidence-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.field-confidence-bar .confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.field-confidence-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.field-confidence-text .confidence-score {
+  font-weight: 700;
+  color: #4a5568;
+}
+
+.field-confidence-text .confidence-description {
+  color: #718096;
+}
+
+.ocr-field-indicator .field-warning {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #fef2f2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #991b1b;
+}
+
+.ocr-field-indicator .field-warning i {
+  color: #ef4444;
+}
+
+/* ============================================
+   Fields Grid Layout
+   ============================================ */
+
+.ocr-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+/* ============================================
+   Compact Field Indicator
+   ============================================ */
+
+.ocr-field-indicator-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #f7fafc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.ocr-field-indicator-compact .field-label {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.ocr-field-indicator-compact .field-value {
+  flex: 1;
+  color: #1a202c;
+}
+
+.ocr-field-indicator-compact .confidence-icon {
+  font-size: 1rem;
+}
+
+/* ============================================
+   Confidence Legend
+   ============================================ */
+
+.ocr-confidence-legend {
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.ocr-confidence-legend h4 {
+  font-size: 0.9rem;
+  color: #2d3748;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #4a5568;
+}
+
+.legend-item i {
+  font-size: 1.25rem;
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+@media (max-width: 768px) {
+  .receipt-upload-ocr {
+    max-width: 100%;
+  }
+
+  .ocr-upload-zone {
+    padding: 2rem 1rem;
+  }
+
+  .ocr-upload-zone .upload-icon {
+    font-size: 3rem;
+  }
+
+  .fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ocr-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-actions {
+    flex-direction: column;
+  }
+
+  .error-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-retry,
+  .btn-cancel,
+  .btn-change-receipt {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================
+   Accessibility Enhancements
+   ============================================ */
+
+/* Focus visible for keyboard navigation */
+.ocr-upload-zone:focus-visible,
+.btn-retry:focus-visible,
+.btn-cancel:focus-visible,
+.btn-change-receipt:focus-visible,
+.clear-receipt-btn:focus-visible {
+  outline: 3px solid #3182ce;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .field-indicator,
+  .ocr-field-indicator {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  .receipt-upload-ocr {
+    color: #e2e8f0;
+  }
+
+  .ocr-upload-zone {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-color: #4a5568;
+  }
+
+  .ocr-upload-zone:hover {
+    background: linear-gradient(135deg, #2c5282 0%, #2a4365 100%);
+  }
+
+  .ocr-progress-container,
+  .ocr-preview-container,
+  .ocr-error-container {
+    background: #2d3748;
+    color: #e2e8f0;
+  }
+
+  .field-indicator {
+    background: #1a202c;
+  }
+
+  .preview-header h3,
+  .ocr-progress-header .progress-text,
+  .ocr-error-container h3 {
+    color: #e2e8f0;
+  }
+}

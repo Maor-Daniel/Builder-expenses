@@ -63,6 +63,7 @@ async function getOpenRouterApiKey() {
 
 
 exports.handler = withSecureCors(async (event) => {
+  console.log('[OCR] Handler started');
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');
@@ -70,11 +71,15 @@ exports.handler = withSecureCors(async (event) => {
 
   try {
     // Get company context from authenticated user
+    console.log('[OCR] Getting company context...');
     const { companyId, userId } = getCompanyContextFromEvent(event);
+    console.log('[OCR] Company context:', { companyId, userId });
 
     // Parse request body
+    console.log('[OCR] Parsing request body, length:', event.body?.length);
     const requestBody = JSON.parse(event.body || '{}');
     const { receiptBase64, fileName, fileSize } = requestBody;
+    console.log('[OCR] Parsed body:', { fileName, fileSize, hasBase64: !!receiptBase64, base64Length: receiptBase64?.length });
 
     // Validation
     if (!receiptBase64 || !fileName) {
@@ -113,9 +118,12 @@ exports.handler = withSecureCors(async (event) => {
     }
 
     // Get OpenRouter API key
+    console.log('[OCR] Getting OpenRouter API key...');
     const openRouterApiKey = await getOpenRouterApiKey();
+    console.log('[OCR] API key retrieved:', !!openRouterApiKey, 'length:', openRouterApiKey?.length);
 
     if (!openRouterApiKey) {
+      console.log('[OCR] ERROR: No API key available');
       return createErrorResponse(500, 'OCR service not configured. Please contact support.');
     }
 
@@ -124,6 +132,7 @@ exports.handler = withSecureCors(async (event) => {
     let ocrProvider = 'unknown';
 
     try {
+      console.log('[OCR] Starting Claude OCR processing...');
       debugLog('Processing with Claude 3.5 Sonnet via OpenRouter', { companyId });
 
       const startTime = Date.now();
@@ -140,6 +149,7 @@ exports.handler = withSecureCors(async (event) => {
       ocrResult.processingTime = processingTime;
 
     } catch (error) {
+      console.log('[OCR] Claude processing error:', error.message);
       debugLog('Claude OCR processing failed', {
         companyId,
         errorMessage: error.message
@@ -240,6 +250,8 @@ exports.handler = withSecureCors(async (event) => {
     });
 
   } catch (error) {
+    console.log('[OCR] MAIN ERROR:', error.message, 'code:', error.code, 'name:', error.name);
+    console.log('[OCR] Error stack:', error.stack);
 
     debugLog('OCR processing error', {
       errorCode: error.code,
