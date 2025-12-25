@@ -61,6 +61,7 @@ const LAMBDA_FUNCTIONS = [
   'acceptInvitation',
   'resendInvitation',
   'cancelInvitation',
+  'checkPendingInvitations',  // Check pending invitations by email for signup flow
   // Company Management
   'getCompany',
   'getCompanyUsage',
