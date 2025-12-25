@@ -14,6 +14,7 @@ const {
   debugLog,
   dynamoOperation,
   COMPANY_TABLE_NAMES,
+  SYSTEM_PROJECTS,
   USER_ROLES,
   PERMISSIONS,
   hasPermission
@@ -346,11 +347,19 @@ async function createExpense(event, companyId, userId, userRole) {
   }
 
   // Validate required fields early
-  const required = ['projectId', 'contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
+  // Note: projectId is optional - will default to "General Expenses" if not provided
+  const required = ['contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
   const missing = required.filter(field => !requestBody[field]);
 
   if (missing.length > 0) {
     return createErrorResponse(400, `Missing required fields: ${missing.join(', ')}`);
+  }
+
+  // Auto-assign to General Expenses project if no projectId provided
+  let finalProjectId = requestBody.projectId;
+  if (!finalProjectId || finalProjectId.trim() === '') {
+    finalProjectId = SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId;
+    debugLog('Auto-assigning expense to General Expenses project', { companyId });
   }
 
   // FIX BUG #5: Validate amount early (before creating expense object)
@@ -381,7 +390,7 @@ async function createExpense(event, companyId, userId, userRole) {
   // FIX BUG #2: Validate foreign key relationships
   try {
     await Promise.all([
-      validateProjectExists(companyId, requestBody.projectId),
+      validateProjectExists(companyId, finalProjectId),
       validateContractorExists(companyId, requestBody.contractorId)
     ]);
   } catch (fkError) {
@@ -412,7 +421,7 @@ async function createExpense(event, companyId, userId, userRole) {
     expenseId: generateExpenseId(),
     userId, // User who created the expense
     workId: requestBody.workId || '',
-    projectId: requestBody.projectId,
+    projectId: finalProjectId, // May be auto-assigned to General Expenses
     contractorId: requestBody.contractorId,
     invoiceNum: requestBody.invoiceNum,
     amount: parsedAmount,

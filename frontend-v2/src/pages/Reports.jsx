@@ -19,6 +19,8 @@ import projectService from '../services/projectService';
 import contractorService from '../services/contractorService';
 import workService from '../services/workService';
 import ExpenseReportPDF from '../components/reports/ExpenseReportPDF';
+import ExpenseReportPDF_Compact from '../components/reports/ExpenseReportPDF_Compact';
+import { downloadReceiptsForPDF, estimatePDFSize } from '../utils/pdfImageDownloader';
 
 /**
  * Reports Page Component
@@ -35,6 +37,7 @@ import ExpenseReportPDF from '../components/reports/ExpenseReportPDF';
 export default function Reports() {
   const { getToken } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
   // Fetch all data
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
@@ -73,30 +76,35 @@ export default function Reports() {
 
   // Calculate metrics
   const metrics = useMemo(() => {
+    // Ensure all data is arrays
+    const safeExpenses = Array.isArray(expenses) ? expenses : [];
+    const safeWorks = Array.isArray(works) ? works : [];
+    const safeProjects = Array.isArray(projects) ? projects : [];
+
     // Total expenses
-    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+    const totalExpenses = safeExpenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
 
     // Total work costs
-    const totalWorkCosts = works.reduce((sum, work) => sum + Number(work.cost || 0), 0);
+    const totalWorkCosts = safeWorks.reduce((sum, work) => sum + Number(work.cost || 0), 0);
 
     // Total costs (expenses + works)
     const totalCosts = totalExpenses + totalWorkCosts;
 
     // Total budget
-    const totalBudget = projects.reduce((sum, proj) => sum + Number(proj.budget || 0), 0);
+    const totalBudget = safeProjects.reduce((sum, proj) => sum + Number(proj.budget || 0), 0);
 
     // Budget utilization
     const budgetUtilization = totalBudget > 0 ? (totalCosts / totalBudget) * 100 : 0;
 
     // Total hours worked
-    const totalHours = works.reduce((sum, work) => sum + Number(work.hours || 0), 0);
+    const totalHours = safeWorks.reduce((sum, work) => sum + Number(work.hours || 0), 0);
 
     // Active projects
-    const activeProjects = projects.filter(p => p.status === 'active').length;
+    const activeProjects = safeProjects.filter(p => p.status === 'active').length;
 
     // Costs by project
     const costsByProject = {};
-    projects.forEach(project => {
+    safeProjects.forEach(project => {
       costsByProject[project.projectId] = {
         name: project.name,
         expenses: 0,
@@ -105,21 +113,22 @@ export default function Reports() {
       };
     });
 
-    expenses.forEach(exp => {
+    safeExpenses.forEach(exp => {
       if (exp.projectId && costsByProject[exp.projectId]) {
         costsByProject[exp.projectId].expenses += Number(exp.amount || 0);
       }
     });
 
-    works.forEach(work => {
+    safeWorks.forEach(work => {
       if (work.projectId && costsByProject[work.projectId]) {
         costsByProject[work.projectId].works += Number(work.cost || 0);
       }
     });
 
     // Costs by contractor
+    const safeContractors = Array.isArray(contractors) ? contractors : [];
     const costsByContractor = {};
-    contractors.forEach(contractor => {
+    safeContractors.forEach(contractor => {
       costsByContractor[contractor.contractorId] = {
         name: contractor.name,
         totalCost: 0,
@@ -127,7 +136,7 @@ export default function Reports() {
       };
     });
 
-    works.forEach(work => {
+    safeWorks.forEach(work => {
       if (work.contractorId && costsByContractor[work.contractorId]) {
         costsByContractor[work.contractorId].totalCost += Number(work.cost || 0);
         costsByContractor[work.contractorId].totalHours += Number(work.hours || 0);
@@ -136,15 +145,15 @@ export default function Reports() {
 
     // Work status distribution
     const workStatusDistribution = {
-      pending: works.filter(w => w.status === 'pending').length,
-      'in-progress': works.filter(w => w.status === 'in-progress').length,
-      completed: works.filter(w => w.status === 'completed').length,
-      approved: works.filter(w => w.status === 'approved').length
+      pending: safeWorks.filter(w => w.status === 'pending').length,
+      'in-progress': safeWorks.filter(w => w.status === 'in-progress').length,
+      completed: safeWorks.filter(w => w.status === 'completed').length,
+      approved: safeWorks.filter(w => w.status === 'approved').length
     };
 
     // Expense trends (group by month)
     const expenseTrends = {};
-    [...expenses, ...works].forEach(item => {
+    [...safeExpenses, ...safeWorks].forEach(item => {
       const date = new Date(item.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
@@ -206,6 +215,87 @@ export default function Reports() {
       toast.error('שגיאה בייצוא הדוח', { id: 'pdf-export' });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  // Export to PDF with embedded receipt images (permanent access)
+  const handleExportPDFWithReceipts = async () => {
+    try {
+      setIsExporting(true);
+      setDownloadProgress({ current: 0, total: 0 });
+
+      // Ensure expenses is an array
+      const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
+      if (safeExpenses.length === 0) {
+        toast.error('אין הוצאות לייצוא', { id: 'pdf-export' });
+        setIsExporting(false);
+        return;
+      }
+
+      // Step 1: Show initial toast
+      toast.loading('מכין ייצוא עם קבלות מוטמעות...', { id: 'pdf-export' });
+
+      // Step 2: Download receipt images in parallel
+      toast.loading('מוריד קבלות...', { id: 'pdf-export' });
+
+      const expensesWithImages = await downloadReceiptsForPDF(safeExpenses, {
+        concurrentLimit: 5,
+        compress: true,
+        compressionOptions: {
+          maxWidth: 400, // Smaller thumbnails for compact PDF
+          maxHeight: 600,
+          quality: 0.7
+        },
+        onProgress: (current, total) => {
+          setDownloadProgress({ current, total });
+          toast.loading(`מוריד קבלות... ${current} מתוך ${total}`, { id: 'pdf-export' });
+        }
+      });
+
+      // Step 3: Estimate final PDF size
+      const sizeEstimate = estimatePDFSize(expensesWithImages);
+      console.log('PDF size estimate:', sizeEstimate);
+
+      // Step 4: Generate PDF with embedded images
+      toast.loading('יוצר PDF עם קבלות מוטמעות...', { id: 'pdf-export' });
+
+      const doc = (
+        <ExpenseReportPDF_Compact
+          expenses={expensesWithImages}
+          projects={projects}
+          contractors={contractors}
+          filters={null}
+        />
+      );
+
+      // Step 5: Generate PDF blob
+      const blob = await pdf(doc).toBlob();
+
+      // Step 6: Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `דוח_הוצאות_עם_קבלות_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      const successCount = expensesWithImages.filter(e => e.receiptImageData).length;
+      const errorCount = expensesWithImages.filter(e => e.receiptError).length;
+
+      toast.success(
+        `דוח PDF יוצא בהצלחה! ${successCount} קבלות מוטמעות${errorCount > 0 ? ` (${errorCount} שגיאות)` : ''}. גודל: ${sizeEstimate.totalSizeMB}MB`,
+        { id: 'pdf-export', duration: 5000 }
+      );
+
+    } catch (error) {
+      console.error('PDF export with receipts error:', error);
+      toast.error('שגיאה בייצוא הדוח עם קבלות', { id: 'pdf-export' });
+    } finally {
+      setIsExporting(false);
+      setDownloadProgress({ current: 0, total: 0 });
     }
   };
 
@@ -354,14 +444,35 @@ export default function Reports() {
           </h1>
           <p className="text-gray-600 mt-1">סיכום מקיף של הוצאות, פרויקטים ועבודות</p>
         </div>
-        <button
-          onClick={handleExportPDF}
-          disabled={isExporting || isLoading || expenses.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          <ArrowDownTrayIcon className="w-5 h-5" />
-          <span>{isExporting ? 'מייצא...' : 'ייצוא לPDF'}</span>
-        </button>
+        <div className="flex gap-3">
+          {/* Quick PDF Export (no receipts) */}
+          <button
+            onClick={handleExportPDF}
+            disabled={isExporting || isLoading || expenses.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            title="ייצוא מהיר ללא תמונות קבלות"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            <span>ייצוא מהיר</span>
+          </button>
+
+          {/* PDF Export with Embedded Receipts (permanent) */}
+          <button
+            onClick={handleExportPDFWithReceipts}
+            disabled={isExporting || isLoading || expenses.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed relative"
+            title="ייצוא עם קבלות מוטמעות - תקף לצמיתות"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            <span>
+              {isExporting && downloadProgress.total > 0
+                ? `מוריד קבלות... ${downloadProgress.current}/${downloadProgress.total}`
+                : isExporting
+                ? 'מייצא...'
+                : 'ייצוא עם קבלות 🔒'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Summary KPIs */}

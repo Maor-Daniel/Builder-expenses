@@ -92,12 +92,22 @@ function logSecurityEvent(eventType, severity, message, additionalData = {}) {
 // Company-scoped table names
 const COMPANY_TABLE_NAMES = {
   COMPANIES: 'construction-expenses-companies',
-  USERS: 'construction-expenses-company-users', 
+  USERS: 'construction-expenses-company-users',
   INVITATIONS: 'construction-expenses-invitations',
   PROJECTS: 'construction-expenses-company-projects',
   CONTRACTORS: 'construction-expenses-company-contractors',
   EXPENSES: 'construction-expenses-company-expenses',
   WORKS: 'construction-expenses-company-works'
+};
+
+// System projects that are auto-created for each company
+const SYSTEM_PROJECTS = {
+  GENERAL_EXPENSES: {
+    projectId: 'proj_GENERAL_EXPENSES',
+    name: 'הוצאות כלליות',
+    description: 'הוצאות שאינן משויכות לפרויקט ספציפי',
+    isSystemProject: true
+  }
 };
 
 // User roles
@@ -887,6 +897,7 @@ module.exports = {
   dynamodb,
   // cognito removed - using Clerk for authentication
   COMPANY_TABLE_NAMES,
+  SYSTEM_PROJECTS,
   USER_ROLES,
   INVITATION_STATUS,
   PERMISSIONS,

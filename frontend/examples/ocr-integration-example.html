@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt OCR Integration Example - Construction Expense Tracking</title>
+
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- OCR Component Styles -->
+    <link rel="stylesheet" href="../components/ReceiptUploadWithOCR.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .example-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .example-card h2 {
+            font-size: 1.5rem;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Rubik', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3182ce;
+        }
+
+        .form-group input.prefilled-by-ocr {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border-color: #10b981;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #cbd5e0;
+        }
+
+        .btn-secondary:hover {
+            background: #edf2f7;
+            border-color: #a0aec0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            display: none;
+            min-width: 300px;
+            text-align: center;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.success {
+            background: #10b981;
+            color: white;
+        }
+
+        .notification.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .notification.warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .notification.info {
+            background: #3182ce;
+            color: white;
+        }
+
+        .debug-panel {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .debug-panel h3 {
+            color: #63b3ed;
+            margin-bottom: 1rem;
+        }
+
+        .debug-log {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: #2d3748;
+            border-radius: 4px;
+        }
+
+        .debug-log.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .debug-log.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .debug-log.info {
+            border-left: 4px solid #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <i class="fas fa-receipt"></i>
+                Receipt OCR Integration Example
+            </h1>
+            <p>Upload a receipt and watch it auto-fill the form!</p>
+        </div>
+
+        <!-- Main Example -->
+        <div class="example-card">
+            <h2>Add New Expense with OCR</h2>
+
+            <!-- OCR Component Container -->
+            <div id="receipt-upload-container" style="margin-bottom: 2rem;"></div>
+
+            <!-- Expense Form -->
+            <form id="expense-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="expense-amount">סכום *</label>
+                        <input type="number" id="expense-amount" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expense-date">תאריך *</label>
+                        <input type="date" id="expense-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expense-invoice">מספר חשבונית *</label>
+                        <input type="text" id="expense-invoice" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expense-vendor">ספק</label>
+                        <input type="text" id="expense-vendor">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="expense-description">תיאור</label>
+                    <textarea id="expense-description" rows="3"></textarea>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="expense-payment">אמצעי תשלום *</label>
+                        <select id="expense-payment" required>
+                            <option value="">בחר אמצעי תשלום</option>
+                            <option value="מזומן">מזומן</option>
+                            <option value="כרטיס אשראי">כרטיס אשראי</option>
+                            <option value="העברה בנקאית">העברה בנקאית</option>
+                            <option value="צ'ק">צ'ק</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expense-project">פרויקט</label>
+                        <select id="expense-project">
+                            <option value="">בחר פרויקט</option>
+                            <option value="proj1">פרויקט דמו 1</option>
+                            <option value="proj2">פרויקט דמו 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                        <i class="fas fa-save"></i>
+                        שמור הוצאה
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        <i class="fas fa-undo"></i>
+                        איפוס
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="example-card">
+            <h2>Debug Console</h2>
+            <div class="debug-panel" id="debug-panel">
+                <h3>
+                    <i class="fas fa-bug"></i>
+                    Event Log
+                </h3>
+                <div id="debug-logs"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Scripts -->
+    <script src="../utils/ocrApi.js"></script>
+    <script src="../components/OcrFieldIndicator.js"></script>
+    <script src="../components/ReceiptUploadWithOCR.js"></script>
+
+    <script>
+        // Example Integration
+        class ExpenseFormExample {
+            constructor() {
+                this.receiptData = null;
+                this.init();
+            }
+
+            init() {
+                this.logDebug('Initializing expense form example', 'info');
+
+                // Initialize OCR component
+                this.receiptUpload = new ReceiptUploadWithOCR('receipt-upload-container', {
+                    companyId: 'comp_demo_12345', // Demo company ID
+                    onOcrComplete: this.handleOcrSuccess.bind(this),
+                    onError: this.handleOcrError.bind(this),
+                    apiEndpoint: 'https://2woj5i92td.execute-api.us-east-1.amazonaws.com/production/expenses/ocr-process'
+                });
+
+                // Form submission
+                document.getElementById('expense-form').addEventListener('submit', this.handleSubmit.bind(this));
+
+                this.logDebug('Initialization complete', 'success');
+            }
+
+            handleOcrSuccess(ocrResult) {
+                this.logDebug('OCR completed successfully', 'success');
+                this.logDebug(JSON.stringify(ocrResult, null, 2), 'info');
+
+                // Store receipt data
+                this.receiptData = ocrResult;
+
+                // Pre-fill form
+                this.prefillForm(ocrResult.extractedFields);
+
+                // Show confidence warnings
+                if (ocrResult.ocrMetadata.lowConfidenceFields.length > 0) {
+                    this.showNotification('warning',
+                        `שימו לב: שדות בביטחון נמוך - ${ocrResult.ocrMetadata.lowConfidenceFields.join(', ')}`
+                    );
+                }
+
+                // Enable submit button
+                document.getElementById('submit-btn').disabled = false;
+
+                this.logDebug('Form pre-filled with OCR data', 'success');
+            }
+
+            handleOcrError(error) {
+                this.logDebug(`OCR error: ${error.message}`, 'error');
+
+                this.showNotification('error', `שגיאה בעיבוד הקבלה: ${error.message}`);
+
+                // Enable manual entry
+                this.showNotification('info', 'תוכל להזין את הפרטים ידנית');
+                document.getElementById('submit-btn').disabled = false;
+            }
+
+            prefillForm(extractedFields) {
+                // Amount
+                if (extractedFields.amount !== null) {
+                    const amountField = document.getElementById('expense-amount');
+                    amountField.value = extractedFields.amount;
+                    amountField.classList.add('prefilled-by-ocr');
+                }
+
+                // Date
+                if (extractedFields.date) {
+                    const dateField = document.getElementById('expense-date');
+                    dateField.value = this.formatDate(extractedFields.date);
+                    dateField.classList.add('prefilled-by-ocr');
+                }
+
+                // Invoice number
+                if (extractedFields.invoiceNum) {
+                    const invoiceField = document.getElementById('expense-invoice');
+                    invoiceField.value = extractedFields.invoiceNum;
+                    invoiceField.classList.add('prefilled-by-ocr');
+                }
+
+                // Vendor
+                if (extractedFields.vendor) {
+                    const vendorField = document.getElementById('expense-vendor');
+                    vendorField.value = extractedFields.vendor;
+                    vendorField.classList.add('prefilled-by-ocr');
+                }
+
+                // Description
+                if (extractedFields.description) {
+                    const descField = document.getElementById('expense-description');
+                    descField.value = extractedFields.description;
+                    descField.classList.add('prefilled-by-ocr');
+                }
+            }
+
+            formatDate(dateString) {
+                // Try to parse and format date to YYYY-MM-DD
+                try {
+                    // If already in YYYY-MM-DD format
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                        return dateString;
+                    }
+
+                    // Try DD/MM/YYYY or DD-MM-YYYY
+                    const parts = dateString.split(/[\/\-\.]/);
+                    if (parts.length === 3) {
+                        const day = parts[0].padStart(2, '0');
+                        const month = parts[1].padStart(2, '0');
+                        const year = parts[2];
+                        return `${year}-${month}-${day}`;
+                    }
+
+                    return dateString;
+                } catch (error) {
+                    this.logDebug(`Date format error: ${error.message}`, 'error');
+                    return dateString;
+                }
+            }
+
+            async handleSubmit(event) {
+                event.preventDefault();
+
+                const submitBtn = document.getElementById('submit-btn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+
+                this.logDebug('Submitting expense...', 'info');
+
+                try {
+                    // Simulate API delay
+                    await this.sleep(2000);
+
+                    // Get form data
+                    const formData = this.getFormData();
+                    this.logDebug('Form data: ' + JSON.stringify(formData, null, 2), 'info');
+
+                    // In real implementation, you would:
+                    // 1. Upload receipt to S3
+                    // 2. Create expense with receipt URL
+                    // 3. Handle success/error
+
+                    this.showNotification('success', 'ההוצאה נשמרה בהצלחה! (דמו)');
+                    this.logDebug('Expense created successfully', 'success');
+
+                    // Reset form after delay
+                    setTimeout(() => {
+                        this.resetForm();
+                    }, 1500);
+
+                } catch (error) {
+                    this.logDebug(`Submit error: ${error.message}`, 'error');
+                    this.showNotification('error', `שגיאה: ${error.message}`);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save"></i> שמור הוצאה';
+                }
+            }
+
+            getFormData() {
+                return {
+                    amount: parseFloat(document.getElementById('expense-amount').value),
+                    date: document.getElementById('expense-date').value,
+                    invoiceNum: document.getElementById('expense-invoice').value,
+                    vendor: document.getElementById('expense-vendor').value,
+                    description: document.getElementById('expense-description').value,
+                    paymentMethod: document.getElementById('expense-payment').value,
+                    projectId: document.getElementById('expense-project').value,
+                    receiptFile: this.receiptData ? this.receiptData.receiptFile.name : null,
+                    ocrProcessed: !!this.receiptData
+                };
+            }
+
+            resetForm() {
+                document.getElementById('expense-form').reset();
+                this.receiptUpload.reset();
+                this.receiptData = null;
+                document.getElementById('submit-btn').disabled = true;
+                document.getElementById('submit-btn').innerHTML = '<i class="fas fa-save"></i> שמור הוצאה';
+
+                // Remove prefilled styling
+                document.querySelectorAll('.prefilled-by-ocr').forEach(el => {
+                    el.classList.remove('prefilled-by-ocr');
+                });
+
+                this.logDebug('Form reset', 'info');
+            }
+
+            showNotification(type, message) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.style.display = 'block';
+
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000);
+            }
+
+            logDebug(message, type = 'info') {
+                const logsContainer = document.getElementById('debug-logs');
+                const timestamp = new Date().toLocaleTimeString('he-IL');
+
+                const logEntry = document.createElement('div');
+                logEntry.className = `debug-log ${type}`;
+                logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+
+                logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+
+                // Keep only last 20 logs
+                while (logsContainer.children.length > 20) {
+                    logsContainer.removeChild(logsContainer.lastChild);
+                }
+
+                // Scroll to top
+                document.getElementById('debug-panel').scrollTop = 0;
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Global reset function
+        function resetForm() {
+            if (window.expenseFormExample) {
+                window.expenseFormExample.resetForm();
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.expenseFormExample = new ExpenseFormExample();
+        });
+    </script>
+</body>
+</html>
