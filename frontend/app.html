@@ -7647,7 +7647,7 @@
                                 <span style="background: #edf2f7; padding: 2px 8px; border-radius: 4px; font-weight: 500;">
                                     ${getRoleDisplayName(inv.role)}
                                 </span>
-                                ${inv.invitedBy ? `<span>הוזמנת ע"י ${escapeHtml(inv.invitedBy.split('@')[0])}</span>` : ''}
+                                ${inv.invitedBy && inv.invitedBy.includes('@') ? `<span>הוזמנת ע"י ${escapeHtml(inv.invitedBy.split('@')[0])}</span>` : ''}
                             </div>
                         </div>
                         <button onclick="acceptInvitationFromChoice('${inv.invitationId}'); event.stopPropagation();"
