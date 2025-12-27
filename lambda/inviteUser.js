@@ -260,6 +260,27 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Pending invitation already exists for this email');
     }
 
+    // Check if invitee already belongs to any company (any role)
+    const inviteeExistingCompanies = await dynamoOperation('scan', {
+      TableName: COMPANY_TABLE_NAMES.USERS,
+      FilterExpression: 'email = :email AND #status = :active',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase().trim(),
+        ':active': 'active'
+      }
+    });
+
+    if (inviteeExistingCompanies.Items && inviteeExistingCompanies.Items.length > 0) {
+      console.log('Cannot invite user - already belongs to a company', {
+        email,
+        existingCompanyId: inviteeExistingCompanies.Items[0].companyId
+      });
+      return createErrorResponse(400, 'משתמש זה כבר שייך לחברה אחרת ולא ניתן להזמינו');
+    }
+
     // Generate invitation token and set expiry (7 days)
     const invitationToken = generateInvitationToken();
     const timestamp = getCurrentTimestamp();

@@ -3899,6 +3899,14 @@
                 if (!companyResp.companyExists) {
                     console.log('[ONBOARDING] No company found - checking for pending invitations');
 
+                    // If user already has a company membership elsewhere, skip invitation modal
+                    // (This can happen if they're a member of another company but not an admin)
+                    if (companyResp.userHasCompanyMembership) {
+                        console.log('[ONBOARDING] User already has company membership - skipping invitation check');
+                        showOnboardingModal();
+                        return;
+                    }
+
                     // Check if user explicitly chose to skip invitations and create new company
                     const skipInvitationCheck = sessionStorage.getItem('skip_invitation_check') === 'true';
 
