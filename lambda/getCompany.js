@@ -39,9 +39,32 @@ exports.handler = withSecureCors(async (event) => {
 
     // For onboarding flow: return empty response if company doesn't exist yet
     if (!companyResult.Item) {
+      // Check if user has any active company membership (via company-users table)
+      let userHasCompanyMembership = false;
+      try {
+        const membershipCheck = await dynamoOperation('query', {
+          TableName: COMPANY_TABLE_NAMES.USERS,
+          IndexName: 'userId-index',
+          KeyConditionExpression: 'userId = :userId',
+          FilterExpression: '#status = :active',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: {
+            ':userId': userId,
+            ':active': 'active'
+          }
+        });
+        userHasCompanyMembership = membershipCheck.Items && membershipCheck.Items.length > 0;
+        if (userHasCompanyMembership) {
+          logger.info('User has company membership but no direct company record', { userId, membershipCount: membershipCheck.Items.length });
+        }
+      } catch (err) {
+        logger.error('Error checking user membership:', { error: err.message });
+      }
+
       return createResponse(200, {
         success: true,
         companyExists: false,
+        userHasCompanyMembership,
         message: 'No company found - onboarding required',
         userId,
         companyId
