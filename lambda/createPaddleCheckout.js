@@ -65,11 +65,7 @@ exports.handler = withSecureCors(async (event) => {
         price_id: plan.priceId,
         quantity: 1
       }],
-      custom_data: customData,
-      // Redirect to app after successful checkout
-      checkout: {
-        url: 'builderexpenses://checkout-success'
-      }
+      custom_data: customData
     };
 
     // Add customer email if available
