@@ -110,6 +110,16 @@ const SYSTEM_PROJECTS = {
   }
 };
 
+// System contractors that are auto-created for each company
+const SYSTEM_CONTRACTORS = {
+  GENERAL_CONTRACTOR: {
+    contractorId: 'cont_GENERAL',
+    name: 'ספק כללי',
+    description: 'ספק ברירת מחדל עבור הוצאות ללא ספק מזוהה',
+    isSystemContractor: true
+  }
+};
+
 // User roles
 const USER_ROLES = {
   ADMIN: 'admin',
@@ -898,6 +908,7 @@ module.exports = {
   // cognito removed - using Clerk for authentication
   COMPANY_TABLE_NAMES,
   SYSTEM_PROJECTS,
+  SYSTEM_CONTRACTORS,
   USER_ROLES,
   INVITATION_STATUS,
   PERMISSIONS,

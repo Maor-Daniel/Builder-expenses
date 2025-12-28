@@ -5695,6 +5695,8 @@
         // Show Contractors Tab
         function showContractorsTab(container) {
             const showAddBtn = canUserCreate();
+            // Show all contractors including system contractors
+            const allContractors = appData.contractors;
             container.innerHTML = `
                 <h2>קבלנים</h2>
                 ${showAddBtn ? `<button class="btn-primary" onclick="showAddContractorForm()">
@@ -5710,14 +5712,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${appData.contractors.map(contractor => `
+                        ${allContractors.map(contractor => `
                             <tr class="clickable-row" onclick="showContractorDetails('${contractor.contractorId}')">
-                                <td>${contractor.name}</td>
+                                <td>${contractor.name}${contractor.isSystemContractor ? ' <span style="color: #888; font-size: 0.8em;">(ברירת מחדל)</span>' : ''}</td>
                                 <td>${contractor.phone || '-'}</td>
                                 <td>${contractor.specialty || contractor.speciality || '-'}</td>
                                 <td>
-                                    <button class="btn-edit" onclick="event.stopPropagation(); editContractor('${contractor.contractorId}')">ערוך</button>
-                                    <button class="btn-delete" onclick="event.stopPropagation(); deleteContractor('${contractor.contractorId}')">מחק</button>
+                                    ${contractor.isSystemContractor ? '' : `<button class="btn-edit" onclick="event.stopPropagation(); editContractor('${contractor.contractorId}')">ערוך</button>`}
+                                    ${contractor.isSystemContractor ? '' : `<button class="btn-delete" onclick="event.stopPropagation(); deleteContractor('${contractor.contractorId}')">מחק</button>`}
                                 </td>
                             </tr>
                         `).join('')}
@@ -5725,11 +5727,11 @@
                 </table>
                 <!-- Mobile Cards View -->
                 <div class="contractors-cards-mobile">
-                    ${appData.contractors.map(contractor => `
+                    ${allContractors.map(contractor => `
                         <div class="mobile-card" onclick="showContractorDetails('${contractor.contractorId}')">
                             <div class="mobile-card-header">
                                 <div>
-                                    <div class="mobile-card-title">${contractor.name}</div>
+                                    <div class="mobile-card-title">${contractor.name}${contractor.isSystemContractor ? ' <span style="color: #888; font-size: 0.8em;">(ברירת מחדל)</span>' : ''}</div>
                                     <div class="mobile-card-subtitle">${contractor.specialty || contractor.speciality || 'לא צוין התמחות'}</div>
                                 </div>
                             </div>
@@ -5739,6 +5741,7 @@
                                     <i class="fas fa-phone"></i>
                                 </div>
                             </div>
+                            ${contractor.isSystemContractor ? '' : `
                             <div class="mobile-card-actions">
                                 <button class="btn-edit" onclick="event.stopPropagation(); editContractor('${contractor.contractorId}')">
                                     <i class="fas fa-edit"></i> ערוך
@@ -5747,6 +5750,7 @@
                                     <i class="fas fa-trash"></i> מחק
                                 </button>
                             </div>
+                            `}
                         </div>
                     `).join('')}
                 </div>
@@ -7852,9 +7856,12 @@
                 }
 
                 const contractorSelect = document.getElementById('expenseContractorId');
-                contractorSelect.innerHTML = '<option value="">בחר קבלן (אופציונלי)</option>';
+                contractorSelect.innerHTML = '<option value="">ספק כללי (ברירת מחדל)</option>';
                 if (contractors.contractors) {
                     contractors.contractors.forEach(c => {
+                        // Skip system contractors (like General Contractor) - represented by default option
+                        if (c.isSystemContractor) return;
+
                         const option = document.createElement('option');
                         option.value = c.contractorId;
                         option.textContent = c.name;
@@ -8387,13 +8394,18 @@
 
                 // Populate contractor dropdown
                 const contractorSelect = document.getElementById('expenseContractorId');
-                contractorSelect.innerHTML = '<option value="">בחר קבלן *</option>';
+                // Check if expense is assigned to General Contractor (system contractor)
+                const isGeneralContractor = expense.contractorId === 'cont_GENERAL';
+                contractorSelect.innerHTML = '<option value=""' + (isGeneralContractor ? ' selected' : '') + '>ספק כללי (ברירת מחדל)</option>';
                 if (contractors.contractors) {
                     contractors.contractors.forEach(c => {
+                        // Skip system contractors (like General Contractor) - represented by default option
+                        if (c.isSystemContractor) return;
+
                         const option = document.createElement('option');
                         option.value = c.contractorId;
                         option.textContent = c.name;
-                        if (c.contractorId === expense.contractorId) option.selected = true;
+                        if (c.contractorId === expense.contractorId && !isGeneralContractor) option.selected = true;
                         contractorSelect.appendChild(option);
                     });
                 }
