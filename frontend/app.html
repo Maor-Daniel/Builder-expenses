@@ -2769,29 +2769,6 @@
         </div>
     </div>
 
-    <!-- Expense Type Selection Modal -->
-    <div id="expenseTypeModal" class="modal">
-        <div class="modal-content" style="max-width: 450px; text-align: center;">
-            <span class="close" onclick="closeModal('expenseTypeModal')">&times;</span>
-            <h2>הוסף הוצאה חדשה</h2>
-            <p style="color: #718096; margin-bottom: 24px;">בחר כיצד ברצונך להוסיף את ההוצאה</p>
-
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                <button type="button" class="btn-expense-type" onclick="openExpenseFormWithPicture()">
-                    <i class="fas fa-camera" style="font-size: 32px; color: #3182ce; margin-bottom: 10px; display: block;"></i>
-                    <span style="font-size: 18px; font-weight: 600; color: #2d3748;">העלה תמונה</span>
-                    <p style="font-size: 14px; color: #718096; margin-top: 5px;">העלה תמונת קבלה או חשבונית</p>
-                </button>
-
-                <button type="button" class="btn-expense-type" onclick="openExpenseFormWithoutPicture()">
-                    <i class="fas fa-edit" style="font-size: 32px; color: #718096; margin-bottom: 10px; display: block;"></i>
-                    <span style="font-size: 18px; font-weight: 600; color: #2d3748;">המשך ללא תמונה</span>
-                    <p style="font-size: 14px; color: #718096; margin-top: 5px;">הזן פרטי הוצאה ידנית</p>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Expense Modal -->
     <div id="expenseModal" class="modal">
         <div class="modal-content expense-modal-wide">
@@ -2801,6 +2778,14 @@
             <!-- OCR Upload Step (shown first) -->
             <div id="expense-ocr-container" style="display: block;">
                 <!-- OCR component will be rendered here by ReceiptUploadWithOCR.js -->
+            </div>
+
+            <!-- Skip button - separate from OCR container so it doesn't get overwritten -->
+            <div id="ocr-skip-container" style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                <button type="button" class="btn-secondary" onclick="skipReceiptUpload()" style="padding: 12px 32px; font-size: 16px;">
+                    <i class="fas fa-forward" style="margin-left: 8px;"></i>
+                    דלג - המשך ללא קבלה
+                </button>
             </div>
 
             <!-- Expense Form (shown after OCR completes) -->
@@ -7170,6 +7155,12 @@
         function initializeExpenseOcrComponent() {
             // Check if already initialized
             if (expenseOcrComponent) {
+                // DON'T reset if component is actively processing - this preserves the base64 data
+                // during async OCR API calls when re-authentication triggers re-initialization
+                if (expenseOcrComponent.state === 'processing' || expenseOcrComponent.state === 'success') {
+                    console.log('[OCR] Component already processing/success, skipping reset');
+                    return;
+                }
                 expenseOcrComponent.reset();
                 return;
             }
@@ -7217,11 +7208,21 @@
             // CRITICAL: Set pendingReceiptFile so submitExpense uploads to S3
             // This bridges the OCR flow with the standard upload flow
             pendingReceiptFile = receiptFile;
+            expenseWithPicture = true;  // Mark that we have a picture
             console.log('[OCR] Set pendingReceiptFile for S3 upload:', receiptFile?.name);
 
-            // Hide OCR container and show expense form
+            // Hide OCR container and skip button, show expense form
             document.getElementById('expense-ocr-container').style.display = 'none';
+            document.getElementById('ocr-skip-container').style.display = 'none';
             document.getElementById('expense-form-layout').style.display = 'flex';
+
+            // Show receipt preview panel and ensure modal is wide
+            document.getElementById('expense-receipt-preview').style.display = 'flex';
+            const modalWide = document.querySelector('.expense-modal-wide');
+            if (modalWide) modalWide.classList.remove('no-picture');
+
+            // Mark as having receipt
+            document.getElementById('expenseMissingReceipt').value = 'false';
 
             // Show receipt preview with uploaded image - use receiptBase64 directly
             console.log('[OCR] Setting image preview, receiptBase64:', receiptBase64 ? 'present (' + receiptBase64.substring(0, 50) + '...)' : 'missing');
@@ -7471,6 +7472,7 @@
                     document.querySelector('#expenseModalTitle').textContent = 'הוסף הוצאה חדשה';
                     // Clear receipt preview and pending file
                     pendingReceiptFile = null;
+                    expenseWithPicture = false;
                     resetReceiptPreview();
 
                     // Reset form layout states to initial values
@@ -7480,6 +7482,8 @@
                     const modalWide = document.querySelector('.expense-modal-wide');
 
                     if (ocrContainer) ocrContainer.style.display = 'block';
+                    const skipContainer = document.getElementById('ocr-skip-container');
+                    if (skipContainer) skipContainer.style.display = 'block';
                     if (formLayout) formLayout.style.display = 'none';
                     if (receiptPreview) receiptPreview.style.display = 'flex';
                     if (modalWide) modalWide.classList.remove('no-picture');
@@ -7784,41 +7788,47 @@
         let expenseFormWorks = [];
 
         async function showAddExpenseForm() {
-            // Show selection modal instead of expense modal directly
-            document.getElementById('expenseTypeModal').style.display = 'block';
-        }
-
-        async function openExpenseFormWithPicture() {
-            closeModal('expenseTypeModal');
-            expenseWithPicture = true;
+            // Reset state for new expense
+            editingExpenseId = null;
             pendingReceiptFile = null;
+            expenseWithPicture = false;
 
+            // Prepare modal data (fetch projects, contractors, works)
             await prepareExpenseModal();
 
-            // Show OCR upload container first
+            // Show OCR upload screen first
             document.getElementById('expense-ocr-container').style.display = 'block';
             document.getElementById('expense-form-layout').style.display = 'none';
 
-            // Initialize OCR component if not already initialized, or reset if it exists
-            // This ensures the component is ready even if companyId wasn't available during initial load
+            // Initialize OCR component
             initializeExpenseOcrComponent();
 
+            // Show modal
             document.getElementById('expenseModal').style.display = 'block';
         }
 
-        async function openExpenseFormWithoutPicture() {
-            closeModal('expenseTypeModal');
+        function skipReceiptUpload() {
+            // Mark as skipped (no picture)
             expenseWithPicture = false;
             pendingReceiptFile = null;
 
-            await prepareExpenseModal();
+            // Hide OCR container and skip button, show form
+            document.getElementById('expense-ocr-container').style.display = 'none';
+            document.getElementById('ocr-skip-container').style.display = 'none';
+            document.getElementById('expense-form-layout').style.display = 'flex';
 
-            // Hide picture panel, shrink modal
+            // Hide receipt preview panel (no image to show)
             document.getElementById('expense-receipt-preview').style.display = 'none';
-            document.querySelector('.expense-modal-wide').classList.add('no-picture');
+
+            // Shrink modal to single-column layout
+            const modalWide = document.querySelector('.expense-modal-wide');
+            if (modalWide) modalWide.classList.add('no-picture');
+
+            // Mark as missing receipt
             document.getElementById('expenseMissingReceipt').value = 'true';
 
-            document.getElementById('expenseModal').style.display = 'block';
+            // Clear any form fields (fresh start)
+            document.getElementById('expenseForm').reset();
         }
 
         async function prepareExpenseModal() {
