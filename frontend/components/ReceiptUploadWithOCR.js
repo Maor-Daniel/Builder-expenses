@@ -438,6 +438,7 @@ class ReceiptUploadWithOCR {
 
       const base64 = await this.fileToBase64(file);
       this.currentBase64 = base64;
+      console.log('[ReceiptUploadWithOCR] Base64 set:', this.currentBase64 ? 'present (' + this.currentBase64.substring(0, 50) + '...)' : 'MISSING');
 
       this.updateProgress(40);
 
@@ -510,12 +511,15 @@ class ReceiptUploadWithOCR {
       this.updateProgress(100);
 
       // Construct OCR result
+      console.log('[ReceiptUploadWithOCR] Constructing result with currentBase64:', this.currentBase64 ? 'present (' + this.currentBase64.substring(0, 50) + '...)' : 'MISSING');
+      console.log('[ReceiptUploadWithOCR] currentFile:', this.currentFile?.name);
       this.ocrResult = {
         extractedFields: result.data.extractedFields,
         ocrMetadata: result.data.ocrMetadata,
         receiptFile: this.currentFile,
         receiptBase64: this.currentBase64
       };
+      console.log('[ReceiptUploadWithOCR] ocrResult.receiptBase64:', this.ocrResult.receiptBase64 ? 'present' : 'MISSING');
 
       // Update to success state
       this.updateState(ReceiptUploadWithOCR.UploadState.SUCCESS);
