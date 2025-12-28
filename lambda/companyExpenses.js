@@ -15,6 +15,7 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES,
   SYSTEM_PROJECTS,
+  SYSTEM_CONTRACTORS,
   USER_ROLES,
   PERMISSIONS,
   hasPermission
@@ -347,8 +348,8 @@ async function createExpense(event, companyId, userId, userRole) {
   }
 
   // Validate required fields early
-  // Note: projectId is optional - will default to "General Expenses" if not provided
-  const required = ['contractorId', 'invoiceNum', 'amount', 'paymentMethod', 'date'];
+  // Note: projectId and contractorId are optional - will default to system values if not provided
+  const required = ['invoiceNum', 'amount', 'paymentMethod', 'date'];
   const missing = required.filter(field => !requestBody[field]);
 
   if (missing.length > 0) {
@@ -360,6 +361,13 @@ async function createExpense(event, companyId, userId, userRole) {
   if (!finalProjectId || finalProjectId.trim() === '') {
     finalProjectId = SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId;
     debugLog('Auto-assigning expense to General Expenses project', { companyId });
+  }
+
+  // Auto-assign to General Contractor if no contractorId provided
+  let finalContractorId = requestBody.contractorId;
+  if (!finalContractorId || finalContractorId.trim() === '') {
+    finalContractorId = SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId;
+    debugLog('Auto-assigning expense to General Contractor', { companyId });
   }
 
   // FIX BUG #5: Validate amount early (before creating expense object)
@@ -388,11 +396,18 @@ async function createExpense(event, companyId, userId, userRole) {
   }
 
   // FIX BUG #2: Validate foreign key relationships
+  // Skip contractor validation if using system contractor (it may not exist in DB yet for migration)
+  const validationPromises = [
+    validateProjectExists(companyId, finalProjectId)
+  ];
+
+  // Only validate contractor exists if not using system default
+  if (finalContractorId !== SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId) {
+    validationPromises.push(validateContractorExists(companyId, finalContractorId));
+  }
+
   try {
-    await Promise.all([
-      validateProjectExists(companyId, finalProjectId),
-      validateContractorExists(companyId, requestBody.contractorId)
-    ]);
+    await Promise.all(validationPromises);
   } catch (fkError) {
     return createErrorResponse(400, `Foreign key validation error: ${fkError.message}`);
   }
@@ -405,7 +420,7 @@ async function createExpense(event, companyId, userId, userRole) {
     IndexName: 'contractor-invoiceNum-index',
     KeyConditionExpression: 'contractorId = :contractorId AND invoiceNum = :invoiceNum',
     ExpressionAttributeValues: {
-      ':contractorId': requestBody.contractorId,
+      ':contractorId': finalContractorId,
       ':invoiceNum': requestBody.invoiceNum
     },
     Limit: 1  // We only need to know if one exists
@@ -422,7 +437,7 @@ async function createExpense(event, companyId, userId, userRole) {
     userId, // User who created the expense
     workId: requestBody.workId || '',
     projectId: finalProjectId, // May be auto-assigned to General Expenses
-    contractorId: requestBody.contractorId,
+    contractorId: finalContractorId, // May be auto-assigned to General Contractor
     invoiceNum: requestBody.invoiceNum,
     amount: parsedAmount,
     paymentMethod: requestBody.paymentMethod.trim(),

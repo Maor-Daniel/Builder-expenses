@@ -10,6 +10,7 @@ const {
   debugLog,
   dynamoOperation,
   COMPANY_TABLE_NAMES,
+  SYSTEM_CONTRACTORS,
   USER_ROLES,
   PERMISSIONS,
   hasPermission
@@ -81,7 +82,12 @@ async function getContractors(companyId, userId, userRole) {
   const result = await dynamoOperation('query', params);
 
   // All authenticated users can view all contractors in the company
-  const contractors = result.Items || [];
+  // Sort contractors: system contractors first, then by name alphabetically
+  const contractors = (result.Items || []).sort((a, b) => {
+    if (a.isSystemContractor && !b.isSystemContractor) return -1;
+    if (!a.isSystemContractor && b.isSystemContractor) return 1;
+    return (a.name || '').localeCompare(b.name || '', 'he');
+  });
 
   return createResponse(200, {
     success: true,
@@ -169,6 +175,15 @@ async function updateContractor(event, companyId, userId, userRole) {
     return createErrorResponse(400, 'Missing contractorId');
   }
 
+  // Prevent editing system contractor critical fields
+  if (contractorId === SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId) {
+    const protectedFields = ['name', 'contractorId', 'isSystemContractor'];
+    const attemptedProtectedFields = protectedFields.filter(field => requestBody[field] !== undefined);
+    if (attemptedProtectedFields.length > 0) {
+      return createErrorResponse(400, `לא ניתן לערוך שדות מוגנים בספק ברירת המחדל: ${attemptedProtectedFields.join(', ')}`);
+    }
+  }
+
   // For users with only EDIT_OWN permission, verify they own this contractor
   if (!hasPermission(userRole, PERMISSIONS.EDIT_ALL_CONTRACTORS)) {
     const existingContractor = await dynamoOperation('get', {
@@ -251,11 +266,15 @@ async function updateContractor(event, companyId, userId, userRole) {
 // Delete a contractor
 async function deleteContractor(event, companyId, userId, userRole) {
   const contractorId = event.pathParameters?.contractorId || event.queryStringParameters?.contractorId;
-  
+
   if (!contractorId) {
     return createErrorResponse(400, 'Missing contractorId');
   }
 
+  // Check if this is a system contractor - cannot be deleted
+  if (contractorId === SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId) {
+    return createErrorResponse(400, 'לא ניתן למחוק את ספק ברירת המחדל');
+  }
 
   const params = {
     TableName: COMPANY_TABLE_NAMES.CONTRACTORS,

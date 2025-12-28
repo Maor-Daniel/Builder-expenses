@@ -11,6 +11,7 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES,
   SYSTEM_PROJECTS,
+  SYSTEM_CONTRACTORS,
   USER_ROLES,
   SUBSCRIPTION_TIERS
 } = require('./shared/company-utils');
@@ -132,7 +133,34 @@ exports.handler = withSecureCors(async (event) => {
       Item: generalExpensesProject
     });
 
-    console.log(`Company created successfully: ${companyId} for user: ${userId} with General Expenses project`);
+    // Create system "General Contractor" for unassigned expenses
+    const generalContractor = {
+      companyId,
+      contractorId: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId,
+      userId: userId,
+      name: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.name,
+      contactPerson: '',
+      phone: '',
+      email: '',
+      address: '',
+      specialty: 'כללי',
+      licenseNumber: '',
+      taxId: '',
+      paymentTerms: '',
+      notes: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.description,
+      isSystemContractor: true,
+      status: 'active',
+      rating: null,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    await dynamoOperation('put', {
+      TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+      Item: generalContractor
+    });
+
+    console.log(`Company created successfully: ${companyId} for user: ${userId} with General Expenses project and General Contractor`);
 
     return createResponse(201, {
       success: true,
