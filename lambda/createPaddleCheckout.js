@@ -1,6 +1,6 @@
 // lambda/createPaddleCheckout.js
-// Returns Paddle checkout configuration for company registration
-// Frontend will use Paddle.js to open checkout overlay
+// Creates a Paddle transaction and returns a hosted checkout URL
+// Mobile app opens this URL in system browser (WebBrowser)
 // Card is validated but not charged until after 30-day trial
 
 const {
@@ -11,15 +11,14 @@ const {
 } = require('./shared/company-utils');
 
 const {
-  SUBSCRIPTION_PLANS
+  SUBSCRIPTION_PLANS,
+  paddleApiCall,
+  getPaddleConfig
 } = require('./shared/paddle-utils');
 const { withSecureCors } = require('./shared/cors-config');
 
 exports.handler = withSecureCors(async (event) => {
   console.log('createPaddleCheckout invoked');
-
-  // Handle CORS preflight
-  // OPTIONS handling now in withSecureCors middleware
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');
@@ -49,10 +48,9 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Invalid subscription tier');
     }
 
-    console.log(`Preparing Paddle checkout for user ${userId}, company: ${companyName}, tier: ${tierKey}`);
+    console.log(`Creating Paddle transaction for user ${userId}, company: ${companyName}, tier: ${tierKey}`);
 
-    // Prepare custom data to pass to Paddle via frontend
-    // This will be available in webhook events
+    // Custom data for webhook events
     const customData = {
       companyId,
       userId,
@@ -61,15 +59,53 @@ exports.handler = withSecureCors(async (event) => {
       userEmail: userEmail || ''
     };
 
-    // Get Paddle environment
+    // Create Paddle transaction to get hosted checkout URL
+    const transactionData = {
+      items: [{
+        price_id: plan.priceId,
+        quantity: 1
+      }],
+      custom_data: customData,
+      // Redirect to app after successful checkout
+      checkout: {
+        url: 'builderexpenses://checkout-success'
+      }
+    };
+
+    // Add customer email if available
+    if (userEmail && userEmail.trim().length > 0) {
+      transactionData.customer = {
+        email: userEmail.trim()
+      };
+    }
+
+    console.log('Creating Paddle transaction:', JSON.stringify(transactionData));
+
+    const transaction = await paddleApiCall('transactions', 'POST', transactionData);
+
+    console.log('Paddle transaction created:', {
+      transactionId: transaction.data?.id,
+      checkoutUrl: transaction.data?.checkout?.url
+    });
+
+    const checkoutUrl = transaction.data?.checkout?.url;
+
+    if (!checkoutUrl) {
+      console.error('Paddle transaction created but no checkout URL returned:', transaction);
+      return createErrorResponse(500, 'Failed to get checkout URL from Paddle');
+    }
+
+    // Get Paddle environment for client-side config
     const paddleEnvironment = process.env.PADDLE_ENVIRONMENT || 'sandbox';
 
-    console.log(`Returning Paddle checkout config - priceId: ${plan.priceId}, environment: ${paddleEnvironment}`);
-
-    // Return checkout configuration for frontend to use with Paddle.js
+    // Return both checkoutUrl (for mobile) AND paddleConfig (for web app backwards compatibility)
     return createResponse(200, {
       success: true,
-      message: 'Paddle checkout configuration ready',
+      message: 'Paddle checkout ready',
+      // For mobile app - opens in WebBrowser
+      checkoutUrl: checkoutUrl,
+      transactionId: transaction.data.id,
+      // For web app - uses Paddle.js client-side (backwards compatible)
       paddleConfig: {
         token: 'test_db12c8b3a07159acbe3dff44dba', // Paddle client-side token
         priceId: plan.priceId,
@@ -92,6 +128,6 @@ exports.handler = withSecureCors(async (event) => {
       stack: error.stack
     });
 
-    return createErrorResponse(500, 'Internal server error preparing checkout');
+    return createErrorResponse(500, error.message || 'Internal server error preparing checkout');
   }
 });
