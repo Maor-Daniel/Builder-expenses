@@ -8428,11 +8428,53 @@
                 document.getElementById('expensePayment').value = expense.paymentMethod || 'מזומן';
 
                 // Note: File input cannot be pre-populated for security reasons
-                // Show existing receipt if available
+
+                // ===== EDIT MODE: Hide OCR components, show form directly =====
+
+                // Hide OCR upload container (only for creating new expenses)
+                document.getElementById('expense-ocr-container').style.display = 'none';
+
+                // Hide skip button (only for creating new expenses)
+                const skipContainer = document.getElementById('ocr-skip-container');
+                if (skipContainer) skipContainer.style.display = 'none';
+
+                // Show form layout
+                document.getElementById('expense-form-layout').style.display = 'flex';
+
+                // Handle receipt preview and modal width
+                const receiptPreview = document.getElementById('expense-receipt-preview');
+                const modalWide = document.querySelector('.expense-modal-wide');
+                const uploadArea = document.getElementById('receipt-upload-area');
+                const dropzone = document.getElementById('receipt-dropzone');
+                const imagePreview = document.getElementById('receipt-image-preview');
+                const previewImg = document.getElementById('receipt-preview-img');
+
+                // Always show the receipt panel (for upload or viewing)
+                receiptPreview.style.display = 'flex';
+                if (modalWide) modalWide.classList.remove('no-picture');
+
                 if (expense.receiptUrl) {
-                    const preview = document.getElementById('receiptPreview');
-                    preview.innerHTML = `<a href="${expense.receiptUrl}" target="_blank">קבלה קיימת</a>`;
-                    preview.style.display = 'block';
+                    // Show existing receipt image, hide upload dropzone
+                    expenseWithPicture = true;
+                    if (uploadArea) uploadArea.style.display = 'none';
+                    if (dropzone) dropzone.style.display = 'none';
+                    if (imagePreview) {
+                        imagePreview.style.display = 'block';
+                        if (previewImg) previewImg.src = expense.receiptUrl;
+                    }
+                } else {
+                    // No receipt - show upload dropzone so user can add one
+                    expenseWithPicture = false;
+                    pendingReceiptFile = null;
+                    if (uploadArea) uploadArea.style.display = 'block';
+                    if (dropzone) dropzone.style.display = 'flex';
+                    if (imagePreview) imagePreview.style.display = 'none';
+                }
+
+                // Set missing receipt checkbox based on expense data
+                const missingReceiptInput = document.getElementById('expenseMissingReceipt');
+                if (missingReceiptInput) {
+                    missingReceiptInput.value = expense.missingReceipt ? 'true' : 'false';
                 }
 
                 // Change modal title
