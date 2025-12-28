@@ -5668,7 +5668,7 @@
             }
 
             try {
-                await apiCall(`/expenses/${expenseId}`, 'DELETE');
+                await apiCall(`/expenses?expenseId=${expenseId}`, 'DELETE');
                 showSuccess('ההוצאה נמחקה בהצלחה');
                 await loadAppData();
                 refreshCurrentTab();

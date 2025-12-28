@@ -1114,7 +1114,7 @@
 
                     if (companyResponse.ok) {
                         const companyData = await companyResponse.json();
-                        if (companyData.companyExists || companyData.success) {
+                        if (companyData.companyExists || companyData.success || companyData.userHasCompanyMembership) {
                             console.log('[LANDING PAGE] User already has company, redirecting to app.html');
                             window.location.href = 'app.html';
                             return;
