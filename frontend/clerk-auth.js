@@ -8,6 +8,7 @@ const CLERK_FRONTEND_API = window.CLERK_FRONTEND_API || 'https://Builder-expense
 // Initialize Clerk instance
 let clerk = null;
 let isClerkReady = false;
+let lastAuthenticatedUserId = null; // Track to prevent duplicate auth events
 
 /**
  * Initialize Clerk
@@ -38,13 +39,23 @@ async function initializeClerk() {
 
 /**
  * Handle Clerk session updates
+ * Only triggers onUserAuthenticated when user actually logs in (not on token refresh)
  */
 function handleClerkUpdate(clerkInstance) {
   const session = clerkInstance.session;
   const user = clerkInstance.user;
 
   if (session) {
-    console.log('User authenticated:', user?.emailAddresses[0]?.emailAddress);
+    const userId = user?.id;
+    const isNewLogin = lastAuthenticatedUserId !== userId;
+
+    // Only log on new login, not on every Clerk event
+    if (isNewLogin) {
+      console.log('User authenticated:', user?.emailAddresses[0]?.emailAddress);
+    } else {
+      console.log('[Clerk] Session update (token refresh) - skipping re-initialization');
+      return; // Skip re-initialization on token refresh
+    }
 
     // Store user info for app use
     // Note: The role will be updated from DynamoDB after loading company data
@@ -66,13 +77,17 @@ function handleClerkUpdate(clerkInstance) {
       note: 'Actual role will be loaded from DynamoDB'
     });
 
-    // Trigger app initialization if needed
+    // Update last authenticated user ID
+    lastAuthenticatedUserId = userId;
+
+    // Trigger app initialization only on new login
     if (window.onUserAuthenticated) {
       window.onUserAuthenticated(window.currentUser);
     }
   } else {
     console.log('User not authenticated');
     window.currentUser = null;
+    lastAuthenticatedUserId = null; // Reset on logout
   }
 }
 
@@ -195,6 +210,7 @@ async function signOut() {
 
   await clerk.signOut();
   window.currentUser = null;
+  lastAuthenticatedUserId = null; // Reset auth tracking
 
   // Redirect to home or login page
   if (window.onUserSignedOut) {
