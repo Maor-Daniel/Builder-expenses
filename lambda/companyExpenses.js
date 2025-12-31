@@ -38,6 +38,20 @@ const {
 const { withSecureCors } = require('./shared/cors-config');
 const { validateAndSanitize, EXPENSE_SCHEMA, checkDangerousPatterns } = require('./shared/input-validator');
 
+// VAT rate for Israeli invoices (18%)
+const VAT_RATE = 0.18;
+
+/**
+ * Calculate VAT breakdown from total amount
+ * @param {number} totalAmount - The total amount including VAT
+ * @returns {Object} { baseAmount, vatAmount, vatRate }
+ */
+function calculateVAT(totalAmount) {
+  const baseAmount = Math.round((totalAmount / (1 + VAT_RATE)) * 100) / 100;
+  const vatAmount = Math.round((totalAmount - baseAmount) * 100) / 100;
+  return { baseAmount, vatAmount, vatRate: VAT_RATE };
+}
+
 /**
  * Check if a receiptUrl is an S3 key (not a full URL)
  * S3 keys look like: "companyId/receipts/receipt-timestamp-random.jpg"
@@ -431,6 +445,9 @@ async function createExpense(event, companyId, userId, userRole) {
     return createErrorResponse(409, `Invoice number ${requestBody.invoiceNum} already exists for this contractor`);
   }
 
+  // Calculate VAT breakdown from total amount
+  const { baseAmount, vatAmount, vatRate } = calculateVAT(parsedAmount);
+
   const expense = {
     companyId,
     expenseId: generateExpenseId(),
@@ -440,6 +457,9 @@ async function createExpense(event, companyId, userId, userRole) {
     contractorId: finalContractorId, // May be auto-assigned to General Contractor
     invoiceNum: requestBody.invoiceNum,
     amount: parsedAmount,
+    baseAmount, // Amount before VAT (מחיר לפני מע"מ)
+    vatAmount,  // VAT portion (מע"מ)
+    vatRate,    // VAT rate (0.18)
     paymentMethod: requestBody.paymentMethod.trim(),
     date: requestBody.date,
     description: requestBody.description || '',
@@ -563,13 +583,39 @@ async function updateExpense(event, companyId, userId, userRole) {
     }
   }
 
+  // Fields that are part of GSI keys - cannot be empty strings in DynamoDB
+  const gsiKeyFields = ['invoiceNum', 'contractorId'];
+
   updateableFields.forEach(field => {
     if (requestBody[field] !== undefined) {
+      // Skip empty strings for GSI key fields (DynamoDB doesn't allow them)
+      if (gsiKeyFields.includes(field) && requestBody[field] === '') {
+        logger.debug(`Skipping empty string for GSI key field: ${field}`);
+        return;
+      }
       updateExpressions.push(`#${field} = :${field}`);
       expressionAttributeNames[`#${field}`] = field;
       expressionAttributeValues[`:${field}`] = field === 'amount' ? parseFloat(requestBody[field]) : requestBody[field];
     }
   });
+
+  // Recalculate VAT fields if amount is being updated
+  if (requestBody.amount !== undefined) {
+    const newAmount = parseFloat(requestBody.amount);
+    const { baseAmount, vatAmount, vatRate } = calculateVAT(newAmount);
+
+    updateExpressions.push('#baseAmount = :baseAmount');
+    expressionAttributeNames['#baseAmount'] = 'baseAmount';
+    expressionAttributeValues[':baseAmount'] = baseAmount;
+
+    updateExpressions.push('#vatAmount = :vatAmount');
+    expressionAttributeNames['#vatAmount'] = 'vatAmount';
+    expressionAttributeValues[':vatAmount'] = vatAmount;
+
+    updateExpressions.push('#vatRate = :vatRate');
+    expressionAttributeNames['#vatRate'] = 'vatRate';
+    expressionAttributeValues[':vatRate'] = vatRate;
+  }
   
   if (updateExpressions.length === 0) {
     return createErrorResponse(400, 'No fields to update');
