@@ -1,9 +1,24 @@
 // Clerk Configuration
 
 export const CLERK_CONFIG = {
-  publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA',
-  frontendApi: import.meta.env.VITE_CLERK_FRONTEND_API || 'https://Builder-expenses.clerk.accounts.dev',
+  publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  frontendApi: import.meta.env.VITE_CLERK_FRONTEND_API,
 };
+
+// Validate required environment variables at startup
+if (!CLERK_CONFIG.publishableKey) {
+  throw new Error(
+    'VITE_CLERK_PUBLISHABLE_KEY is not configured. ' +
+    'Please copy .env.example to .env and configure your Clerk credentials.'
+  );
+}
+
+if (!CLERK_CONFIG.frontendApi) {
+  throw new Error(
+    'VITE_CLERK_FRONTEND_API is not configured. ' +
+    'Please copy .env.example to .env and configure your Clerk credentials.'
+  );
+}
 
 // Clerk appearance configuration
 export const CLERK_APPEARANCE = {

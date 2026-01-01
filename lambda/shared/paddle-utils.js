@@ -19,28 +19,39 @@ async function getPaddleConfig() {
     return paddleConfigCache;
   }
 
-  const [apiKey, webhookSecret] = await Promise.all([
+  const environment = process.env.PADDLE_ENVIRONMENT || 'sandbox'; // sandbox or production
+
+  // Determine which client token to fetch based on environment
+  const clientTokenPath = environment === 'production'
+    ? 'paddle/client-token'
+    : 'paddle/client-token-sandbox';
+
+  const [apiKey, webhookSecret, clientToken] = await Promise.all([
     getSecret('paddle/api-key'),
-    getSecret('paddle/webhook-secret')
+    getSecret('paddle/webhook-secret'),
+    getSecret(clientTokenPath)
   ]);
 
   paddleConfigCache = {
-    environment: process.env.PADDLE_ENVIRONMENT || 'sandbox', // sandbox or production
+    environment,
     apiKey,
-    webhookSecret
+    webhookSecret,
+    clientToken  // NEW: Client-side publishable token
   };
 
   return paddleConfigCache;
 }
 
-// Subscription plans configuration - Updated to match Paddle pricing (ILS)
+// Subscription plans configuration - PRODUCTION PRICING (ILS)
+// Updated: 2025-01-01 - Production Paddle Price IDs
 const SUBSCRIPTION_PLANS = {
   STARTER: {
     name: "Starter",
-    priceId: 'pri_01k9f1wq2ffpb9abm3kcr9t77f', // Paddle Price ID
-    monthlyPrice: 100,
+    priceId: 'pri_01kdwqn0d0ebbev71xa0v6e2hd', // Production Paddle Price ID
+    productId: 'pro_01kdwf11hqt0w7anyyq7chr23a', // Production Paddle Product ID
+    monthlyPrice: 50, // ₪50/month
     currency: 'ILS',
-    trialDays: 30, // 30-day trial for all tiers
+    trialDays: 30,
     limits: {
       maxUsers: 1,
       maxProjects: 3,
@@ -54,8 +65,9 @@ const SUBSCRIPTION_PLANS = {
 
   PROFESSIONAL: {
     name: "Professional",
-    priceId: 'pri_01k9f1y03zd5f3cxwnnza118r2', // Paddle Price ID
-    monthlyPrice: 200,
+    priceId: 'pri_01kdwqsgm7mcr7myg3cxnrxt9y', // Production Paddle Price ID
+    productId: 'pro_01kdwqqf1cg364eztm3n0x4vg3', // Production Paddle Product ID
+    monthlyPrice: 100, // ₪100/month
     currency: 'ILS',
     trialDays: 30,
     limits: {
@@ -71,8 +83,9 @@ const SUBSCRIPTION_PLANS = {
 
   ENTERPRISE: {
     name: "Enterprise",
-    priceId: 'pri_01k9f1yt0hm9767jh0htqbp6t1', // Paddle Price ID
-    monthlyPrice: 300,
+    priceId: 'pri_01kdwqwn1e1z4xc93rgstytpj1', // Production Paddle Price ID
+    productId: 'pro_01kdwqvfkg3sajqszq4x0wfjbq', // Production Paddle Product ID
+    monthlyPrice: 150, // ₪150/month
     currency: 'ILS',
     trialDays: 30,
     limits: {
