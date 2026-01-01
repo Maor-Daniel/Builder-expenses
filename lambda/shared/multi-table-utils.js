@@ -16,6 +16,7 @@ const {
 } = require('@aws-sdk/lib-dynamodb');
 
 const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
+const { COMPANY_TABLE_NAMES } = require('./table-config');
 
 // Always use real AWS DynamoDB - no mock databases
 const dynamoConfig = {
@@ -31,13 +32,14 @@ const dynamodb = DynamoDBDocumentClient.from(ddbClient, {
   }
 });
 
-// Table names - production company-scoped tables
+// Legacy alias for backward compatibility
+// New code should use COMPANY_TABLE_NAMES from table-config.js directly
 const TABLE_NAMES = {
-  USERS: 'construction-expenses-company-users',
-  PROJECTS: 'construction-expenses-company-projects',
-  CONTRACTORS: 'construction-expenses-company-contractors',
-  EXPENSES: 'construction-expenses-company-expenses',
-  WORKS: 'construction-expenses-company-works'
+  USERS: COMPANY_TABLE_NAMES.USERS,
+  PROJECTS: COMPANY_TABLE_NAMES.PROJECTS,
+  CONTRACTORS: COMPANY_TABLE_NAMES.CONTRACTORS,
+  EXPENSES: COMPANY_TABLE_NAMES.EXPENSES,
+  WORKS: COMPANY_TABLE_NAMES.WORKS
 };
 
 /**

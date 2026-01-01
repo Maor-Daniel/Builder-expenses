@@ -18,6 +18,7 @@ const {
 const crypto = require('crypto');
 const { withSecureCors } = require('./cors-config');
 const { createLogger } = require('./logger');
+const { COMPANY_TABLE_NAMES } = require('./table-config');
 
 const logger = createLogger('company-utils');
 
@@ -88,17 +89,6 @@ function logSecurityEvent(eventType, severity, message, additionalData = {}) {
     logger.info(`[SECURITY] ${eventType}: ${message}`, securityEvent);
   }
 }
-
-// Company-scoped table names
-const COMPANY_TABLE_NAMES = {
-  COMPANIES: 'construction-expenses-companies',
-  USERS: 'construction-expenses-company-users',
-  INVITATIONS: 'construction-expenses-invitations',
-  PROJECTS: 'construction-expenses-company-projects',
-  CONTRACTORS: 'construction-expenses-company-contractors',
-  EXPENSES: 'construction-expenses-company-expenses',
-  WORKS: 'construction-expenses-company-works'
-};
 
 // System projects that are auto-created for each company
 const SYSTEM_PROJECTS = {

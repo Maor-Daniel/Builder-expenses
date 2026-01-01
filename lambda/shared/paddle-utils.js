@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { getSecret } = require('./secrets');
 const { createCorsResponse: secureCorsResponse, createCorsErrorResponse } = require('./cors-config');
+const { PADDLE_TABLE_NAMES, COMPANY_TABLE_NAMES } = require('./table-config');
 
 // Paddle configuration (secrets loaded on-demand)
 let paddleConfigCache = null;
@@ -42,74 +43,73 @@ async function getPaddleConfig() {
   return paddleConfigCache;
 }
 
-// Subscription plans configuration - PRODUCTION PRICING (ILS)
-// Updated: 2025-01-01 - Production Paddle Price IDs
-const SUBSCRIPTION_PLANS = {
-  STARTER: {
-    name: "Starter",
-    priceId: 'pri_01kdwqn0d0ebbev71xa0v6e2hd', // Production Paddle Price ID
-    productId: 'pro_01kdwf11hqt0w7anyyq7chr23a', // Production Paddle Product ID
-    monthlyPrice: 50, // ₪50/month
-    currency: 'ILS',
-    trialDays: 30,
-    limits: {
-      maxUsers: 1,
-      maxProjects: 3,
-      maxExpensesPerMonth: 50,
-      maxSuppliers: -1, // unlimited
-      maxWorks: -1, // unlimited
-      storage: 1024, // 1GB in MB
-      features: ['basic_dashboard', 'pdf_export', 'receipt_upload', 'basic_support']
-    }
-  },
+// Subscription plans configuration - Environment-aware pricing
+// Updated: 2026-01-01 - Now supports environment variables
+// Defaults to production Paddle Price IDs if not specified
 
-  PROFESSIONAL: {
-    name: "Professional",
-    priceId: 'pri_01kdwqsgm7mcr7myg3cxnrxt9y', // Production Paddle Price ID
-    productId: 'pro_01kdwqqf1cg364eztm3n0x4vg3', // Production Paddle Product ID
-    monthlyPrice: 100, // ₪100/month
-    currency: 'ILS',
-    trialDays: 30,
-    limits: {
-      maxUsers: 3,
-      maxProjects: 10,
-      maxExpensesPerMonth: -1, // unlimited
-      maxSuppliers: -1,
-      maxWorks: -1,
-      storage: 10240, // 10GB in MB
-      features: ['advanced_dashboard', 'advanced_pdf_export', 'contractor_management', 'priority_support']
-    }
-  },
+function getSubscriptionPlans() {
+  return {
+    STARTER: {
+      name: "Starter",
+      priceId: process.env.PADDLE_STARTER_PRICE_ID || 'pri_01kdwqn0d0ebbev71xa0v6e2hd',
+      productId: process.env.PADDLE_STARTER_PRODUCT_ID || 'pro_01kdwf11hqt0w7anyyq7chr23a',
+      monthlyPrice: 50, // ₪50/month
+      currency: 'ILS',
+      trialDays: 30,
+      limits: {
+        maxUsers: 1,
+        maxProjects: 3,
+        maxExpensesPerMonth: 50,
+        maxSuppliers: -1, // unlimited
+        maxWorks: -1, // unlimited
+        storage: 1024, // 1GB in MB
+        features: ['basic_dashboard', 'pdf_export', 'receipt_upload', 'basic_support']
+      }
+    },
 
-  ENTERPRISE: {
-    name: "Enterprise",
-    priceId: 'pri_01kdwqwn1e1z4xc93rgstytpj1', // Production Paddle Price ID
-    productId: 'pro_01kdwqvfkg3sajqszq4x0wfjbq', // Production Paddle Product ID
-    monthlyPrice: 150, // ₪150/month
-    currency: 'ILS',
-    trialDays: 30,
-    limits: {
-      maxUsers: 10,
-      maxProjects: -1, // unlimited
-      maxExpensesPerMonth: -1, // unlimited
-      maxSuppliers: -1,
-      maxWorks: -1,
-      storage: 102400, // 100GB in MB
-      features: ['all_features', 'auto_backups', 'custom_integrations', 'dedicated_support']
-    }
-  }
-};
+    PROFESSIONAL: {
+      name: "Professional",
+      priceId: process.env.PADDLE_PROFESSIONAL_PRICE_ID || 'pri_01kdwqsgm7mcr7myg3cxnrxt9y',
+      productId: process.env.PADDLE_PROFESSIONAL_PRODUCT_ID || 'pro_01kdwqqf1cg364eztm3n0x4vg3',
+      monthlyPrice: 100, // ₪100/month
+      currency: 'ILS',
+      trialDays: 30,
+      limits: {
+        maxUsers: 3,
+        maxProjects: 10,
+        maxExpensesPerMonth: -1, // unlimited
+        maxSuppliers: -1,
+        maxWorks: -1,
+        storage: 10240, // 10GB in MB
+        features: ['advanced_dashboard', 'advanced_pdf_export', 'contractor_management', 'priority_support']
+      }
+    },
 
-// Paddle table names
-const PADDLE_TABLE_NAMES = {
-  SUBSCRIPTIONS: 'construction-expenses-paddle-subscriptions',
-  CUSTOMERS: 'construction-expenses-paddle-customers',
-  PAYMENTS: 'construction-expenses-paddle-payments',
-  WEBHOOKS: 'construction-expenses-paddle-webhooks'
-};
+    ENTERPRISE: {
+      name: "Enterprise",
+      priceId: process.env.PADDLE_ENTERPRISE_PRICE_ID || 'pri_01kdwqwn1e1z4xc93rgstytpj1',
+      productId: process.env.PADDLE_ENTERPRISE_PRODUCT_ID || 'pro_01kdwqvfkg3sajqszq4x0wfjbq',
+      monthlyPrice: 150, // ₪150/month
+      currency: 'ILS',
+      trialDays: 30,
+      limits: {
+        maxUsers: 10,
+        maxProjects: -1, // unlimited
+        maxExpensesPerMonth: -1, // unlimited
+        maxSuppliers: -1,
+        maxWorks: -1,
+        storage: 102400, // 100GB in MB
+        features: ['all_features', 'auto_backups', 'custom_integrations', 'dedicated_support']
+      }
+    }
+  };
+}
+
+// Export both the function and a cached version for backward compatibility
+const SUBSCRIPTION_PLANS = getSubscriptionPlans();
 
 // Import dynamoOperation from company-utils
-const { dynamoOperation, COMPANY_TABLE_NAMES } = require('./company-utils');
+const { dynamoOperation } = require('./company-utils');
 
 /**
  * Verify Paddle webhook signature using HMAC SHA256
