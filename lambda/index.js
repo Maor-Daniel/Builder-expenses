@@ -1,95 +1,129 @@
-// lambda/getProjects.js
-// Get all projects with SpentAmount data
+// lambda/createPaddleCheckout.js
+// Creates a Paddle transaction and returns a hosted checkout URL
+// Mobile app opens this URL in system browser (WebBrowser)
+// Card is validated but not charged until after 30-day trial
 
 const {
   createResponse,
   createErrorResponse,
-  getUserIdFromEvent,
-  getCurrentTimestamp,
-  dynamodb,
-  isLocal,
-  TABLE_NAMES
-} = require('./shared/multi-table-utils');
+  getCompanyUserFromEvent,
+  getCurrentTimestamp
+} = require('./shared/company-utils');
+
+const {
+  SUBSCRIPTION_PLANS,
+  paddleApiCall,
+  getPaddleConfig
+} = require('./shared/paddle-utils');
 const { withSecureCors } = require('./shared/cors-config');
 
 exports.handler = withSecureCors(async (event) => {
+  console.log('createPaddleCheckout invoked');
+
+  if (event.httpMethod !== 'POST') {
+    return createErrorResponse(405, 'Method not allowed');
+  }
 
   try {
-    // Get user ID from event context
-    const userId = getUserIdFromEvent(event);
+    // Get user context from Clerk JWT
+    const { companyId, userId, userEmail } = getCompanyUserFromEvent(event);
 
-    // Parse query parameters for filtering
-    const queryParams = event.queryStringParameters || {};
-    const { status, sortBy } = queryParams;
-    
+    // Parse request body
+    const requestBody = JSON.parse(event.body || '{}');
+    const { companyName, subscriptionTier } = requestBody;
 
-    // Build DynamoDB query parameters
-    let params = {
-      TableName: TABLE_NAMES.PROJECTS,
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': userId
-      }
-    };
-
-    // Add status filter if provided
-    if (status) {
-      params.FilterExpression = '#status = :status';
-      params.ExpressionAttributeNames = { '#status': 'status' };
-      params.ExpressionAttributeValues[':status'] = status;
+    // Validate inputs
+    if (!companyName || companyName.trim().length === 0) {
+      return createErrorResponse(400, 'Company name is required');
     }
 
-
-    const result = await dynamodb.query(params).promise();
-    let projects = result.Items || [];
-
-
-    // Sort projects based on sortBy parameter
-    if (sortBy === 'name') {
-      projects.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'date') {
-      projects.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)); // Newest first
-    } else if (sortBy === 'spent') {
-      projects.sort((a, b) => (b.SpentAmount || 0) - (a.SpentAmount || 0)); // Highest spending first
-    } else {
-      // Default sort by creation date (newest first)
-      projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (!subscriptionTier || !['starter', 'professional', 'enterprise'].includes(subscriptionTier.toLowerCase())) {
+      return createErrorResponse(400, 'Valid subscription tier is required (starter, professional, or enterprise)');
     }
 
-    // Calculate summary statistics
-    const summary = {
-      totalCount: projects.length,
-      totalSpentAmount: projects.reduce((sum, project) => sum + (project.SpentAmount || 0), 0),
-      averageSpentAmount: projects.length > 0 ? 
-        projects.reduce((sum, project) => sum + (project.SpentAmount || 0), 0) / projects.length : 0,
-      statusCounts: projects.reduce((counts, project) => {
-        const status = project.status || 'unknown';
-        counts[status] = (counts[status] || 0) + 1;
-        return counts;
-      }, {})
+    const tierKey = subscriptionTier.toUpperCase();
+    const plan = SUBSCRIPTION_PLANS[tierKey];
+
+    if (!plan) {
+      return createErrorResponse(400, 'Invalid subscription tier');
+    }
+
+    console.log(`Creating Paddle transaction for user ${userId}, company: ${companyName}, tier: ${tierKey}`);
+
+    // Custom data for webhook events
+    const customData = {
+      companyId,
+      userId,
+      companyName: companyName.trim(),
+      subscriptionTier: tierKey.toLowerCase(),
+      userEmail: userEmail || ''
     };
 
+    // Create Paddle transaction to get hosted checkout URL
+    const transactionData = {
+      items: [{
+        price_id: plan.priceId,
+        quantity: 1
+      }],
+      custom_data: customData
+    };
 
+    // Add customer email if available
+    if (userEmail && userEmail.trim().length > 0) {
+      transactionData.customer = {
+        email: userEmail.trim()
+      };
+    }
+
+    console.log('Creating Paddle transaction:', JSON.stringify(transactionData));
+
+    const transaction = await paddleApiCall('transactions', 'POST', transactionData);
+
+    console.log('Paddle transaction created:', {
+      transactionId: transaction.data?.id,
+      checkoutUrl: transaction.data?.checkout?.url
+    });
+
+    const checkoutUrl = transaction.data?.checkout?.url;
+
+    if (!checkoutUrl) {
+      console.error('Paddle transaction created but no checkout URL returned:', transaction);
+      return createErrorResponse(500, 'Failed to get checkout URL from Paddle');
+    }
+
+    // Get Paddle configuration including client token from Secrets Manager
+    const paddleConfig = await getPaddleConfig();
+
+    // Return both checkoutUrl (for mobile) AND paddleConfig (for web app backwards compatibility)
     return createResponse(200, {
       success: true,
-      message: `Retrieved ${projects.length} projects`,
-      data: {
-        projects,
-        summary,
-        filters: {
-          status: status || null,
-          sortBy: sortBy || 'createdAt'
-        }
+      message: 'Paddle checkout ready',
+      // For mobile app - opens in WebBrowser
+      checkoutUrl: checkoutUrl,
+      transactionId: transaction.data.id,
+      // For web app - uses Paddle.js client-side (backwards compatible)
+      paddleConfig: {
+        token: paddleConfig.clientToken, // Dynamic token from Secrets Manager
+        priceId: plan.priceId,
+        environment: paddleConfig.environment,
+        customerEmail: userEmail && userEmail.trim().length > 0 ? userEmail.trim() : null,
+        customData
+      },
+      plan: {
+        name: plan.name,
+        price: plan.monthlyPrice,
+        currency: plan.currency,
+        trialDays: plan.trialDays
       },
       timestamp: getCurrentTimestamp()
     });
 
   } catch (error) {
+    console.error('ERROR in createPaddleCheckout:', {
+      error: error.message,
+      stack: error.stack
+    });
 
-    if (error.message.includes('User ID not found')) {
-      return createErrorResponse(401, 'Unauthorized: Invalid user context');
-    }
-
-    return createErrorResponse(500, 'Failed to retrieve projects', error);
+    return createErrorResponse(500, error.message || 'Internal server error preparing checkout');
   }
 });

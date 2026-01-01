@@ -91,8 +91,8 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(500, 'Failed to get checkout URL from Paddle');
     }
 
-    // Get Paddle environment for client-side config
-    const paddleEnvironment = process.env.PADDLE_ENVIRONMENT || 'sandbox';
+    // Get Paddle configuration including client token from Secrets Manager
+    const paddleConfig = await getPaddleConfig();
 
     // Return both checkoutUrl (for mobile) AND paddleConfig (for web app backwards compatibility)
     return createResponse(200, {
@@ -103,9 +103,9 @@ exports.handler = withSecureCors(async (event) => {
       transactionId: transaction.data.id,
       // For web app - uses Paddle.js client-side (backwards compatible)
       paddleConfig: {
-        token: 'test_db12c8b3a07159acbe3dff44dba', // Paddle client-side token
+        token: paddleConfig.clientToken, // Dynamic token from Secrets Manager
         priceId: plan.priceId,
-        environment: paddleEnvironment,
+        environment: paddleConfig.environment,
         customerEmail: userEmail && userEmail.trim().length > 0 ? userEmail.trim() : null,
         customData
       },
