@@ -30,7 +30,7 @@ exports.handler = withSecureCors(async (event) => {
 
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    const { companyName, subscriptionTier } = requestBody;
+    const { companyName, subscriptionTier, successUrl } = requestBody;
 
     // Validate inputs
     if (!companyName || companyName.trim().length === 0) {
@@ -41,6 +41,11 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Valid subscription tier is required (starter, professional, or enterprise)');
     }
 
+    // Determine success URL (mobile deep link or web URL)
+    const checkoutSuccessUrl = successUrl ||
+                                process.env.CHECKOUT_SUCCESS_URL ||
+                                'builderexpenses://checkout-success';
+
     const tierKey = subscriptionTier.toUpperCase();
     const plan = SUBSCRIPTION_PLANS[tierKey];
 
@@ -48,7 +53,7 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Invalid subscription tier');
     }
 
-    console.log(`Creating Paddle transaction for user ${userId}, company: ${companyName}, tier: ${tierKey}`);
+    console.log(`Creating Paddle transaction for user ${userId}, company: ${companyName}, tier: ${tierKey}, successUrl: ${checkoutSuccessUrl}`);
 
     // Custom data for webhook events
     const customData = {
@@ -65,7 +70,10 @@ exports.handler = withSecureCors(async (event) => {
         price_id: plan.priceId,
         quantity: 1
       }],
-      custom_data: customData
+      custom_data: customData,
+      checkout: {
+        url: checkoutSuccessUrl  // Redirect URL after successful checkout
+      }
     };
 
     // Add customer email if available
