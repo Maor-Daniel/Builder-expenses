@@ -537,9 +537,16 @@ async function handleTransactionPaymentFailed(transactionData) {
 
 /**
  * Determine subscription tier from Paddle Price ID
+ * Updated: 2026-01-02 - Production Price IDs
  */
 function determineTierFromPriceId(priceId) {
   const PRICE_TO_TIER_MAP = {
+    // Production Price IDs (updated 2026-01-01)
+    'pri_01kdwqn0d0ebbev71xa0v6e2hd': 'starter',       // ₪50/month
+    'pri_01kdwqsgm7mcr7myg3cxnrxt9y': 'professional',  // ₪100/month
+    'pri_01kdwqwn1e1z4xc93rgstytpj1': 'enterprise',    // ₪150/month
+
+    // Legacy/Sandbox Price IDs (for backwards compatibility)
     'pri_01k9f1wq2ffpb9abm3kcr9t77f': 'starter',
     'pri_01k9f1y03zd5f3cxwnnza118r2': 'professional',
     'pri_01k9f1yt0hm9767jh0htqbp6t1': 'enterprise'

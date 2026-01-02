@@ -50,7 +50,31 @@ exports.handler = withSecureCors(async (event) => {
     });
 
     if (existingCompany.Item) {
-      return createErrorResponse(400, 'Company already exists for this user');
+      // Company already exists - return success with existing company (idempotent)
+      console.log(`Company already exists for user ${userId}, returning existing company`);
+
+      // Get the existing user record
+      const existingUser = await dynamoOperation('get', {
+        TableName: COMPANY_TABLE_NAMES.USERS,
+        Key: { companyId, userId }
+      });
+
+      return createResponse(200, {
+        success: true,
+        message: 'Company already exists',
+        company: {
+          id: existingCompany.Item.companyId,
+          name: existingCompany.Item.name,
+          subscriptionTier: existingCompany.Item.subscriptionTier,
+          createdAt: existingCompany.Item.createdAt
+        },
+        user: existingUser.Item ? {
+          id: existingUser.Item.userId,
+          email: existingUser.Item.email,
+          role: existingUser.Item.role
+        } : null,
+        timestamp: getCurrentTimestamp()
+      });
     }
 
     const timestamp = getCurrentTimestamp();
