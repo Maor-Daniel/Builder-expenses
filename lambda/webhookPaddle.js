@@ -1,5 +1,11 @@
 // lambda/webhookPaddle.js
 // Paddle webhook handler for subscription and payment events
+//
+// Features:
+// - Retry logic with exponential backoff (5 retries)
+// - DynamoDB-based dead-letter queue for failed webhooks
+// - Idempotency checks to prevent duplicate processing
+// - Structured logging for CloudWatch Logs Insights
 
 const {
   verifyPaddleWebhook,
@@ -14,9 +20,19 @@ const {
   dynamoOperation,
   COMPANY_TABLE_NAMES,
   getCurrentTimestamp,
-  USER_ROLES
+  USER_ROLES,
+  SYSTEM_PROJECTS,
+  SYSTEM_CONTRACTORS
 } = require('./shared/company-utils');
 const { withSecureCors } = require('./shared/cors-config');
+const { createLogger } = require('./shared/logger');
+const {
+  executeWithRetry,
+  addToDLQ,
+  isWebhookProcessed
+} = require('./shared/webhook-retry-utils');
+
+const logger = createLogger('webhookPaddle');
 
 /**
  * Handle Paddle webhook events
@@ -24,14 +40,16 @@ const { withSecureCors } = require('./shared/cors-config');
  *         subscription.canceled, subscription.past_due,
  *         transaction.completed, transaction.payment_failed
  */
-exports.handler = withSecureCors(async (event) => {
-  console.log('Paddle Webhook Event Received:', {
-    headers: event.headers,
-    hasBody: !!event.body
-  });
+exports.handler = withSecureCors(async (event, context) => {
+  // Generate correlation ID for request tracing
+  const correlationId = context?.awsRequestId || `corr_${Date.now()}`;
+  logger.setRequestId(correlationId);
 
-  // Handle CORS preflight
-  // OPTIONS handling now in withSecureCors middleware
+  logger.info('Paddle Webhook Event Received', {
+    correlationId,
+    hasSignature: !!(event.headers['paddle-signature'] || event.headers['Paddle-Signature']),
+    httpMethod: event.httpMethod
+  });
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method not allowed');
@@ -42,7 +60,7 @@ exports.handler = withSecureCors(async (event) => {
     const paddleSignature = event.headers['paddle-signature'] || event.headers['Paddle-Signature'];
 
     if (!paddleSignature) {
-      console.error('Missing Paddle-Signature header');
+      logger.warn('Missing Paddle-Signature header', { correlationId });
       return createErrorResponse(401, 'Missing webhook signature');
     }
 
@@ -50,82 +68,169 @@ exports.handler = withSecureCors(async (event) => {
     const isValid = verifyPaddleWebhook(event.body, paddleSignature);
 
     if (!isValid) {
-      console.error('Invalid webhook signature');
+      logger.warn('Invalid webhook signature', { correlationId });
       return createErrorResponse(401, 'Invalid webhook signature');
     }
 
     // Parse webhook payload
     const webhookData = JSON.parse(event.body);
-    const { event_type, data } = webhookData;
+    const { event_type, event_id, data } = webhookData;
+    const companyId = data?.custom_data?.companyId;
 
-    console.log('Processing Paddle Webhook:', {
+    logger.info('Processing Paddle Webhook', {
+      correlationId,
       eventType: event_type,
-      eventId: webhookData.event_id
+      eventId: event_id,
+      companyId
     });
 
-    // Store webhook event for auditing
-    await storeWebhookEvent(webhookData);
-
-    // Route to appropriate handler based on event type
-    switch (event_type) {
-      case 'subscription.created':
-        await handleSubscriptionCreated(data);
-        break;
-
-      case 'subscription.activated':
-        await handleSubscriptionActivated(data);
-        break;
-
-      case 'subscription.updated':
-        await handleSubscriptionUpdated(data);
-        break;
-
-      case 'subscription.canceled':
-        await handleSubscriptionCanceled(data);
-        break;
-
-      case 'subscription.past_due':
-        await handleSubscriptionPastDue(data);
-        break;
-
-      case 'transaction.completed':
-        await handleTransactionCompleted(data);
-        break;
-
-      case 'transaction.payment_failed':
-        await handleTransactionPaymentFailed(data);
-        break;
-
-      default:
-        console.log(`Unhandled event type: ${event_type}`);
+    // IDEMPOTENCY CHECK: Has this webhook already been processed?
+    const alreadyProcessed = await isWebhookProcessed(event_id);
+    if (alreadyProcessed) {
+      logger.info('Webhook already processed, skipping', {
+        correlationId,
+        eventId: event_id,
+        eventType: event_type
+      });
+      return createResponse(200, {
+        success: true,
+        message: 'Webhook already processed (idempotent)',
+        event_id
+      });
     }
 
-    return createResponse(200, {
-      success: true,
-      message: `Webhook ${event_type} processed successfully`,
-      event_id: webhookData.event_id
-    });
+    // Store webhook event for auditing (mark as processing)
+    await storeWebhookEvent(webhookData, 'processing');
+
+    // Route to handler - use retry logic for critical subscription.activated event
+    let processingResult;
+
+    if (event_type === 'subscription.activated') {
+      // Critical event - company creation. Use retry logic with exponential backoff
+      const retryContext = {
+        correlationId,
+        eventId: event_id,
+        eventType: event_type,
+        companyId
+      };
+
+      processingResult = await executeWithRetry(
+        () => handleSubscriptionActivated(data, correlationId),
+        retryContext,
+        logger
+      );
+    } else {
+      // Non-critical events - standard processing without retry
+      processingResult = await processStandardEvent(event_type, data, correlationId);
+    }
+
+    if (processingResult.success) {
+      // Update webhook record to processed
+      await updateWebhookStatus(event_id, 'processed');
+
+      logger.info('Webhook processed successfully', {
+        correlationId,
+        eventId: event_id,
+        eventType: event_type,
+        retryCount: processingResult.retryCount || 0
+      });
+
+      return createResponse(200, {
+        success: true,
+        message: `Webhook ${event_type} processed successfully`,
+        event_id,
+        retryCount: processingResult.retryCount || 0
+      });
+    } else {
+      // Processing failed after all retries
+      logger.error('Webhook processing failed after all retries', {
+        correlationId,
+        eventId: event_id,
+        eventType: event_type,
+        companyId,
+        error: processingResult.error?.message,
+        retryCount: processingResult.retryCount
+      });
+
+      // Add to Dead Letter Queue for investigation
+      await addToDLQ(
+        webhookData,
+        processingResult.error,
+        processingResult.retryCount,
+        processingResult.processingHistory
+      );
+
+      // Update webhook record to failed
+      await updateWebhookStatus(event_id, 'failed_to_dlq');
+
+      // Return 200 to prevent Paddle from retrying (we handle retries internally)
+      return createResponse(200, {
+        success: false,
+        message: 'Webhook processing failed, added to DLQ for investigation',
+        event_id
+      });
+    }
 
   } catch (error) {
-    console.error('ERROR processing Paddle webhook:', {
+    logger.error('Unexpected error in webhook handler', {
+      correlationId,
       error: error.message,
       stack: error.stack
     });
 
     // Return 200 to prevent Paddle from retrying on application errors
-    // Log the error for investigation
     return createResponse(200, {
       success: false,
-      message: 'Webhook received but processing failed',
+      message: 'Webhook received but processing failed unexpectedly',
       error: error.message
     });
   }
 });
 
 /**
- * Store webhook event for auditing
+ * Process non-critical events without retry logic
  */
-async function storeWebhookEvent(webhookData) {
+async function processStandardEvent(eventType, data, correlationId) {
+  try {
+    switch (eventType) {
+      case 'subscription.created':
+        await handleSubscriptionCreated(data, correlationId);
+        break;
+      case 'subscription.updated':
+        await handleSubscriptionUpdated(data, correlationId);
+        break;
+      case 'subscription.canceled':
+        await handleSubscriptionCanceled(data, correlationId);
+        break;
+      case 'subscription.past_due':
+        await handleSubscriptionPastDue(data, correlationId);
+        break;
+      case 'transaction.completed':
+        await handleTransactionCompleted(data, correlationId);
+        break;
+      case 'transaction.payment_failed':
+        await handleTransactionPaymentFailed(data, correlationId);
+        break;
+      default:
+        logger.info(`Unhandled event type: ${eventType}`, { correlationId });
+    }
+    return { success: true, retryCount: 0 };
+  } catch (error) {
+    logger.error('Standard event processing failed', {
+      correlationId,
+      eventType,
+      error: error.message
+    });
+    return { success: false, error, retryCount: 0 };
+  }
+}
+
+/**
+ * Store webhook event for auditing
+ * @param {Object} webhookData - Full webhook payload
+ * @param {string} status - Initial status: 'received' | 'processing' | 'processed' | 'failed_to_dlq'
+ */
+async function storeWebhookEvent(webhookData, status = 'received') {
   const timestamp = getCurrentTimestamp();
 
   await dynamoOperation('put', {
@@ -134,9 +239,29 @@ async function storeWebhookEvent(webhookData) {
       webhookId: webhookData.event_id,
       eventType: webhookData.event_type,
       payload: JSON.stringify(webhookData),
+      companyId: webhookData.data?.custom_data?.companyId || null,
+      status,
       receivedAt: timestamp,
-      processed: true,
+      updatedAt: timestamp,
       ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60) // 90 days TTL
+    }
+  });
+}
+
+/**
+ * Update webhook status in the webhooks table
+ * @param {string} webhookId - Paddle event ID
+ * @param {string} status - New status: 'processed' | 'failed_to_dlq'
+ */
+async function updateWebhookStatus(webhookId, status) {
+  await dynamoOperation('update', {
+    TableName: PADDLE_TABLE_NAMES.WEBHOOKS,
+    Key: { webhookId },
+    UpdateExpression: 'SET #status = :status, updatedAt = :updated',
+    ExpressionAttributeNames: { '#status': 'status' },
+    ExpressionAttributeValues: {
+      ':status': status,
+      ':updated': getCurrentTimestamp()
     }
   });
 }
@@ -154,15 +279,15 @@ function getCompanyIdFromSubscription(subscriptionData) {
  * For trial subscriptions, this is where we update the company record
  * (subscription.activated is only sent after trial ends)
  */
-async function handleSubscriptionCreated(subscriptionData) {
+async function handleSubscriptionCreated(subscriptionData, correlationId) {
   const companyId = getCompanyIdFromSubscription(subscriptionData);
 
   if (!companyId) {
-    console.error('No companyId found in subscription custom_data');
+    logger.error('No companyId found in subscription custom_data', { correlationId });
     return;
   }
 
-  console.log(`Subscription created for company: ${companyId}`);
+  logger.info('Subscription created', { correlationId, companyId });
 
   // Determine tier from price ID
   const priceId = subscriptionData.items[0]?.price?.id;
@@ -180,7 +305,7 @@ async function handleSubscriptionCreated(subscriptionData) {
     scheduledChangeId: subscriptionData.scheduled_change?.id || null
   });
 
-  console.log(`Subscription record created for company: ${companyId}`);
+  logger.info('Subscription record created', { correlationId, companyId, tier });
 
   // Also update the companies table with subscription info
   // This is critical for trial subscriptions where subscription.activated isn't sent
@@ -198,9 +323,18 @@ async function handleSubscriptionCreated(subscriptionData) {
         ':updated': timestamp
       }
     });
-    console.log(`Company ${companyId} updated with subscription tier: ${tier}, status: ${subscriptionData.status}`);
+    logger.info('Company updated with subscription info', {
+      correlationId,
+      companyId,
+      tier,
+      status: subscriptionData.status
+    });
   } catch (updateError) {
-    console.error(`Failed to update company ${companyId}:`, updateError.message);
+    logger.error('Failed to update company', {
+      correlationId,
+      companyId,
+      error: updateError.message
+    });
   }
 }
 
@@ -208,8 +342,9 @@ async function handleSubscriptionCreated(subscriptionData) {
  * Handle subscription.activated event
  * Occurs when subscription payment succeeds and becomes active
  * THIS IS WHERE WE CREATE THE COMPANY after successful card validation
+ * Uses conditional writes for idempotency to prevent race conditions
  */
-async function handleSubscriptionActivated(subscriptionData) {
+async function handleSubscriptionActivated(subscriptionData, correlationId) {
   const customData = subscriptionData.custom_data || {};
   const companyId = customData.companyId;
   const userId = customData.userId;
@@ -217,16 +352,25 @@ async function handleSubscriptionActivated(subscriptionData) {
   const subscriptionTier = customData.subscriptionTier;
   const userEmail = customData.userEmail;
 
+  // Validation - throw error to trigger retry for missing data
   if (!companyId || !userId || !companyName) {
-    console.error('Missing required data in subscription custom_data:', {
+    const error = new Error('Missing required data in subscription custom_data');
+    error.isValidation = true; // Mark as non-retryable
+    logger.error('Missing required data in subscription custom_data', {
+      correlationId,
       hasCompanyId: !!companyId,
       hasUserId: !!userId,
       hasCompanyName: !!companyName
     });
-    return;
+    throw error;
   }
 
-  console.log(`Subscription activated - Creating company: ${companyName} for user: ${userId}`);
+  logger.info('Subscription activated - Creating company', {
+    correlationId,
+    companyId,
+    userId,
+    companyName
+  });
 
   // Determine tier from price ID
   const priceId = subscriptionData.items[0]?.price?.id;
@@ -234,15 +378,17 @@ async function handleSubscriptionActivated(subscriptionData) {
 
   const timestamp = getCurrentTimestamp();
 
-  // Check if company already exists
+  // IDEMPOTENCY: Check if company already exists
   const existingCompany = await dynamoOperation('get', {
     TableName: COMPANY_TABLE_NAMES.COMPANIES,
     Key: { companyId }
   });
 
+  let companyCreated = false;
+
   // Create or update company record
   if (!existingCompany.Item) {
-    console.log(`Creating new company record for ${companyId}`);
+    logger.info('Creating new company record', { correlationId, companyId });
 
     const company = {
       companyId,
@@ -271,14 +417,29 @@ async function handleSubscriptionActivated(subscriptionData) {
       company.companyEmail = userEmail.trim();
     }
 
-    await dynamoOperation('put', {
-      TableName: COMPANY_TABLE_NAMES.COMPANIES,
-      Item: company
-    });
-
-    console.log(`Company ${companyId} created successfully`);
+    try {
+      // CONDITIONAL WRITE: Only create if doesn't exist (prevents race conditions)
+      await dynamoOperation('put', {
+        TableName: COMPANY_TABLE_NAMES.COMPANIES,
+        Item: company,
+        ConditionExpression: 'attribute_not_exists(companyId)'
+      });
+      companyCreated = true;
+      logger.info('Company created successfully', { correlationId, companyId, tier });
+    } catch (error) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        // Race condition - company was created by another concurrent request
+        logger.info('Company already created by concurrent request', { correlationId, companyId });
+      } else {
+        throw error; // Re-throw for retry
+      }
+    }
   } else {
-    console.log(`Company ${companyId} already exists, updating subscription status`);
+    logger.info('Company already exists, updating subscription status', {
+      correlationId,
+      companyId,
+      existingStatus: existingCompany.Item.subscriptionStatus
+    });
 
     // Update existing company's subscription status
     await dynamoOperation('update', {
@@ -293,16 +454,8 @@ async function handleSubscriptionActivated(subscriptionData) {
     });
   }
 
-  // Check if admin user already exists
-  const existingUser = await dynamoOperation('get', {
-    TableName: COMPANY_TABLE_NAMES.USERS,
-    Key: { companyId, userId }
-  });
-
-  // Create admin user record if it doesn't exist
-  if (!existingUser.Item) {
-    console.log(`Creating admin user record for ${userId}`);
-
+  // Create admin user with conditional write
+  try {
     const adminUser = {
       companyId,
       userId,
@@ -320,16 +473,57 @@ async function handleSubscriptionActivated(subscriptionData) {
 
     await dynamoOperation('put', {
       TableName: COMPANY_TABLE_NAMES.USERS,
-      Item: adminUser
+      Item: adminUser,
+      ConditionExpression: 'attribute_not_exists(userId)'
     });
-
-    console.log(`Admin user ${userId} created successfully`);
+    logger.info('Admin user created', { correlationId, companyId, userId });
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      logger.info('Admin user already exists', { correlationId, companyId, userId });
+    } else {
+      throw error;
+    }
   }
 
-  // Create system "General Expenses" project for unassigned expenses (only if company is new)
-  if (!existingCompany.Item) {
-    console.log(`Creating system General Expenses project for company ${companyId}`);
+  // Create system entities with conditional writes (only for new companies)
+  if (!existingCompany.Item || companyCreated) {
+    await createSystemEntities(companyId, userId, timestamp, correlationId);
+  }
 
+  // Update or create subscription record
+  await dynamoOperation('put', {
+    TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
+    Item: {
+      companyId,
+      subscriptionId: subscriptionData.id,
+      paddleCustomerId: subscriptionData.customer_id,
+      currentPlan: tier,
+      subscriptionStatus: 'active',
+      nextBillingDate: subscriptionData.next_billed_at,
+      scheduledChangeId: subscriptionData.scheduled_change?.id || null,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }
+  });
+
+  logger.info('Company fully activated', {
+    correlationId,
+    companyId,
+    userId,
+    tier,
+    subscriptionId: subscriptionData.id
+  });
+
+  return { success: true, companyId, tier };
+}
+
+/**
+ * Create system entities (General Expenses project and General Contractor)
+ * Uses conditional writes for idempotency
+ */
+async function createSystemEntities(companyId, userId, timestamp, correlationId) {
+  // Create General Expenses project with conditional write
+  try {
     const generalExpensesProject = {
       companyId,
       projectId: SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId,
@@ -350,16 +544,20 @@ async function handleSubscriptionActivated(subscriptionData) {
 
     await dynamoOperation('put', {
       TableName: COMPANY_TABLE_NAMES.PROJECTS,
-      Item: generalExpensesProject
+      Item: generalExpensesProject,
+      ConditionExpression: 'attribute_not_exists(projectId)'
     });
-
-    console.log(`General Expenses project created for company ${companyId}`);
+    logger.info('General Expenses project created', { correlationId, companyId });
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      logger.info('General Expenses project already exists', { correlationId, companyId });
+    } else {
+      throw error;
+    }
   }
 
-  // Create system "General Contractor" for unassigned expenses (only if company is new)
-  if (!existingCompany.Item) {
-    console.log(`Creating system General Contractor for company ${companyId}`);
-
+  // Create General Contractor with conditional write
+  try {
     const generalContractor = {
       companyId,
       contractorId: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId,
@@ -383,44 +581,32 @@ async function handleSubscriptionActivated(subscriptionData) {
 
     await dynamoOperation('put', {
       TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
-      Item: generalContractor
+      Item: generalContractor,
+      ConditionExpression: 'attribute_not_exists(contractorId)'
     });
-
-    console.log(`General Contractor created for company ${companyId}`);
-  }
-
-  // Update or create subscription record
-  await dynamoOperation('put', {
-    TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
-    Item: {
-      companyId,
-      subscriptionId: subscriptionData.id,
-      paddleCustomerId: subscriptionData.customer_id,
-      currentPlan: tier,
-      subscriptionStatus: 'active',
-      nextBillingDate: subscriptionData.next_billed_at,
-      scheduledChangeId: subscriptionData.scheduled_change?.id || null,
-      createdAt: timestamp,
-      updatedAt: timestamp
+    logger.info('General Contractor created', { correlationId, companyId });
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      logger.info('General Contractor already exists', { correlationId, companyId });
+    } else {
+      throw error;
     }
-  });
-
-  console.log(`Company ${companyId} fully activated with ${tier} tier. User ${userId} can now access the system.`);
+  }
 }
 
 /**
  * Handle subscription.updated event
  * Occurs when subscription changes (upgrade, downgrade, renewal)
  */
-async function handleSubscriptionUpdated(subscriptionData) {
+async function handleSubscriptionUpdated(subscriptionData, correlationId) {
   const companyId = getCompanyIdFromSubscription(subscriptionData);
 
   if (!companyId) {
-    console.error('No companyId found in subscription custom_data');
+    logger.error('No companyId found in subscription custom_data', { correlationId });
     return;
   }
 
-  console.log(`Subscription updated for company: ${companyId}`);
+  logger.info('Subscription updated', { correlationId, companyId });
 
   // Determine tier from price ID
   const priceId = subscriptionData.items[0]?.price?.id;
@@ -452,22 +638,22 @@ async function handleSubscriptionUpdated(subscriptionData) {
     }
   });
 
-  console.log(`Company ${companyId} updated to ${tier} tier`);
+  logger.info('Company subscription updated', { correlationId, companyId, tier, status: subscriptionData.status });
 }
 
 /**
  * Handle subscription.canceled event
  * Occurs when subscription is canceled
  */
-async function handleSubscriptionCanceled(subscriptionData) {
+async function handleSubscriptionCanceled(subscriptionData, correlationId) {
   const companyId = getCompanyIdFromSubscription(subscriptionData);
 
   if (!companyId) {
-    console.error('No companyId found in subscription custom_data');
+    logger.error('No companyId found in subscription custom_data', { correlationId });
     return;
   }
 
-  console.log(`Subscription canceled for company: ${companyId}`);
+  logger.info('Subscription canceled', { correlationId, companyId });
 
   // Update subscription status
   await dynamoOperation('update', {
@@ -492,22 +678,22 @@ async function handleSubscriptionCanceled(subscriptionData) {
     }
   });
 
-  console.log(`Company ${companyId} subscription canceled`);
+  logger.info('Company subscription canceled', { correlationId, companyId });
 }
 
 /**
  * Handle subscription.past_due event
  * Occurs when payment fails and subscription enters grace period
  */
-async function handleSubscriptionPastDue(subscriptionData) {
+async function handleSubscriptionPastDue(subscriptionData, correlationId) {
   const companyId = getCompanyIdFromSubscription(subscriptionData);
 
   if (!companyId) {
-    console.error('No companyId found in subscription custom_data');
+    logger.error('No companyId found in subscription custom_data', { correlationId });
     return;
   }
 
-  console.log(`Subscription past due for company: ${companyId}`);
+  logger.warn('Subscription past due', { correlationId, companyId });
 
   // Update subscription status to past_due
   await dynamoOperation('update', {
@@ -531,7 +717,7 @@ async function handleSubscriptionPastDue(subscriptionData) {
     }
   });
 
-  console.log(`Company ${companyId} marked as past_due`);
+  logger.warn('Company marked as past_due', { correlationId, companyId });
   // Note: Paddle automatically sends payment failure emails to the customer.
   // Additional notification can be configured in Paddle dashboard under Notifications.
 }
@@ -540,15 +726,15 @@ async function handleSubscriptionPastDue(subscriptionData) {
  * Handle transaction.completed event
  * Occurs when payment succeeds
  */
-async function handleTransactionCompleted(transactionData) {
+async function handleTransactionCompleted(transactionData, correlationId) {
   const companyId = transactionData.custom_data?.companyId;
 
   if (!companyId) {
-    console.log('No companyId in transaction custom_data - might be initial checkout');
+    logger.info('No companyId in transaction custom_data - might be initial checkout', { correlationId });
     return;
   }
 
-  console.log(`Transaction completed for company: ${companyId}`);
+  logger.info('Transaction completed', { correlationId, companyId, transactionId: transactionData.id });
 
   // Store payment record
   await storePayment({
@@ -562,7 +748,7 @@ async function handleTransactionCompleted(transactionData) {
     paidAt: transactionData.billed_at || getCurrentTimestamp()
   });
 
-  console.log(`Payment record stored for company: ${companyId}`);
+  logger.info('Payment record stored', { correlationId, companyId });
   // Note: Paddle automatically sends payment receipts to the customer.
   // Receipt templates can be customized in Paddle dashboard.
 }
@@ -571,15 +757,15 @@ async function handleTransactionCompleted(transactionData) {
  * Handle transaction.payment_failed event
  * Occurs when payment fails
  */
-async function handleTransactionPaymentFailed(transactionData) {
+async function handleTransactionPaymentFailed(transactionData, correlationId) {
   const companyId = transactionData.custom_data?.companyId;
 
   if (!companyId) {
-    console.log('No companyId in transaction custom_data');
+    logger.info('No companyId in transaction custom_data', { correlationId });
     return;
   }
 
-  console.log(`Payment failed for company: ${companyId}`);
+  logger.warn('Payment failed', { correlationId, companyId, transactionId: transactionData.id });
 
   // Store failed payment record
   await storePayment({
@@ -593,7 +779,7 @@ async function handleTransactionPaymentFailed(transactionData) {
     paidAt: getCurrentTimestamp()
   });
 
-  console.log(`Failed payment recorded for company: ${companyId}`);
+  logger.warn('Failed payment recorded', { correlationId, companyId });
   // Note: Paddle automatically sends payment failure notifications to the customer.
   // Dunning settings can be configured in Paddle dashboard.
 }
