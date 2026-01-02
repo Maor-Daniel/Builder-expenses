@@ -44,7 +44,8 @@ const PADDLE_TABLE_NAMES = {
   SUBSCRIPTIONS: getTableName('paddle-subscriptions'),
   CUSTOMERS: getTableName('paddle-customers'),
   PAYMENTS: getTableName('paddle-payments'),
-  WEBHOOKS: getTableName('paddle-webhooks')
+  WEBHOOKS: getTableName('paddle-webhooks'),
+  WEBHOOK_DLQ: getTableName('paddle-webhook-dlq')
 };
 
 module.exports = {
