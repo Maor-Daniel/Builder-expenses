@@ -326,6 +326,69 @@ async function handleSubscriptionActivated(subscriptionData) {
     console.log(`Admin user ${userId} created successfully`);
   }
 
+  // Create system "General Expenses" project for unassigned expenses (only if company is new)
+  if (!existingCompany.Item) {
+    console.log(`Creating system General Expenses project for company ${companyId}`);
+
+    const generalExpensesProject = {
+      companyId,
+      projectId: SYSTEM_PROJECTS.GENERAL_EXPENSES.projectId,
+      userId: userId,
+      name: SYSTEM_PROJECTS.GENERAL_EXPENSES.name,
+      description: SYSTEM_PROJECTS.GENERAL_EXPENSES.description,
+      isSystemProject: true,
+      startDate: timestamp.substring(0, 10), // YYYY-MM-DD format
+      endDate: null,
+      status: 'active',
+      budget: 0,
+      spentAmount: 0,
+      location: '',
+      clientName: '',
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    await dynamoOperation('put', {
+      TableName: COMPANY_TABLE_NAMES.PROJECTS,
+      Item: generalExpensesProject
+    });
+
+    console.log(`General Expenses project created for company ${companyId}`);
+  }
+
+  // Create system "General Contractor" for unassigned expenses (only if company is new)
+  if (!existingCompany.Item) {
+    console.log(`Creating system General Contractor for company ${companyId}`);
+
+    const generalContractor = {
+      companyId,
+      contractorId: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.contractorId,
+      userId: userId,
+      name: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.name,
+      contactPerson: '',
+      phone: '',
+      email: '',
+      address: '',
+      specialty: 'כללי',
+      licenseNumber: '',
+      taxId: '',
+      paymentTerms: '',
+      notes: SYSTEM_CONTRACTORS.GENERAL_CONTRACTOR.description,
+      isSystemContractor: true,
+      status: 'active',
+      rating: null,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    await dynamoOperation('put', {
+      TableName: COMPANY_TABLE_NAMES.CONTRACTORS,
+      Item: generalContractor
+    });
+
+    console.log(`General Contractor created for company ${companyId}`);
+  }
+
   // Update or create subscription record
   await dynamoOperation('put', {
     TableName: PADDLE_TABLE_NAMES.SUBSCRIPTIONS,
