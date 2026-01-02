@@ -41,10 +41,12 @@ exports.handler = withSecureCors(async (event) => {
       return createErrorResponse(400, 'Valid subscription tier is required (starter, professional, or enterprise)');
     }
 
-    // Determine success URL (mobile deep link or web URL)
+    // Determine success URL (web URL for universal compatibility)
+    // Note: Changed from 'builderexpenses://checkout-success' to web URL
+    // because Paddle requires mobile app approval for custom URL schemes
     const checkoutSuccessUrl = successUrl ||
                                 process.env.CHECKOUT_SUCCESS_URL ||
-                                'builderexpenses://checkout-success';
+                                'https://www.builder-expenses.com/checkout-success';
 
     const tierKey = subscriptionTier.toUpperCase();
     const plan = SUBSCRIPTION_PLANS[tierKey];
