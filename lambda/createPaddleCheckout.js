@@ -89,20 +89,30 @@ exports.handler = withSecureCors(async (event) => {
 
     const transaction = await paddleApiCall('transactions', 'POST', transactionData);
 
-    console.log('Paddle transaction created:', {
-      transactionId: transaction.data?.id,
-      checkoutUrl: transaction.data?.checkout?.url
-    });
+    const transactionId = transaction.data?.id;
 
-    const checkoutUrl = transaction.data?.checkout?.url;
-
-    if (!checkoutUrl) {
-      console.error('Paddle transaction created but no checkout URL returned:', transaction);
-      return createErrorResponse(500, 'Failed to get checkout URL from Paddle');
+    if (!transactionId) {
+      console.error('Paddle transaction created but no transaction ID returned:', transaction);
+      return createErrorResponse(500, 'Failed to get transaction ID from Paddle');
     }
 
     // Get Paddle configuration including client token from Secrets Manager
     const paddleConfig = await getPaddleConfig();
+
+    // Construct Paddle hosted checkout URL based on environment
+    // Note: Paddle's API returns the redirect URL in checkout.url, NOT the checkout page URL
+    // We need to construct the actual checkout URL ourselves using the transaction ID
+    const paddleCheckoutBaseUrl = paddleConfig.environment === 'production'
+      ? 'https://buy.paddle.com'
+      : 'https://sandbox-buy.paddle.com';
+
+    const checkoutUrl = `${paddleCheckoutBaseUrl}/?_ptxn=${transactionId}`;
+
+    console.log('Paddle transaction created:', {
+      transactionId,
+      checkoutUrl,
+      environment: paddleConfig.environment
+    });
 
     // Return both checkoutUrl (for mobile) AND paddleConfig (for web app backwards compatibility)
     return createResponse(200, {
