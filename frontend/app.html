@@ -3198,6 +3198,56 @@
             color: #2c5282;
             border-left: 4px solid #3182ce;
         }
+
+        /* Loading Overlay Styles */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading-content {
+            text-align: center;
+            max-width: 400px;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        #loadingProgressBar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -3495,7 +3545,7 @@
                     <!-- Professional Tier -->
                     <div class="tier-card" data-tier="professional" style="border: 2px solid #3182ce; border-radius: 8px; padding: 20px; background: white; cursor: pointer; transition: all 0.3s;">
                         <h4 style="margin: 0 0 10px 0; color: #3182ce; font-size: 20px;">Professional</h4>
-                        <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin-bottom: 10px;">₪200<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
+                        <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin-bottom: 10px;">₪100<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
                         <ul style="list-style: none; padding: 0; margin: 0; text-align: right;">
                             <li style="padding: 5px 0; color: #4a5568;">✓ 3 משתמשים</li>
                             <li style="padding: 5px 0; color: #4a5568;">✓ 10 פרויקטים</li>
@@ -3507,7 +3557,7 @@
                     <!-- Enterprise Tier -->
                     <div class="tier-card" data-tier="enterprise" style="border: 2px solid #805ad5; border-radius: 8px; padding: 20px; background: white; cursor: pointer; transition: all 0.3s;">
                         <h4 style="margin: 0 0 10px 0; color: #805ad5; font-size: 20px;">Enterprise</h4>
-                        <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin-bottom: 10px;">₪300<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
+                        <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin-bottom: 10px;">₪150<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
                         <ul style="list-style: none; padding: 0; margin: 0; text-align: right;">
                             <li style="padding: 5px 0; color: #4a5568;">✓ 10 משתמשים</li>
                             <li style="padding: 5px 0; color: #4a5568;">✓ פרויקטים ללא הגבלה</li>
@@ -3580,7 +3630,7 @@
                         <div class="tier-card" onclick="selectTier('starter')" data-tier="starter" style="border: 2px solid #cbd5e0; border-radius: 12px; padding: 20px; background: white; cursor: pointer; transition: all 0.3s; position: relative;">
                             <div style="position: absolute; top: 10px; left: 10px; background: #48bb78; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">חודש ניסיון חינם</div>
                             <h4 style="margin: 30px 0 10px 0; color: #48bb78; font-size: 22px; text-align: center;">Starter</h4>
-                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪100<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
+                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪50<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
                             <ul style="list-style: none; padding: 0; margin: 0; text-align: right;">
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ משתמש אחד</li>
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ 3 פרויקטים</li>
@@ -3594,7 +3644,7 @@
                         <div class="tier-card" onclick="selectTier('professional')" data-tier="professional" style="border: 2px solid #cbd5e0; border-radius: 12px; padding: 20px; background: white; cursor: pointer; transition: all 0.3s; position: relative;">
                             <div style="position: absolute; top: 10px; left: 10px; background: #3182ce; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">מומלץ + חודש ניסיון</div>
                             <h4 style="margin: 30px 0 10px 0; color: #3182ce; font-size: 22px; text-align: center;">Professional</h4>
-                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪200<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
+                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪100<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
                             <ul style="list-style: none; padding: 0; margin: 0; text-align: right;">
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ 3 משתמשים</li>
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ 10 פרויקטים</li>
@@ -3608,7 +3658,7 @@
                         <div class="tier-card" onclick="selectTier('enterprise')" data-tier="enterprise" style="border: 2px solid #cbd5e0; border-radius: 12px; padding: 20px; background: white; cursor: pointer; transition: all 0.3s; position: relative;">
                             <div style="position: absolute; top: 10px; left: 10px; background: #805ad5; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">חודש ניסיון חינם</div>
                             <h4 style="margin: 30px 0 10px 0; color: #805ad5; font-size: 22px; text-align: center;">Enterprise</h4>
-                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪300<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
+                            <div style="text-align: center; font-size: 36px; font-weight: bold; color: #2d3748; margin-bottom: 15px;">₪150<span style="font-size: 14px; font-weight: normal; color: #718096;">/חודש</span></div>
                             <ul style="list-style: none; padding: 0; margin: 0; text-align: right;">
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ 10 משתמשים</li>
                                 <li style="padding: 8px 0; color: #4a5568; border-bottom: 1px solid #e2e8f0;">✓ פרויקטים ללא הגבלה</li>
@@ -3630,6 +3680,18 @@
                     <p style="color: #718096; font-size: 13px; margin-top: 15px;">נדרש אימות כרטיס אשראי • ללא חיוב ל-30 יום</p>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h2 id="loadingTitle">טוען את החברה שלך...</h2>
+            <p id="loadingMessage">אנא המתן, זה לוקח רק כמה שניות</p>
+            <div class="loading-progress">
+                <div id="loadingProgressBar"></div>
+            </div>
         </div>
     </div>
 
@@ -3854,7 +3916,7 @@
     <!-- Clerk Configuration -->
     <script>
         // Clerk Configuration
-        window.CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
+        window.CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k';
         window.CLERK_FRONTEND_API = 'https://Builder-expenses.clerk.accounts.dev';
 
         // API Configuration
@@ -4115,10 +4177,10 @@
 
                 // Initialize Paddle (MUST be called once at page load)
                 console.log('Initializing Paddle at page load');
-                // Set Paddle environment to sandbox BEFORE Initialize
-                Paddle.Environment.set("sandbox");
+                // Set Paddle environment to production BEFORE Initialize
+                Paddle.Environment.set("production");
                 Paddle.Initialize({
-                    token: 'test_db12c8b3a07159acbe3dff44dba',
+                    token: 'live_78cd18afea0fe24f7d9440d3f14',
                     eventCallback: function(data) {
                         if (data.name === "checkout.completed") {
                             console.log('Paddle checkout completed!', data);
@@ -4413,105 +4475,163 @@
             }
         }
 
-        // Handle return from Paddle checkout
-        async function handlePaddleCheckoutReturn() {
-            const companyName = sessionStorage.getItem('paddle_company_name');
-            const tier = sessionStorage.getItem('paddle_tier');
+        /**
+         * Load company with intelligent retry logic
+         * - Post-checkout: 30 attempts × 2s = 60 seconds (webhook processing time)
+         * - Regular sign-in: 5 attempts × 1s = 5 seconds (handle slow API responses)
+         */
+        async function loadCompanyWithRetry() {
+            const isFromCheckout = sessionStorage.getItem('from_checkout_success') === 'true';
+            const maxAttempts = isFromCheckout ? 30 : 5;
+            const retryDelay = isFromCheckout ? 2000 : 1000;
 
-            // Show loading message
-            showSuccess(`מעבד תשלום עבור ${companyName}... אנא המתן לאישור (עד 30 שניות)`);
+            console.log(`[LOAD] Starting company load with retry (isFromCheckout: ${isFromCheckout}, max attempts: ${maxAttempts})`);
 
-            // Poll for company creation (webhook might take a few seconds)
-            const maxAttempts = 30; // 30 attempts = 30 seconds with 1 second delay
-            let attempts = 0;
+            // Show loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingTitle = document.getElementById('loadingTitle');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const progressBar = document.getElementById('loadingProgressBar');
 
-            const pollForCompany = async () => {
-                attempts++;
-                console.log(`Polling for company creation attempt ${attempts}/${maxAttempts}...`);
+            loadingOverlay.style.display = 'flex';
 
+            if (isFromCheckout) {
+                loadingTitle.textContent = 'מעבד את המנוי שלך...';
+                loadingMessage.textContent = 'יוצר את החברה שלך, רק עוד רגע...';
+            }
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    // Try to load app data (which checks for company)
-                    await loadAppData();
+                    console.log(`[LOAD] Attempt ${attempt}/${maxAttempts} to load company`);
 
-                    // If we got here, company was created successfully
-                    console.log('Company created successfully! Welcome!');
+                    // Update progress bar
+                    const progress = (attempt / maxAttempts) * 100;
+                    progressBar.style.width = `${progress}%`;
 
-                    // Clear session storage
-                    sessionStorage.removeItem('paddle_checkout_in_progress');
-                    sessionStorage.removeItem('paddle_company_name');
-                    sessionStorage.removeItem('paddle_tier');
-                    sessionStorage.removeItem('skip_invitation_check');
+                    const companyResp = await apiCall('/get-company');
 
-                    // Show success message
-                    showSuccess(`ברוך הבא! החברה ${companyName} נוצרה בהצלחה! תקופת ניסיון של 30 יום החלה.`);
+                    if (companyResp.companyExists) {
+                        console.log('[LOAD] Company found!');
 
-                    // Show expenses tab
-                    showTab('expenses');
+                        // Store company data
+                        window.company = companyResp.company;
+                        window.currentUser = companyResp.currentUser;
+
+                        // Clear checkout flags
+                        sessionStorage.removeItem('from_checkout_success');
+                        sessionStorage.removeItem('paddle_checkout_in_progress');
+
+                        // Hide loading overlay
+                        loadingOverlay.style.display = 'none';
+
+                        // Initialize app with company data
+                        await finalizeAppInitialization();
+                        return true;
+                    }
+
+                    // Company not found yet - retry if we have attempts left
+                    if (attempt < maxAttempts) {
+                        console.log(`[LOAD] Company not found, retrying in ${retryDelay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
 
                 } catch (error) {
-                    if (attempts < maxAttempts) {
-                        // Company not created yet, try again in 1 second
-                        setTimeout(pollForCompany, 1000);
-                    } else {
-                        // Max attempts reached
-                        console.error('Failed to confirm company creation after', maxAttempts, 'attempts');
+                    console.error(`[LOAD] Error on attempt ${attempt}:`, error);
 
-                        // Clear session storage
-                        sessionStorage.removeItem('paddle_checkout_in_progress');
-                        sessionStorage.removeItem('paddle_company_name');
-                        sessionStorage.removeItem('paddle_tier');
-                        sessionStorage.removeItem('skip_invitation_check');
+                    // Don't retry on auth errors
+                    if (error.message?.includes('unauthorized') || error.message?.includes('authentication')) {
+                        loadingOverlay.style.display = 'none';
+                        throw error;
+                    }
 
-                        showError('תשלום בוצע, אך יצירת החברה לוקחת יותר זמן מהרגיל. נסה לטעון מחדש את הדף בעוד כמה שניות.');
-
-                        // Try to load app data anyway - might show onboarding modal
-                        await loadAppData();
+                    // Retry on other errors
+                    if (attempt < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
                     }
                 }
-            };
+            }
 
-            // Start polling
-            await pollForCompany();
+            // All retries exhausted - proceed to onboarding/invitation flow
+            console.log('[LOAD] Company not found after all retries, checking for invitations...');
+            loadingOverlay.style.display = 'none';
+
+            // Clear checkout flags
+            sessionStorage.removeItem('from_checkout_success');
+
+            // Handle as new user (check invitations or show onboarding)
+            await handleNewUserFlow();
+            return false;
+        }
+
+        /**
+         * Finalize app initialization after company is loaded
+         */
+        async function finalizeAppInitialization() {
+            console.log('[INIT] Finalizing app initialization with company data');
+
+            // Load additional data
+            await loadExpenses();
+            await loadProjects();
+            await loadContractors();
+            await loadWorks();
+            await loadUsers();
+            await loadInvitations();
+
+            // Show dashboard
+            showTab('expenses');
+
+            // Start usage polling
+            startUsagePolling();
+        }
+
+        /**
+         * Handle new user flow - check invitations or show onboarding
+         */
+        async function handleNewUserFlow() {
+            console.log('[ONBOARDING] No company found - checking for pending invitations');
+
+            try {
+                const invitationsResp = await apiCall('/check-pending-invitations');
+
+                if (invitationsResp.hasPendingInvitations) {
+                    console.log('[ONBOARDING] User has pending invitations');
+                    showInvitationChoiceModal(invitationsResp.invitations);
+                } else {
+                    console.log('[ONBOARDING] No invitations - showing onboarding modal');
+                    showOnboardingModal();
+                }
+            } catch (error) {
+                console.error('[ONBOARDING] Error checking invitations:', error);
+                showOnboardingModal();
+            }
         }
 
         // Initialize Application
         async function initializeApp() {
+            console.log('[INIT] Initializing app...');
+
             try {
-                // Hide auth container
+                // Check if user is authenticated
+                const user = window.Clerk?.user;
+                if (!user) {
+                    console.log('[INIT] No authenticated user');
+                    document.getElementById('clerkAuthContainer').style.display = 'block';
+                    document.getElementById('mainContent').style.display = 'none';
+                    return;
+                }
+
+                console.log('[INIT] User authenticated:', user.id);
+
+                // Get session token for API calls
+                const token = await window.Clerk.session.getToken();
+                window.authToken = token;
+
+                // Hide auth container, show main app
                 document.getElementById('clerkAuthContainer').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
 
-                // Get auth token
-                authToken = await ClerkAuth.getAuthToken();
-
-                // Get user info
-                currentUser = window.currentUser;
-                if (currentUser) {
-                    document.getElementById('userName').textContent = currentUser.name || currentUser.email;
-
-                    // Company name will be loaded by loadAppData()
-                    document.getElementById('headerCompanyName').textContent = 'טוען...';
-                }
-
-                // Check if returning from Paddle checkout
-                if (sessionStorage.getItem('paddle_checkout_in_progress') === 'true') {
-                    console.log('Returning from Paddle checkout - polling for company creation...');
-                    await handlePaddleCheckoutReturn();
-                    return; // handlePaddleCheckoutReturn will call loadAppData when ready
-                }
-
-                // Load application data
-                await loadAppData();
-
-                // Show initial tab only if not already on a tab (initial load)
-                if (!currentTab) {
-                    console.log('[INIT] First load - showing expenses tab');
-                    showTab('expenses');
-                } else {
-                    console.log('[INIT] Re-authentication - staying on current tab:', currentTab);
-                    // Refresh the current tab to update data
-                    refreshCurrentTab();
-                }
+                // Use intelligent retry logic to load company
+                await loadCompanyWithRetry();
 
                 // Initialize session timeout manager (15 min idle timeout)
                 if (typeof SessionTimeout !== 'undefined') {
@@ -4519,8 +4639,10 @@
                 }
 
             } catch (error) {
-                console.error('Failed to initialize app:', error);
-                showError('Failed to initialize application');
+                console.error('[INIT] Error initializing app:', error);
+                showError('שגיאה באתחול האפליקציה: ' + error.message);
+                document.getElementById('clerkAuthContainer').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
             }
         }
 
@@ -7337,7 +7459,7 @@
                         throw new Error('Paddle.js לא נטען. אנא רענן את הדף ונסה שנית.');
                     }
 
-                    Paddle.Environment.set(paddleConfig.environment || 'sandbox');
+                    Paddle.Environment.set(paddleConfig.environment || 'production');
                     Paddle.Initialize({
                         token: paddleConfig.token,
                         eventCallback: function(data) {

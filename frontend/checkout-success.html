@@ -175,7 +175,7 @@
             <p>✓ לא נחייב אותך עד תום תקופת הניסיון</p>
         </div>
 
-        <a href="/app.html" class="button">התחל להשתמש במערכת</a>
+        <button onclick="navigateToApp()" class="button" style="border: none; cursor: pointer;">התחל להשתמש במערכת</button>
 
         <p class="support-link">
             שאלות? <a href="mailto:support@builder-expenses.com">צור קשר עם התמיכה</a>
@@ -200,10 +200,24 @@
             }
         }
 
-        // Auto-redirect to app after 5 seconds (optional)
-        // setTimeout(() => {
-        //     window.location.href = '/app.html';
-        // }, 5000);
+        // Navigate to app with checkout flag
+        function navigateToApp() {
+            // Set flag to indicate user is coming from checkout
+            sessionStorage.setItem('from_checkout_success', 'true');
+
+            // Navigate to app
+            window.location.href = '/app.html';
+        }
+
+        // Auto-redirect after 3 seconds
+        let countdown = 3;
+        const autoRedirectTimer = setInterval(() => {
+            countdown--;
+            if (countdown === 0) {
+                clearInterval(autoRedirectTimer);
+                navigateToApp();
+            }
+        }, 1000);
     </script>
 </body>
 </html>
