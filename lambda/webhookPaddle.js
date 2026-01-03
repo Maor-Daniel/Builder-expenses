@@ -280,18 +280,32 @@ function getCompanyIdFromSubscription(subscriptionData) {
  * (subscription.activated is only sent after trial ends)
  */
 async function handleSubscriptionCreated(subscriptionData, correlationId) {
-  const companyId = getCompanyIdFromSubscription(subscriptionData);
+  // Extract custom data for company creation
+  const customData = subscriptionData.custom_data || {};
+  const companyId = customData.companyId;
+  const userId = customData.userId;
+  const companyName = customData.companyName;
+  const subscriptionTier = customData.subscriptionTier;
+  const userEmail = customData.userEmail;
 
-  if (!companyId) {
-    logger.error('No companyId found in subscription custom_data', { correlationId });
-    return;
+  // Validation - throw error for missing data
+  if (!companyId || !userId || !companyName) {
+    const error = new Error('Missing required data in subscription custom_data');
+    error.isValidation = true; // Mark as non-retryable
+    logger.error('Missing required data in subscription custom_data', {
+      correlationId,
+      hasCompanyId: !!companyId,
+      hasUserId: !!userId,
+      hasCompanyName: !!companyName
+    });
+    throw error;
   }
 
-  logger.info('Subscription created', { correlationId, companyId });
+  logger.info('Subscription created', { correlationId, companyId, companyName });
 
   // Determine tier from price ID
   const priceId = subscriptionData.items[0]?.price?.id;
-  const tier = determineTierFromPriceId(priceId);
+  const tier = determineTierFromPriceId(priceId) || subscriptionTier;
   const timestamp = getCurrentTimestamp();
 
   // Store subscription record
@@ -307,33 +321,131 @@ async function handleSubscriptionCreated(subscriptionData, correlationId) {
 
   logger.info('Subscription record created', { correlationId, companyId, tier });
 
-  // Also update the companies table with subscription info
-  // This is critical for trial subscriptions where subscription.activated isn't sent
-  try {
+  // CRITICAL: Create company if it doesn't exist
+  // This is essential for trial subscriptions where subscription.activated isn't sent
+  const existingCompany = await dynamoOperation('get', {
+    TableName: COMPANY_TABLE_NAMES.COMPANIES,
+    Key: { companyId }
+  });
+
+  let companyCreated = false;
+
+  if (!existingCompany.Item) {
+    logger.info('Creating new company record (trial subscription)', { correlationId, companyId });
+
+    const company = {
+      companyId,
+      name: companyName,
+      description: '',
+      industry: '',
+      companyAddress: '',
+      companyPhone: '',
+      logoUrl: '',
+      subscriptionTier: tier,
+      subscriptionStatus: subscriptionData.status, // 'trialing' or 'active'
+      subscriptionId: subscriptionData.id,
+      paddleCustomerId: subscriptionData.customer_id,
+      nextBillingDate: subscriptionData.next_billed_at,
+      // Initialize usage counters
+      currentProjects: 0,
+      currentUsers: 1, // The creator
+      currentMonthExpenses: 0,
+      // Timestamps
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      // Trial period dates
+      trialStartDate: subscriptionData.started_at || timestamp,
+      trialEndDate: subscriptionData.next_billed_at || timestamp
+    };
+
+    // Only add companyEmail if userEmail is not empty
+    if (userEmail && userEmail.trim().length > 0) {
+      company.companyEmail = userEmail.trim();
+    }
+
+    try {
+      await dynamoOperation('put', {
+        TableName: COMPANY_TABLE_NAMES.COMPANIES,
+        Item: company,
+        ConditionExpression: 'attribute_not_exists(companyId)'
+      });
+      companyCreated = true;
+      logger.info('Company created successfully', { correlationId, companyId, tier });
+    } catch (error) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        logger.info('Company already created by concurrent request', { correlationId, companyId });
+      } else {
+        throw error;
+      }
+    }
+
+    // Create admin user
+    try {
+      const adminUser = {
+        companyId,
+        userId,
+        name: '',
+        role: USER_ROLES.ADMIN,
+        status: 'active',
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+
+      if (userEmail && userEmail.trim().length > 0) {
+        adminUser.email = userEmail.trim();
+      }
+
+      await dynamoOperation('put', {
+        TableName: COMPANY_TABLE_NAMES.USERS,
+        Item: adminUser,
+        ConditionExpression: 'attribute_not_exists(userId)'
+      });
+      logger.info('Admin user created', { correlationId, companyId, userId });
+    } catch (error) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        logger.info('Admin user already exists', { correlationId, companyId, userId });
+      } else {
+        throw error;
+      }
+    }
+
+    // Create system entities (General Expenses project and General Contractor)
+    await createSystemEntities(companyId, userId, timestamp, correlationId);
+
+    logger.info('Company fully created from subscription.created', {
+      correlationId,
+      companyId,
+      userId,
+      tier,
+      status: subscriptionData.status
+    });
+  } else {
+    // Company exists, just update subscription info
+    logger.info('Company already exists, updating subscription info', {
+      correlationId,
+      companyId,
+      existingStatus: existingCompany.Item.subscriptionStatus
+    });
+
     await dynamoOperation('update', {
       TableName: COMPANY_TABLE_NAMES.COMPANIES,
       Key: { companyId },
       UpdateExpression: 'SET subscriptionTier = :tier, subscriptionStatus = :status, subscriptionId = :subId, paddleCustomerId = :custId, nextBillingDate = :nextBilling, updatedAt = :updated',
       ExpressionAttributeValues: {
         ':tier': tier,
-        ':status': subscriptionData.status, // 'trialing' or 'active'
+        ':status': subscriptionData.status,
         ':subId': subscriptionData.id,
         ':custId': subscriptionData.customer_id,
         ':nextBilling': subscriptionData.next_billed_at,
         ':updated': timestamp
       }
     });
+
     logger.info('Company updated with subscription info', {
       correlationId,
       companyId,
       tier,
       status: subscriptionData.status
-    });
-  } catch (updateError) {
-    logger.error('Failed to update company', {
-      correlationId,
-      companyId,
-      error: updateError.message
     });
   }
 }
