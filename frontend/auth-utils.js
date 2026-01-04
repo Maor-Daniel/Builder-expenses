@@ -178,14 +178,11 @@ async function requestPasswordReset(email) {
 
         console.log('[AUTH-UTILS] Requesting password reset for:', email);
 
-        // Start password reset flow
+        // Start password reset flow - create signIn with strategy and identifier
         const signIn = await clerk.client.signIn.create({
-            identifier: email,
-            strategy: 'reset_password_email_code'
+            strategy: 'reset_password_email_code',
+            identifier: email
         });
-
-        // Prepare password reset (Clerk sends code via email)
-        await signIn.prepareFirstFactor({ strategy: 'reset_password_email_code' });
 
         console.log('[AUTH-UTILS] Password reset email sent');
         return {
@@ -275,6 +272,7 @@ function parseClerkError(error) {
         'form_identifier_not_found': 'אימייל לא קיים במערכת',
         'form_identifier_exists': 'אימייל זה כבר רשום במערכת',
         'form_param_format_invalid': 'פורמט האימייל אינו תקין',
+        'form_param_missing': 'חסרים נתונים נדרשים',
 
         // Verification errors
         'verification_failed': 'קוד אימות שגוי',

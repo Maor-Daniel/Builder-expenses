@@ -63,7 +63,7 @@
 
             <!-- Footer Links -->
             <div class="auth-footer">
-                <a href="signup.html" class="auth-link">חזור להרשמה</a>
+                <a href="signup.html" class="auth-link" id="backLink">חזור להרשמה</a>
             </div>
         </div>
     </div>
@@ -85,6 +85,7 @@
         const resendLink = document.getElementById('resendLink');
         const resendText = document.getElementById('resendText');
         const cooldownText = document.getElementById('cooldownText');
+        const backLink = document.getElementById('backLink');
 
         // Code input elements
         const codeInputs = [
@@ -96,9 +97,17 @@
             document.getElementById('digit6')
         ];
 
-        // Get email from session storage
-        const email = sessionStorage.getItem('signup_email') || '';
+        // Get email from session storage (depends on mode)
+        const email = mode === 'reset'
+            ? sessionStorage.getItem('reset_email') || ''
+            : sessionStorage.getItem('signup_email') || '';
         userEmailSpan.textContent = email || 'האימייל שלך';
+
+        // Update back link based on mode
+        if (mode === 'reset') {
+            backLink.href = 'forgot-password.html';
+            backLink.textContent = 'חזור לאיפוס סיסמה';
+        }
 
         // Cooldown state
         let cooldownSeconds = 0;
@@ -262,17 +271,29 @@
             try {
                 hideMessages();
 
-                // For signup mode, we need to trigger a new verification
-                // Clerk automatically handles this when we call prepareEmailAddressVerification again
-                const clerk = await AuthUtils.getClerkInstance();
-                const signUp = clerk.client.signUp;
+                if (mode === 'reset') {
+                    // For password reset mode, request a new reset code
+                    const result = await AuthUtils.requestPasswordReset(email);
 
-                if (signUp) {
-                    await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-                    showSuccess('קוד אימות חדש נשלח לאימייל שלך');
-                    startCooldown(60);
+                    if (result.success) {
+                        showSuccess('קוד איפוס חדש נשלח לאימייל שלך');
+                        startCooldown(60);
+                    } else {
+                        showError(result.error);
+                    }
                 } else {
-                    showError('לא נמצא תהליך הרשמה פעיל');
+                    // For signup mode, we need to trigger a new verification
+                    // Clerk automatically handles this when we call prepareEmailAddressVerification again
+                    const clerk = await AuthUtils.getClerkInstance();
+                    const signUp = clerk.client.signUp;
+
+                    if (signUp) {
+                        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+                        showSuccess('קוד אימות חדש נשלח לאימייל שלך');
+                        startCooldown(60);
+                    } else {
+                        showError('לא נמצא תהליך הרשמה פעיל');
+                    }
                 }
             } catch (error) {
                 console.error('[VERIFY] Resend error:', error);
@@ -319,28 +340,45 @@
             hideMessages();
 
             try {
-                // Call Clerk verification API
-                const result = await AuthUtils.verifyEmailCode(code);
+                if (mode === 'reset') {
+                    // Password reset flow - Clerk requires code + password together
+                    // So we just store the code and redirect without API verification
+                    console.log('[VERIFY] Password reset mode - storing code for later verification');
 
-                if (result.success) {
-                    console.log('[VERIFY] Verification successful');
+                    // Store verification code for reset-password page
+                    sessionStorage.setItem('reset_code', code);
 
                     // Show success message
-                    showSuccess('✓ אימות הצליח! מעביר אותך למערכת...');
+                    showSuccess('✓ קוד התקבל! מעביר אותך להגדרת סיסמה חדשה...');
 
-                    // Clear email from session storage
-                    sessionStorage.removeItem('signup_email');
-
-                    // Redirect to app after brief delay
+                    // Redirect to reset password page
                     setTimeout(() => {
-                        window.location.href = 'app.html';
+                        window.location.href = 'reset-password.html';
                     }, 1500);
                 } else {
-                    // Show error message in Hebrew
-                    console.error('[VERIFY] Verification failed:', result.error);
-                    showError(result.error);
-                    clearCodeInputs();
-                    setLoading(false);
+                    // Signup flow - verify code with Clerk API
+                    const result = await AuthUtils.verifyEmailCode(code);
+
+                    if (result.success) {
+                        console.log('[VERIFY] Verification successful');
+
+                        // Show success message
+                        showSuccess('✓ אימות הצליח! מעביר אותך למערכת...');
+
+                        // Clear email from session storage
+                        sessionStorage.removeItem('signup_email');
+
+                        // Redirect to app after brief delay
+                        setTimeout(() => {
+                            window.location.href = 'app.html';
+                        }, 1500);
+                    } else {
+                        // Show error message in Hebrew
+                        console.error('[VERIFY] Verification failed:', result.error);
+                        showError(result.error);
+                        clearCodeInputs();
+                        setLoading(false);
+                    }
                 }
             } catch (error) {
                 console.error('[VERIFY] Unexpected error:', error);

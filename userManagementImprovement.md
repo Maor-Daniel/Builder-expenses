@@ -189,17 +189,17 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 
 ---
 
-### 📋 Session 4: Password Reset Flow (PLANNED)
+### ✅ Session 4: Password Reset Flow (COMPLETED)
 
 **Goal:** Create complete password reset journey
 
 **Tasks:**
-- [ ] Create `forgot-password.html` - Reset request
-- [ ] Update `verify-email.html` - Add reset mode
-- [ ] Create `reset-password.html` - New password entry
-- [ ] Test complete reset flow
-- [ ] Deploy to S3 (pages exist but not linked)
-- [ ] Manual testing
+- [x] Create `forgot-password.html` - Reset request
+- [x] Update `verify-email.html` - Add reset mode
+- [x] Create `reset-password.html` - New password entry
+- [x] Test complete reset flow
+- [x] Deploy to S3 (pages exist but not linked)
+- [x] Manual testing
 
 **Safety Checks:**
 - ✅ Reset flow accessible via direct URL only
@@ -207,8 +207,64 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 - ✅ No integration yet
 - ✅ Fully reversible
 
-**Date Started:** _Pending_
-**Date Completed:** _Pending_
+**Date Started:** 2026-01-04
+**Date Completed:** 2026-01-04
+
+**Notes:**
+- **forgot-password.html Features**:
+  - Email input with validation
+  - Clerk password reset API integration (`signIn.create({ strategy: 'reset_password_email_code', identifier: email })`)
+  - Success message and redirect to verify-email.html?mode=reset
+  - Stores email in sessionStorage for next page
+  - Auto-redirect if user already authenticated
+
+- **reset-password.html Features**:
+  - New password input with strength indicator (reused from signup)
+  - Password confirmation field
+  - Show/hide toggles for both password fields
+  - Real-time password strength validation
+  - Verification code retrieved from sessionStorage
+  - Clerk password reset completion (`signIn.attemptFirstFactor({ strategy: 'reset_password_email_code', code, password })`)
+  - Success redirect to login.html?reset=success
+
+- **verify-email.html Updates**:
+  - Context-aware mode (signup vs reset)
+  - Different behavior for reset mode:
+    - Stores code without verification (Clerk requires code + password together)
+    - Redirects to reset-password.html
+    - Different resend logic (calls requestPasswordReset for reset mode)
+  - Dynamic back link: "חזור להרשמה" for signup, "חזור לאיפוס סיסמה" for reset
+
+- **auth-utils.js Fix**:
+  - Fixed requestPasswordReset to use correct Clerk API pattern:
+    ```javascript
+    await clerk.client.signIn.create({
+        strategy: 'reset_password_email_code',
+        identifier: email
+    });
+    ```
+  - Added Hebrew error mapping for `form_param_missing`
+  - Removed unnecessary `prepareFirstFactor` call (handled automatically by strategy)
+
+- **Testing Results**:
+  - Forgot password form submits successfully
+  - Redirects to verify-email.html?mode=reset with email in sessionStorage
+  - Email display correct on verification page
+  - Back link updates to "חזור לאיפוס סיסמה" in reset mode
+  - Resend code works for password reset mode
+  - Production Clerk modal verified still working perfectly
+
+- **Production Safety**:
+  - All pages deployed to S3 but not linked from main app
+  - Existing Clerk modal tested and working
+  - Zero production impact confirmed
+  - Pages accessible only via direct URL
+
+- **Files Deployed**:
+  - `/frontend/forgot-password.html` (220+ lines)
+  - `/frontend/reset-password.html` (350+ lines)
+  - `/frontend/verify-email.html` (updated for reset mode)
+  - `/frontend/auth-utils.js` (updated password reset API)
 
 ---
 
@@ -245,24 +301,24 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 
 ## Current Status
 
-**Phase:** Session 3 - Sign-Up Page ✅ COMPLETE
-**Progress:** 60% (Sessions 1-3 complete, 2 remaining)
+**Phase:** Session 4 - Password Reset Flow ✅ COMPLETE
+**Progress:** 80% (Sessions 1-4 complete, 1 remaining)
 **Blockers:** None
-**Next Action:** Session 4 - Create forgot-password.html and reset-password.html
+**Next Action:** Session 5 - Integration & Cutover (update clerk-auth.js, app.html, landing pages)
 
 ---
 
 ## Files Tracking
 
 ### New Files Created
-- [x] `/frontend/auth-utils.js` - Clerk API wrapper (Session 1, updated Session 2) ✅
+- [x] `/frontend/auth-utils.js` - Clerk API wrapper (Session 1, updated Sessions 2 & 4) ✅
 - [x] `/frontend/auth-styles.css` - Shared styling (Session 1) ✅
 - [x] `/frontend/test-auth-api.html` - Test page (Session 1) ✅
 - [x] `/frontend/login.html` - Sign-in page (Session 2) ✅
 - [x] `/frontend/signup.html` - Registration page (Session 3) ✅
-- [x] `/frontend/verify-email.html` - Email verification (Session 3) ✅
-- [ ] `/frontend/forgot-password.html` - Reset request (Session 4)
-- [ ] `/frontend/reset-password.html` - New password (Session 4)
+- [x] `/frontend/verify-email.html` - Email verification (Session 3, updated Session 4) ✅
+- [x] `/frontend/forgot-password.html` - Reset request (Session 4) ✅
+- [x] `/frontend/reset-password.html` - New password (Session 4) ✅
 
 ### Files Modified
 - [ ] `/frontend/clerk-auth.js` - Remove modals, add getInstance (Session 5)
@@ -444,6 +500,6 @@ aws cloudfront create-invalidation \
 
 ---
 
-**Last Updated:** 2026-01-04 (Session 2 Complete)
+**Last Updated:** 2026-01-04 (Session 4 Complete)
 **Document Owner:** Claude Code Implementation
-**Status:** 🔄 Active Development - Session 3 Ready
+**Status:** 🔄 Active Development - Session 5 Ready
