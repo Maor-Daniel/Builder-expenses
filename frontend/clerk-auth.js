@@ -2,8 +2,8 @@
 // Clerk authentication module for frontend
 
 // Clerk configuration from environment or defaults
-const CLERK_PUBLISHABLE_KEY = window.CLERK_PUBLISHABLE_KEY || 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
-const CLERK_FRONTEND_API = window.CLERK_FRONTEND_API || 'https://Builder-expenses.clerk.accounts.dev';
+const CLERK_PUBLISHABLE_KEY = window.CLERK_PUBLISHABLE_KEY || 'pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k';
+const CLERK_FRONTEND_API = window.CLERK_FRONTEND_API || 'https://clerk.builder-expenses.com';
 
 // Initialize Clerk instance
 let clerk = null;
@@ -117,51 +117,14 @@ function isAuthenticated() {
 }
 
 /**
- * Show Clerk sign-in UI
+ * Get Clerk instance (for custom auth pages)
+ * @returns {Promise<Clerk>} Clerk instance
  */
-async function showSignIn(options = {}) {
+async function getInstance() {
   if (!isClerkReady || !clerk) {
     await initializeClerk();
   }
-
-  clerk.openSignIn({
-    appearance: {
-      elements: {
-        rootBox: 'clerk-signin-modal',
-        card: 'clerk-card'
-      },
-      variables: {
-        colorPrimary: '#2563eb', // Blue color matching the app
-        fontFamily: '"Rubik", sans-serif'
-      }
-    },
-    routing: 'virtual',
-    ...options
-  });
-}
-
-/**
- * Show Clerk sign-up UI
- */
-async function showSignUp(options = {}) {
-  if (!isClerkReady || !clerk) {
-    await initializeClerk();
-  }
-
-  clerk.openSignUp({
-    appearance: {
-      elements: {
-        rootBox: 'clerk-signup-modal',
-        card: 'clerk-card'
-      },
-      variables: {
-        colorPrimary: '#2563eb',
-        fontFamily: '"Rubik", sans-serif'
-      }
-    },
-    routing: 'virtual',
-    ...options
-  });
+  return clerk;
 }
 
 /**
@@ -384,10 +347,9 @@ async function switchOrganization(organizationId) {
 // Export functions for use in the app
 window.ClerkAuth = {
   initialize: initializeClerk,
+  getInstance,
   getAuthToken,
   isAuthenticated,
-  showSignIn,
-  showSignUp,
   showOrganizationSwitcher,
   showUserProfile,
   signOut,
