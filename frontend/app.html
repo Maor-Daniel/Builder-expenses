@@ -3251,7 +3251,9 @@
     </style>
 </head>
 <body>
-    <!-- Clerk Auth Container -->
+    <!-- Clerk Auth Container - DISABLED for custom auth pages -->
+    <!-- ROLLBACK: Uncomment this section to restore Clerk modal auth -->
+    <!--
     <div id="clerkAuthContainer">
         <div class="clerk-loading">
             <h2>מערכת מעקב הוצאות בניה</h2>
@@ -3259,6 +3261,7 @@
             <p>מאתחל מערכת אבטחה...</p>
         </div>
     </div>
+    -->
 
     <!-- Main Application -->
     <div id="mainContent">
@@ -4310,12 +4313,24 @@
             showClerkAuth();
         };
 
-        // Show Clerk Authentication
+        // Show Clerk Authentication - REPLACED with redirect to custom login page
         async function showClerkAuth() {
+            // ROLLBACK: Uncomment these lines to restore Clerk modal auth
+            /*
             document.getElementById('clerkAuthContainer').style.display = 'flex';
             document.getElementById('mainContent').style.display = 'none';
 
             // Update loading message
+            const loadingDiv = document.querySelector('.clerk-loading');
+            */
+
+            // NEW: Redirect to custom login page
+            const currentPath = window.location.pathname + window.location.search;
+            const redirectUrl = encodeURIComponent(currentPath);
+            window.location.href = `login.html?redirect=${redirectUrl}`;
+            return;
+
+            // The code below is kept for rollback purposes (will not execute)
             const loadingDiv = document.querySelector('.clerk-loading');
 
             // Check if there's a pending invitation
@@ -4614,9 +4629,16 @@
                 // Check if user is authenticated
                 const user = window.Clerk?.user;
                 if (!user) {
-                    console.log('[INIT] No authenticated user');
+                    console.log('[INIT] No authenticated user - redirecting to login');
+                    // ROLLBACK: Uncomment these lines to restore Clerk modal auth
+                    /*
                     document.getElementById('clerkAuthContainer').style.display = 'block';
                     document.getElementById('mainContent').style.display = 'none';
+                    */
+                    // NEW: Redirect to custom login page
+                    const currentPath = window.location.pathname + window.location.search;
+                    const redirectUrl = encodeURIComponent(currentPath);
+                    window.location.href = `login.html?redirect=${redirectUrl}`;
                     return;
                 }
 
@@ -4626,8 +4648,11 @@
                 const token = await window.Clerk.session.getToken();
                 window.authToken = token;
 
-                // Hide auth container, show main app
+                // Show main app (auth container is now disabled)
+                // ROLLBACK: Uncomment these lines to restore Clerk modal auth
+                /*
                 document.getElementById('clerkAuthContainer').style.display = 'none';
+                */
                 document.getElementById('mainContent').style.display = 'block';
 
                 // Use intelligent retry logic to load company
@@ -4641,8 +4666,15 @@
             } catch (error) {
                 console.error('[INIT] Error initializing app:', error);
                 showError('שגיאה באתחול האפליקציה: ' + error.message);
+                // ROLLBACK: Uncomment these lines to restore Clerk modal auth
+                /*
                 document.getElementById('clerkAuthContainer').style.display = 'block';
                 document.getElementById('mainContent').style.display = 'none';
+                */
+                // NEW: Redirect to login on error
+                const currentPath = window.location.pathname + window.location.search;
+                const redirectUrl = encodeURIComponent(currentPath);
+                window.location.href = `login.html?redirect=${redirectUrl}`;
             }
         }
 

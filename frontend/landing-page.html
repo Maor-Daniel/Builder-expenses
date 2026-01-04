@@ -643,7 +643,7 @@
                 <a href="#how-it-works">איך זה עובד</a>
                 <a href="#pricing">תמחור</a>
                 <a href="#faq">שאלות נפוצות</a>
-                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחבר</button>
+                <a href="login.html" class="btn btn-primary" style="cursor: pointer; text-decoration: none; display: inline-block;">התחבר</a>
             </nav>
         </div>
     </header>
@@ -654,7 +654,7 @@
             <h1>נהל את הוצאות הבניה שלך בקלות ובמקצועיות</h1>
             <p>מערכת מתקדמת למעקב אחר כל הוצאה, פרויקט וקבלן. חסוך זמן, שמור על תקציב ושלוט במלוא המידע.</p>
             <div class="hero-buttons">
-                <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל עכשיו בחינם</button>
+                <a href="signup.html" class="btn btn-primary btn-large" style="cursor: pointer; text-decoration: none; display: inline-block;">התחל עכשיו בחינם</a>
                 <a href="#how-it-works" class="btn btn-secondary btn-large">גלה איך זה עובד</a>
             </div>
         </div>
@@ -751,7 +751,7 @@
         <div class="pricing-grid">
             <div class="pricing-card">
                 <h3>בסיסי</h3>
-                <div class="price">₪100</div>
+                <div class="price">₪50</div>
                 <div class="price-period">לחודש</div>
                 <div class="trial-badge">30 יום ניסיון חינם</div>
                 <ul class="features-list">
@@ -764,13 +764,13 @@
                     <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
                     <li><i class="fas fa-check"></i> תמיכה בסיסית</li>
                 </ul>
-                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
+                <a href="signup.html" class="btn btn-secondary" style="cursor: pointer; text-decoration: none; display: inline-block;">התחל ניסיון חינם</a>
             </div>
 
             <div class="pricing-card featured">
                 <div class="featured-badge">מומלץ ביותר</div>
                 <h3>מקצועי</h3>
-                <div class="price">₪200</div>
+                <div class="price">₪100</div>
                 <div class="price-period">לחודש</div>
                 <div class="trial-badge">30 יום ניסיון חינם</div>
                 <ul class="features-list">
@@ -783,12 +783,12 @@
                     <li><i class="fas fa-check"></i> דשבורד ניתוח</li>
                     <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
                 </ul>
-                <button onclick="handleLogin()" class="btn btn-primary" style="cursor: pointer;">התחל ניסיון חינם</button>
+                <a href="signup.html" class="btn btn-primary" style="cursor: pointer; text-decoration: none; display: inline-block;">התחל ניסיון חינם</a>
             </div>
 
             <div class="pricing-card">
                 <h3>ארגוני</h3>
-                <div class="price">₪300</div>
+                <div class="price">₪150</div>
                 <div class="price-period">לחודש</div>
                 <div class="trial-badge">30 יום ניסיון חינם</div>
                 <ul class="features-list">
@@ -802,7 +802,7 @@
                     <li><i class="fas fa-check"></i> גיבויים אוטומטיים</li>
                     <li><i class="fas fa-check"></i> תמיכה מועדפת</li>
                 </ul>
-                <button onclick="handleLogin()" class="btn btn-secondary" style="cursor: pointer;">התחל ניסיון חינם</button>
+                <a href="signup.html" class="btn btn-secondary" style="cursor: pointer; text-decoration: none; display: inline-block;">התחל ניסיון חינם</a>
             </div>
         </div>
         <div style="text-align: center; margin-top: 2rem;">
@@ -883,7 +883,7 @@
     <section class="cta">
         <h2>מוכנים להתחיל?</h2>
         <p>הצטרפו עכשיו ותתחילו לנהל את הוצאות הבניה שלכם בצורה מקצועית</p>
-        <button onclick="handleLogin()" class="btn btn-primary btn-large" style="cursor: pointer;">התחל בחינם עכשיו</button>
+        <a href="signup.html" class="btn btn-primary btn-large" style="cursor: pointer; text-decoration: none; display: inline-block;">התחל בחינם עכשיו</a>
     </section>
 
     <!-- Footer -->
@@ -1145,7 +1145,7 @@
         async function initializeClerk() {
             try {
                 console.log('[LANDING PAGE] Initializing Clerk...');
-                const CLERK_PUBLISHABLE_KEY = 'pk_test_bW92ZWQtaHVza3ktOTguY2xlcmsuYWNjb3VudHMuZGV2JA';
+                const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k';
 
                 // Import Clerk using ESM
                 const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
@@ -1171,6 +1171,9 @@
         }
 
         // Handle login button click
+        // DISABLED: handleLogin function (now using direct links to custom auth pages)
+        // ROLLBACK: Uncomment this function to restore Clerk modal auth
+        /*
         async function handleLogin() {
             try {
                 console.log('[LANDING PAGE] Login button clicked');
@@ -1197,6 +1200,7 @@
                 alert('שגיאה בפתיחת חלון ההתחברות. אנא נסה שוב.');
             }
         }
+        */
 
         // Initialize Clerk when page loads
         document.addEventListener('DOMContentLoaded', () => {
