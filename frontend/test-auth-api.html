@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth API Test - Session 1</title>
+    <link rel="stylesheet" href="auth-styles.css">
+    <style>
+        .test-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section h2 {
+            color: #1a202c;
+            margin-bottom: 16px;
+            font-size: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-box {
+            background: #f9fafb;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .result-box.success {
+            background: #c6f6d5;
+            border-color: #48bb78;
+            color: #2d3748;
+        }
+
+        .result-box.error {
+            background: #fed7d7;
+            border-color: #f56565;
+            color: #2d3748;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .status-badge.ready {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-badge.loading {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        @media (max-width: 768px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px;">
+    <div class="test-container">
+        <!-- Header -->
+        <div class="test-section">
+            <h1 style="color: #1a202c; margin-bottom: 8px;">Auth API Test Page</h1>
+            <p style="color: #718096; margin-bottom: 16px;">Session 1: Infrastructure Foundation Testing</p>
+            <div id="clerkStatus">
+                <span class="status-badge loading">טוען Clerk...</span>
+            </div>
+        </div>
+
+        <!-- 1. Sign In Test -->
+        <div class="test-section">
+            <h2>1. בדיקת התחברות (Sign In)</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" id="signInEmail" class="form-input" placeholder="test@example.com" value="maordaniel40@gmail.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">סיסמה</label>
+                        <input type="password" id="signInPassword" class="form-input" placeholder="••••••••" value="19735Maor">
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="signInRemember" class="form-checkbox">
+                        <label for="signInRemember" class="checkbox-label">זכור אותי</label>
+                    </div>
+                    <button onclick="testSignIn()" class="btn btn-primary" style="margin-top: 12px;">
+                        <span class="btn-text">התחבר</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="signInResult" class="result-box">לחץ על "התחבר" לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Sign Up Test -->
+        <div class="test-section">
+            <h2>2. בדיקת הרשמה (Sign Up)</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" id="signUpEmail" class="form-input" placeholder="newuser@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">סיסמה</label>
+                        <input type="password" id="signUpPassword" class="form-input" placeholder="••••••••">
+                    </div>
+                    <button onclick="testSignUp()" class="btn btn-primary" style="margin-top: 12px;">
+                        <span class="btn-text">הירשם</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="signUpResult" class="result-box">לחץ על "הירשם" לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Email Verification Test -->
+        <div class="test-section">
+            <h2>3. בדיקת אימות אימייל (Email Verification)</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">קוד אימות (6 ספרות)</label>
+                        <input type="text" id="verifyCode" class="form-input" placeholder="123456" maxlength="6">
+                    </div>
+                    <button onclick="testVerifyEmail()" class="btn btn-primary" style="margin-top: 12px;">
+                        <span class="btn-text">אמת קוד</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="verifyResult" class="result-box">לחץ על "אמת קוד" לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Password Reset Request Test -->
+        <div class="test-section">
+            <h2>4. בדיקת בקשת איפוס סיסמה (Forgot Password)</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" id="resetEmail" class="form-input" placeholder="test@example.com">
+                    </div>
+                    <button onclick="testPasswordReset()" class="btn btn-primary" style="margin-top: 12px;">
+                        <span class="btn-text">שלח קוד</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="resetResult" class="result-box">לחץ על "שלח קוד" לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Password Reset Verification Test -->
+        <div class="test-section">
+            <h2>5. בדיקת איפוס סיסמה (Reset Password)</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">קוד אימות</label>
+                        <input type="text" id="resetVerifyCode" class="form-input" placeholder="123456" maxlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">סיסמה חדשה</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="••••••••">
+                    </div>
+                    <button onclick="testPasswordResetVerify()" class="btn btn-primary" style="margin-top: 12px;">
+                        <span class="btn-text">אפס סיסמה</span>
+                        <span class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="resetVerifyResult" class="result-box">לחץ על "אפס סיסמה" לבדיקה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Error Parsing Test -->
+        <div class="test-section">
+            <h2>6. בדיקת הודעות שגיאה בעברית</h2>
+            <div class="test-grid">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">סוג שגיאה לבדיקה</label>
+                        <select id="errorType" class="form-input">
+                            <option value="form_password_incorrect">סיסמה שגויה</option>
+                            <option value="form_identifier_not_found">אימייל לא קיים</option>
+                            <option value="form_identifier_exists">אימייל כבר רשום</option>
+                            <option value="verification_failed">קוד אימות שגוי</option>
+                            <option value="form_password_pwned">סיסמה נחשפה</option>
+                            <option value="unknown_error">שגיאה לא מוכרת</option>
+                        </select>
+                    </div>
+                    <button onclick="testErrorParsing()" class="btn btn-primary" style="margin-top: 12px;">
+                        בדוק תרגום
+                    </button>
+                </div>
+                <div>
+                    <label class="form-label">תוצאה:</label>
+                    <div id="errorResult" class="result-box">בחר סוג שגיאה ולחץ על "בדוק תרגום"</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="test-section" style="text-align: center; color: #718096; font-size: 14px;">
+            <p>✅ Session 1: Infrastructure Foundation Testing</p>
+            <p style="margin-top: 8px; font-size: 12px;">
+                קובץ זה לא משולב באפליקציה - בטוח לפריסה ללא השפעה על ייצור
+            </p>
+        </div>
+    </div>
+
+    <!-- Load Auth Utils -->
+    <script src="auth-utils.js"></script>
+
+    <script>
+        // Initialize Clerk and update status
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const clerk = await AuthUtils.getClerkInstance();
+                document.getElementById('clerkStatus').innerHTML = '<span class="status-badge ready">✅ Clerk מוכן</span>';
+                console.log('[TEST] Clerk initialized successfully:', clerk);
+            } catch (error) {
+                document.getElementById('clerkStatus').innerHTML = '<span class="status-badge loading">❌ שגיאה בטעינת Clerk</span>';
+                console.error('[TEST] Clerk initialization failed:', error);
+            }
+        });
+
+        // Helper function to show loading state
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+
+        // Helper function to display result
+        function displayResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.className = 'result-box ' + (result.success ? 'success' : 'error');
+            element.textContent = JSON.stringify(result, null, 2);
+        }
+
+        // 1. Test Sign In
+        async function testSignIn() {
+            const button = event.target.closest('button');
+            setButtonLoading(button, true);
+
+            const email = document.getElementById('signInEmail').value;
+            const password = document.getElementById('signInPassword').value;
+            const rememberMe = document.getElementById('signInRemember').checked;
+
+            console.log('[TEST] Testing sign in:', { email, rememberMe });
+
+            try {
+                const result = await AuthUtils.signInWithPassword(email, password, rememberMe);
+                console.log('[TEST] Sign in result:', result);
+                displayResult('signInResult', result);
+            } catch (error) {
+                console.error('[TEST] Sign in error:', error);
+                displayResult('signInResult', { success: false, error: error.message });
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // 2. Test Sign Up
+        async function testSignUp() {
+            const button = event.target.closest('button');
+            setButtonLoading(button, true);
+
+            const email = document.getElementById('signUpEmail').value;
+            const password = document.getElementById('signUpPassword').value;
+
+            console.log('[TEST] Testing sign up:', { email });
+
+            try {
+                const result = await AuthUtils.signUpWithPassword(email, password);
+                console.log('[TEST] Sign up result:', result);
+                displayResult('signUpResult', result);
+            } catch (error) {
+                console.error('[TEST] Sign up error:', error);
+                displayResult('signUpResult', { success: false, error: error.message });
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // 3. Test Email Verification
+        async function testVerifyEmail() {
+            const button = event.target.closest('button');
+            setButtonLoading(button, true);
+
+            const code = document.getElementById('verifyCode').value;
+
+            console.log('[TEST] Testing email verification:', { code });
+
+            try {
+                const result = await AuthUtils.verifyEmailCode(code);
+                console.log('[TEST] Verify result:', result);
+                displayResult('verifyResult', result);
+            } catch (error) {
+                console.error('[TEST] Verify error:', error);
+                displayResult('verifyResult', { success: false, error: error.message });
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // 4. Test Password Reset Request
+        async function testPasswordReset() {
+            const button = event.target.closest('button');
+            setButtonLoading(button, true);
+
+            const email = document.getElementById('resetEmail').value;
+
+            console.log('[TEST] Testing password reset request:', { email });
+
+            try {
+                const result = await AuthUtils.requestPasswordReset(email);
+                console.log('[TEST] Password reset result:', result);
+                displayResult('resetResult', result);
+            } catch (error) {
+                console.error('[TEST] Password reset error:', error);
+                displayResult('resetResult', { success: false, error: error.message });
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // 5. Test Password Reset Verification
+        async function testPasswordResetVerify() {
+            const button = event.target.closest('button');
+            setButtonLoading(button, true);
+
+            const code = document.getElementById('resetVerifyCode').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            console.log('[TEST] Testing password reset verification:', { code });
+
+            try {
+                const result = await AuthUtils.verifyPasswordResetCode(code, newPassword);
+                console.log('[TEST] Reset verify result:', result);
+                displayResult('resetVerifyResult', result);
+            } catch (error) {
+                console.error('[TEST] Reset verify error:', error);
+                displayResult('resetVerifyResult', { success: false, error: error.message });
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // 6. Test Error Parsing
+        function testErrorParsing() {
+            const errorType = document.getElementById('errorType').value;
+
+            // Create mock Clerk error
+            const mockError = {
+                errors: [{
+                    code: errorType,
+                    message: `Mock error for ${errorType}`
+                }]
+            };
+
+            console.log('[TEST] Testing error parsing:', errorType);
+
+            const hebrewMessage = AuthUtils.parseClerkError(mockError);
+
+            const result = {
+                success: true,
+                errorCode: errorType,
+                englishMessage: mockError.errors[0].message,
+                hebrewMessage: hebrewMessage
+            };
+
+            console.log('[TEST] Error parsing result:', result);
+            displayResult('errorResult', result);
+        }
+    </script>
+</body>
+</html>
