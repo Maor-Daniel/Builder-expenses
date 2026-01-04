@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Checkout - Builder Expenses</title>
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+      background: white;
+      padding: 48px 32px;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    .spinner {
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+    .error {
+      color: #dc2626;
+      padding: 16px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .error-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .retry-btn {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .retry-btn:hover {
+      background: #5a67d8;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <div class="title">טוען עמוד תשלום...</div>
+      <div class="subtitle">אנא המתן, מכין את טופס התשלום</div>
+    </div>
+
+    <div id="error" class="hidden">
+      <div class="error">
+        <div class="error-title">שגיאה בטעינת עמוד התשלום</div>
+        <div id="error-message">אירעה שגיאה. אנא נסה שוב.</div>
+      </div>
+      <a href="builderexpenses://checkout-cancelled" class="retry-btn">חזור לאפליקציה</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Parse URL parameters
+      const params = new URLSearchParams(window.location.search);
+      const transactionId = params.get('_ptxn');
+      const clientToken = params.get('token');
+      const redirectUrl = params.get('redirect') || 'https://www.builder-expenses.com/app/checkout-success';
+      const environment = params.get('env') || 'production';
+
+      console.log('[PADDLE_HOST] Initializing checkout...');
+      console.log('[PADDLE_HOST] Transaction ID:', transactionId);
+      console.log('[PADDLE_HOST] Client token:', clientToken ? clientToken.substring(0, 15) + '...' : 'missing');
+      console.log('[PADDLE_HOST] Redirect URL:', redirectUrl);
+      console.log('[PADDLE_HOST] Environment:', environment);
+
+      function showError(message) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+        document.getElementById('error-message').textContent = message;
+      }
+
+      // Validate required parameters
+      if (!transactionId) {
+        showError('Missing transaction ID. Please try again from the app.');
+        console.error('[PADDLE_HOST] Missing transactionId');
+        return;
+      }
+
+      if (!clientToken) {
+        showError('Missing payment token. Please try again from the app.');
+        console.error('[PADDLE_HOST] Missing clientToken');
+        return;
+      }
+
+      try {
+        // Initialize Paddle with the client token
+        Paddle.Initialize({
+          token: clientToken,
+          eventCallback: function(event) {
+            console.log('[PADDLE_HOST] Paddle event:', event.name, event.data);
+
+            if (event.name === 'checkout.loaded') {
+              console.log('[PADDLE_HOST] Checkout loaded successfully');
+              // Hide loading spinner once checkout is loaded
+              document.getElementById('loading').classList.add('hidden');
+            }
+
+            if (event.name === 'checkout.completed') {
+              console.log('[PADDLE_HOST] Payment completed!');
+              console.log('[PADDLE_HOST] Redirecting to:', redirectUrl);
+
+              // Add transaction ID to redirect URL
+              const separator = redirectUrl.includes('?') ? '&' : '?';
+              const finalRedirectUrl = redirectUrl + separator + '_ptxn=' + transactionId;
+
+              // Small delay to ensure Paddle processes the completion
+              setTimeout(function() {
+                window.location.href = finalRedirectUrl;
+              }, 500);
+            }
+
+            if (event.name === 'checkout.closed') {
+              console.log('[PADDLE_HOST] Checkout closed by user');
+              // Show a message or redirect back to app
+              showError('התשלום בוטל. ניתן לחזור לאפליקציה ולנסות שוב.');
+            }
+
+            if (event.name === 'checkout.error') {
+              console.error('[PADDLE_HOST] Checkout error:', event.data);
+              showError('אירעה שגיאה בתהליך התשלום. אנא נסה שוב.');
+            }
+          }
+        });
+
+        console.log('[PADDLE_HOST] Paddle initialized, opening checkout...');
+
+        // Open the checkout with the transaction
+        Paddle.Checkout.open({
+          transactionId: transactionId,
+          settings: {
+            displayMode: 'overlay',
+            theme: 'light',
+            locale: 'he',
+            allowLogout: false,
+            showAddDiscounts: true
+          }
+        });
+
+        console.log('[PADDLE_HOST] Checkout.open() called');
+
+      } catch (error) {
+        console.error('[PADDLE_HOST] Error initializing Paddle:', error);
+        showError('שגיאה באתחול מערכת התשלום: ' + error.message);
+      }
+    })();
+  </script>
+</body>
+</html>

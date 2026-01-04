@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful - Builder Expenses</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Rubik', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+      color: white;
+    }
+    h1 {
+      color: #1F2937;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .subtitle {
+      color: #6B7280;
+      font-size: 16px;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .info-box {
+      background: #F3F4F6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .info-box p {
+      color: #4B5563;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .info-box p:last-child {
+      margin-bottom: 0;
+    }
+    .open-app-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 16px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .open-app-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .fallback-text {
+      color: #9CA3AF;
+      font-size: 13px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+      </svg>
+    </div>
+    <h1>התשלום בוצע בהצלחה!</h1>
+    <p class="subtitle">תודה שבחרת ב-Builder Expenses. החשבון שלך מוכן לשימוש.</p>
+
+    <div class="info-box">
+      <p><strong>תקופת הניסיון:</strong> 30 יום חינם</p>
+      <p><strong>חיוב ראשון:</strong> לאחר סיום תקופת הניסיון</p>
+      <p>ניתן לבטל בכל עת מהאפליקציה</p>
+    </div>
+
+    <a href="builderexpenses://checkout-success" class="open-app-btn" id="openAppBtn">
+      פתח את האפליקציה
+    </a>
+
+    <p class="fallback-text">האפליקציה לא נפתחת? <a href="https://apps.apple.com/app/builder-expenses" style="color: #667eea;">הורד מ-App Store</a></p>
+  </div>
+
+  <script>
+    // Try to open the app automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('_ptxn');
+
+    // Update the deep link with transaction ID if available
+    if (transactionId) {
+      const deepLink = `builderexpenses://checkout-success?_ptxn=${transactionId}`;
+      document.getElementById('openAppBtn').href = deepLink;
+
+      // Try to open automatically after a short delay
+      setTimeout(() => {
+        window.location.href = deepLink;
+      }, 500);
+    }
+  </script>
+</body>
+</html>
