@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אימות אימייל - Builder Expenses</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Auth Styles -->
+    <link rel="stylesheet" href="auth-styles.css">
+
+    <!-- Rubik Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Header -->
+            <div class="auth-header">
+                <h1 class="auth-title">אימות כתובת אימייל</h1>
+                <p class="auth-subtitle" id="subtitle">הזנו את קוד האימות בן 6 הספרות ששלחנו לכתובת <strong id="userEmail"></strong></p>
+            </div>
+
+            <!-- Error Message (hidden by default) -->
+            <div id="errorMessage" class="message message-error hidden"></div>
+
+            <!-- Success Message (hidden by default) -->
+            <div id="successMessage" class="message message-success hidden"></div>
+
+            <!-- Verification Form -->
+            <form id="verifyForm" class="auth-form" novalidate>
+                <!-- 6-Digit Code Input -->
+                <div class="form-group">
+                    <label class="form-label text-center">קוד אימות</label>
+                    <div class="code-input-group">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="one-time-code" id="digit1">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" id="digit2">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" id="digit3">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" id="digit4">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" id="digit5">
+                        <input type="text" class="code-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" id="digit6">
+                    </div>
+                    <span id="codeError" class="field-error"></span>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary" id="submitButton">
+                    <span class="btn-text">אמת קוד</span>
+                    <span class="btn-spinner"></span>
+                </button>
+            </form>
+
+            <!-- Resend Code -->
+            <div class="resend-code">
+                <span id="resendText">לא קיבלת את הקוד? </span>
+                <a href="#" class="resend-link" id="resendLink">שלח שוב</a>
+                <span id="cooldownText" style="display: none;"></span>
+            </div>
+
+            <!-- Footer Links -->
+            <div class="auth-footer">
+                <a href="signup.html" class="auth-link">חזור להרשמה</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Utils -->
+    <script src="auth-utils.js"></script>
+
+    <script>
+        // Get mode from URL parameters (signup or reset)
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode') || 'signup';
+
+        // DOM Elements
+        const form = document.getElementById('verifyForm');
+        const submitButton = document.getElementById('submitButton');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const successMessageDiv = document.getElementById('successMessage');
+        const userEmailSpan = document.getElementById('userEmail');
+        const resendLink = document.getElementById('resendLink');
+        const resendText = document.getElementById('resendText');
+        const cooldownText = document.getElementById('cooldownText');
+
+        // Code input elements
+        const codeInputs = [
+            document.getElementById('digit1'),
+            document.getElementById('digit2'),
+            document.getElementById('digit3'),
+            document.getElementById('digit4'),
+            document.getElementById('digit5'),
+            document.getElementById('digit6')
+        ];
+
+        // Get email from session storage
+        const email = sessionStorage.getItem('signup_email') || '';
+        userEmailSpan.textContent = email || 'האימייל שלך';
+
+        // Cooldown state
+        let cooldownSeconds = 0;
+        let cooldownInterval = null;
+
+        // Auto-focus first input
+        window.addEventListener('DOMContentLoaded', () => {
+            codeInputs[0].focus();
+        });
+
+        // Handle input for each digit
+        codeInputs.forEach((input, index) => {
+            // Auto-advance on input
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+
+                // Only allow digits
+                if (!/^[0-9]$/.test(value)) {
+                    e.target.value = '';
+                    return;
+                }
+
+                // Mark as filled
+                if (value) {
+                    e.target.classList.add('filled');
+                } else {
+                    e.target.classList.remove('filled');
+                }
+
+                // Auto-advance to next input
+                if (value && index < 5) {
+                    codeInputs[index + 1].focus();
+                }
+
+                // Auto-submit when all 6 digits are filled
+                if (index === 5 && value) {
+                    const allFilled = codeInputs.every(input => input.value);
+                    if (allFilled) {
+                        setTimeout(() => form.requestSubmit(), 100);
+                    }
+                }
+
+                hideFieldError('codeError');
+            });
+
+            // Handle backspace navigation
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    codeInputs[index - 1].focus();
+                    codeInputs[index - 1].value = '';
+                    codeInputs[index - 1].classList.remove('filled');
+                }
+            });
+
+            // Handle paste (6-digit code)
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text');
+                const digits = pastedData.replace(/\D/g, '').slice(0, 6);
+
+                if (digits.length === 6) {
+                    digits.split('').forEach((digit, i) => {
+                        codeInputs[i].value = digit;
+                        codeInputs[i].classList.add('filled');
+                    });
+                    codeInputs[5].focus();
+
+                    // Auto-submit after paste
+                    setTimeout(() => form.requestSubmit(), 100);
+                }
+            });
+        });
+
+        // Show Error Message
+        function showError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            successMessageDiv.classList.add('hidden');
+            errorMessageDiv.classList.add('shake');
+            setTimeout(() => errorMessageDiv.classList.remove('shake'), 500);
+        }
+
+        // Show Success Message
+        function showSuccess(message) {
+            successMessageDiv.textContent = message;
+            successMessageDiv.classList.remove('hidden');
+            errorMessageDiv.classList.add('hidden');
+        }
+
+        // Hide Messages
+        function hideMessages() {
+            errorMessageDiv.classList.add('hidden');
+            successMessageDiv.classList.add('hidden');
+        }
+
+        // Show Field Error
+        function showFieldError(fieldId, message) {
+            const errorSpan = document.getElementById(fieldId);
+            errorSpan.textContent = message;
+            errorSpan.classList.add('show');
+        }
+
+        // Hide Field Error
+        function hideFieldError(fieldId) {
+            const errorSpan = document.getElementById(fieldId);
+            errorSpan.classList.remove('show');
+        }
+
+        // Set Button Loading State
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitButton.classList.add('loading');
+                submitButton.disabled = true;
+            } else {
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+            }
+        }
+
+        // Clear all code inputs
+        function clearCodeInputs() {
+            codeInputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('filled');
+            });
+            codeInputs[0].focus();
+        }
+
+        // Start cooldown timer
+        function startCooldown(seconds) {
+            cooldownSeconds = seconds;
+            resendLink.classList.add('disabled');
+            resendText.style.display = 'none';
+            resendLink.style.display = 'none';
+            cooldownText.style.display = 'inline';
+
+            cooldownInterval = setInterval(() => {
+                cooldownSeconds--;
+                cooldownText.textContent = `אפשר לשלוח שוב בעוד ${cooldownSeconds} שניות`;
+
+                if (cooldownSeconds <= 0) {
+                    clearInterval(cooldownInterval);
+                    resendLink.classList.remove('disabled');
+                    resendText.style.display = 'inline';
+                    resendLink.style.display = 'inline';
+                    cooldownText.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        // Handle resend code
+        resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            if (cooldownSeconds > 0) {
+                return; // Still in cooldown
+            }
+
+            console.log('[VERIFY] Resending verification code');
+
+            try {
+                hideMessages();
+
+                // For signup mode, we need to trigger a new verification
+                // Clerk automatically handles this when we call prepareEmailAddressVerification again
+                const clerk = await AuthUtils.getClerkInstance();
+                const signUp = clerk.client.signUp;
+
+                if (signUp) {
+                    await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+                    showSuccess('קוד אימות חדש נשלח לאימייל שלך');
+                    startCooldown(60);
+                } else {
+                    showError('לא נמצא תהליך הרשמה פעיל');
+                }
+            } catch (error) {
+                console.error('[VERIFY] Resend error:', error);
+                showError('שגיאה בשליחת קוד אימות. אנא נסה שוב.');
+            }
+        });
+
+        // Form Validation
+        function validateForm() {
+            hideFieldError('codeError');
+            hideMessages();
+
+            const code = codeInputs.map(input => input.value).join('');
+
+            if (code.length !== 6) {
+                showFieldError('codeError', 'נא להזין קוד בן 6 ספרות');
+                return false;
+            }
+
+            if (!/^\d{6}$/.test(code)) {
+                showFieldError('codeError', 'קוד האימות חייב להכיל ספרות בלבד');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Handle Form Submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Client-side validation
+            if (!validateForm()) {
+                return;
+            }
+
+            // Get verification code
+            const code = codeInputs.map(input => input.value).join('');
+
+            console.log('[VERIFY] Attempting verification with code:', code);
+
+            // Set loading state
+            setLoading(true);
+            hideMessages();
+
+            try {
+                // Call Clerk verification API
+                const result = await AuthUtils.verifyEmailCode(code);
+
+                if (result.success) {
+                    console.log('[VERIFY] Verification successful');
+
+                    // Show success message
+                    showSuccess('✓ אימות הצליח! מעביר אותך למערכת...');
+
+                    // Clear email from session storage
+                    sessionStorage.removeItem('signup_email');
+
+                    // Redirect to app after brief delay
+                    setTimeout(() => {
+                        window.location.href = 'app.html';
+                    }, 1500);
+                } else {
+                    // Show error message in Hebrew
+                    console.error('[VERIFY] Verification failed:', result.error);
+                    showError(result.error);
+                    clearCodeInputs();
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('[VERIFY] Unexpected error:', error);
+                showError('אירעה שגיאה בלתי צפויה. אנא נסה שוב.');
+                clearCodeInputs();
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

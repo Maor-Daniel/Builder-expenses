@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הירשם - Builder Expenses</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <!-- Auth Styles -->
+    <link rel="stylesheet" href="auth-styles.css">
+
+    <!-- Rubik Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Header -->
+            <div class="auth-header">
+                <h1 class="auth-title">הירשם למערכת</h1>
+                <p class="auth-subtitle">צור חשבון חדש והתחל לנהל את הפרויקטים שלך</p>
+            </div>
+
+            <!-- Error Message (hidden by default) -->
+            <div id="errorMessage" class="message message-error hidden"></div>
+
+            <!-- Signup Form -->
+            <form id="signupForm" class="auth-form" novalidate>
+                <!-- Email Field -->
+                <div class="form-group">
+                    <label for="email" class="form-label">כתובת אימייל</label>
+                    <input
+                        type="email"
+                        id="email"
+                        class="form-input"
+                        placeholder="your@email.com"
+                        required
+                        autocomplete="email"
+                        autocapitalize="off"
+                        autocorrect="off"
+                        inputmode="email"
+                    >
+                    <span id="emailError" class="field-error"></span>
+                </div>
+
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label for="password" class="form-label">סיסמה</label>
+                    <div class="password-input-wrapper">
+                        <input
+                            type="password"
+                            id="password"
+                            class="form-input"
+                            placeholder="לפחות 8 תווים"
+                            required
+                            autocomplete="new-password"
+                            style="padding-left: 45px;"
+                        >
+                        <button type="button" class="password-toggle" id="togglePassword" aria-label="הצג/הסתר סיסמה">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="eyeSlashIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="passwordError" class="field-error"></span>
+
+                    <!-- Password Strength Indicator -->
+                    <div class="password-strength" id="passwordStrength" style="display: none;">
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="strengthFill"></div>
+                        </div>
+                        <div class="password-strength-text" id="strengthText"></div>
+                    </div>
+                </div>
+
+                <!-- Password Confirmation Field -->
+                <div class="form-group">
+                    <label for="passwordConfirm" class="form-label">אימות סיסמה</label>
+                    <div class="password-input-wrapper">
+                        <input
+                            type="password"
+                            id="passwordConfirm"
+                            class="form-input"
+                            placeholder="הזן את הסיסמה שוב"
+                            required
+                            autocomplete="new-password"
+                            style="padding-left: 45px;"
+                        >
+                        <button type="button" class="password-toggle" id="togglePasswordConfirm" aria-label="הצג/הסתר סיסמה">
+                            <svg id="eyeIconConfirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="eyeSlashIconConfirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="passwordConfirmError" class="field-error"></span>
+                </div>
+
+                <!-- Terms & Conditions -->
+                <div class="checkbox-group" style="margin-bottom: 20px;">
+                    <input type="checkbox" id="agreeTerms" class="form-checkbox">
+                    <label for="agreeTerms" class="checkbox-label">
+                        אני מסכים/ה ל<a href="/terms.html" target="_blank" class="auth-link">תנאי השימוש</a> ול<a href="/privacy.html" target="_blank" class="auth-link">מדיניות הפרטיות</a>
+                    </label>
+                </div>
+                <span id="termsError" class="field-error"></span>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary" id="submitButton">
+                    <span class="btn-text">הירשם</span>
+                    <span class="btn-spinner"></span>
+                </button>
+            </form>
+
+            <!-- Footer Links -->
+            <div class="auth-footer">
+                כבר יש לך חשבון?
+                <a href="login.html" class="auth-link">התחבר עכשיו</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Utils -->
+    <script src="auth-utils.js"></script>
+
+    <script>
+        // DOM Elements
+        const form = document.getElementById('signupForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const passwordConfirmInput = document.getElementById('passwordConfirm');
+        const agreeTermsCheckbox = document.getElementById('agreeTerms');
+        const submitButton = document.getElementById('submitButton');
+        const errorMessageDiv = document.getElementById('errorMessage');
+
+        // Password Toggle Elements
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+        const togglePasswordConfirmBtn = document.getElementById('togglePasswordConfirm');
+        const eyeIconConfirm = document.getElementById('eyeIconConfirm');
+        const eyeSlashIconConfirm = document.getElementById('eyeSlashIconConfirm');
+
+        // Password Strength Elements
+        const passwordStrengthDiv = document.getElementById('passwordStrength');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+
+        // Password Toggle Functionality (Password)
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            eyeIcon.style.display = type === 'text' ? 'none' : 'block';
+            eyeSlashIcon.style.display = type === 'text' ? 'block' : 'none';
+        });
+
+        // Password Toggle Functionality (Confirm)
+        togglePasswordConfirmBtn.addEventListener('click', () => {
+            const type = passwordConfirmInput.type === 'password' ? 'text' : 'password';
+            passwordConfirmInput.type = type;
+            eyeIconConfirm.style.display = type === 'text' ? 'none' : 'block';
+            eyeSlashIconConfirm.style.display = type === 'text' ? 'block' : 'none';
+        });
+
+        // Email Validation
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Password Strength Calculator
+        function calculatePasswordStrength(password) {
+            let score = 0;
+
+            // Length (max 40 points)
+            if (password.length >= 8) score += 25;
+            if (password.length >= 12) score += 15;
+
+            // Character variety (20 points each)
+            if (/[a-z]/.test(password)) score += 20; // lowercase
+            if (/[A-Z]/.test(password)) score += 20; // uppercase
+            if (/[0-9]/.test(password)) score += 20; // numbers
+            if (/[^a-zA-Z0-9]/.test(password)) score += 20; // special characters
+
+            return score;
+        }
+
+        // Update Password Strength Indicator
+        function updatePasswordStrength() {
+            const password = passwordInput.value;
+
+            if (!password) {
+                passwordStrengthDiv.style.display = 'none';
+                return;
+            }
+
+            passwordStrengthDiv.style.display = 'block';
+            const score = calculatePasswordStrength(password);
+
+            // Remove all strength classes
+            strengthFill.classList.remove('weak', 'medium', 'strong');
+            strengthText.classList.remove('weak', 'medium', 'strong');
+
+            if (score < 40) {
+                strengthFill.classList.add('weak');
+                strengthText.classList.add('weak');
+                strengthText.textContent = 'סיסמה חלשה';
+            } else if (score < 70) {
+                strengthFill.classList.add('medium');
+                strengthText.classList.add('medium');
+                strengthText.textContent = 'סיסמה בינונית';
+            } else {
+                strengthFill.classList.add('strong');
+                strengthText.classList.add('strong');
+                strengthText.textContent = 'סיסמה חזקה';
+            }
+        }
+
+        // Password Input Listener
+        passwordInput.addEventListener('input', () => {
+            updatePasswordStrength();
+            hideFieldError('passwordError');
+        });
+
+        // Show Error Message
+        function showError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            errorMessageDiv.classList.add('shake');
+            setTimeout(() => errorMessageDiv.classList.remove('shake'), 500);
+        }
+
+        // Hide Error Message
+        function hideError() {
+            errorMessageDiv.classList.add('hidden');
+        }
+
+        // Show Field Error
+        function showFieldError(fieldId, message) {
+            const errorSpan = document.getElementById(fieldId);
+            errorSpan.textContent = message;
+            errorSpan.classList.add('show');
+        }
+
+        // Hide Field Error
+        function hideFieldError(fieldId) {
+            const errorSpan = document.getElementById(fieldId);
+            errorSpan.classList.remove('show');
+        }
+
+        // Set Button Loading State
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitButton.classList.add('loading');
+                submitButton.disabled = true;
+            } else {
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+            }
+        }
+
+        // Clear all errors
+        function clearErrors() {
+            hideError();
+            hideFieldError('emailError');
+            hideFieldError('passwordError');
+            hideFieldError('passwordConfirmError');
+            hideFieldError('termsError');
+        }
+
+        // Form Validation
+        function validateForm() {
+            let isValid = true;
+            clearErrors();
+
+            // Validate Email
+            const email = emailInput.value.trim();
+            if (!email) {
+                showFieldError('emailError', 'נא להזין כתובת אימייל');
+                isValid = false;
+            } else if (!validateEmail(email)) {
+                showFieldError('emailError', 'כתובת אימייל אינה תקינה');
+                isValid = false;
+            }
+
+            // Validate Password
+            const password = passwordInput.value;
+            if (!password) {
+                showFieldError('passwordError', 'נא להזין סיסמה');
+                isValid = false;
+            } else if (password.length < 8) {
+                showFieldError('passwordError', 'הסיסמה חייבת להיות לפחות 8 תווים');
+                isValid = false;
+            }
+
+            // Validate Password Confirmation
+            const passwordConfirm = passwordConfirmInput.value;
+            if (!passwordConfirm) {
+                showFieldError('passwordConfirmError', 'נא לאמת את הסיסמה');
+                isValid = false;
+            } else if (password !== passwordConfirm) {
+                showFieldError('passwordConfirmError', 'הסיסמאות אינן תואמות');
+                isValid = false;
+            }
+
+            // Validate Terms Agreement
+            if (!agreeTermsCheckbox.checked) {
+                showFieldError('termsError', 'יש להסכים לתנאי השימוש ולמדיניות הפרטיות');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // Handle Form Submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Client-side validation
+            if (!validateForm()) {
+                return;
+            }
+
+            // Get form values
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            console.log('[SIGNUP] Attempting sign up for:', email);
+
+            // Set loading state
+            setLoading(true);
+            clearErrors();
+
+            try {
+                // Call Clerk sign-up API
+                const result = await AuthUtils.signUpWithPassword(email, password);
+
+                if (result.success) {
+                    console.log('[SIGNUP] Sign up successful, redirecting to verification');
+
+                    // Store email for verification page
+                    sessionStorage.setItem('signup_email', email);
+
+                    // Redirect to email verification
+                    window.location.href = 'verify-email.html?mode=signup';
+                } else {
+                    // Show error message in Hebrew
+                    console.error('[SIGNUP] Sign up failed:', result.error);
+                    showError(result.error);
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('[SIGNUP] Unexpected error:', error);
+                showError('אירעה שגיאה בלתי צפויה. אנא נסה שוב.');
+                setLoading(false);
+            }
+        });
+
+        // Clear field errors on input
+        emailInput.addEventListener('input', () => hideFieldError('emailError'));
+        passwordInput.addEventListener('input', () => hideFieldError('passwordError'));
+        passwordConfirmInput.addEventListener('input', () => hideFieldError('passwordConfirmError'));
+        agreeTermsCheckbox.addEventListener('change', () => hideFieldError('termsError'));
+
+        // Auto-focus email field on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            emailInput.focus();
+        });
+
+        // Check if user is already authenticated
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const clerk = await AuthUtils.getClerkInstance();
+
+                // If user is already signed in, redirect to app
+                if (clerk.user) {
+                    console.log('[SIGNUP] User already authenticated, redirecting to app');
+                    window.location.href = 'app.html';
+                }
+            } catch (error) {
+                console.error('[SIGNUP] Error checking auth status:', error);
+                // Continue showing signup page if error
+            }
+        });
+    </script>
+</body>
+</html>
