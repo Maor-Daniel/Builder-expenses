@@ -66,22 +66,22 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 
 ---
 
-### 📋 Session 2: Sign-In Page (PLANNED)
+### ✅ Session 2: Sign-In Page (COMPLETED)
 
 **Goal:** Create standalone login page that works alongside existing auth
 
 **Tasks:**
-- [ ] Create `login.html` - Complete sign-in page
-  - [ ] Email input with validation
-  - [ ] Password input with show/hide toggle
-  - [ ] Remember me checkbox
-  - [ ] Submit button with loading state
-  - [ ] Error display
-  - [ ] Links to signup/forgot password
-- [ ] Test login page in isolation (don't integrate yet)
-- [ ] Verify Clerk sign-in API works end-to-end
-- [ ] Deploy to S3 (page exists but not linked from anywhere)
-- [ ] Manual testing with real Clerk account
+- [x] Create `login.html` - Complete sign-in page
+  - [x] Email input with validation
+  - [x] Password input with show/hide toggle
+  - [x] Remember me checkbox
+  - [x] Submit button with loading state
+  - [x] Error display
+  - [x] Links to signup/forgot password
+- [x] Test login page in isolation (don't integrate yet)
+- [x] Verify Clerk sign-in API works end-to-end
+- [x] Deploy to S3 (page exists but not linked from anywhere)
+- [x] Manual testing with real Clerk account
 
 **Safety Checks:**
 - ✅ Login page accessible directly via URL only
@@ -89,8 +89,37 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 - ✅ No changes to landing pages or app.html
 - ✅ Can remove page without affecting production
 
-**Date Started:** _Pending_
-**Date Completed:** _Pending_
+**Date Started:** 2026-01-04
+**Date Completed:** 2026-01-04
+
+**Notes:**
+- **Clerk API Fix**: Discovered that Clerk v5 requires `clerk.client.signIn.create()` instead of `clerk.signIn.create()`
+  - `clerk.client` property only initializes over HTTPS (not file:// protocol)
+  - All auth functions updated: signIn, signUp, verifyEmail, passwordReset
+
+- **Testing Results**:
+  - Login page loads correctly at https://builder-expenses.com/login.html
+  - Form validation works (email format, required fields)
+  - Password toggle (show/hide) works correctly
+  - Loading state displays during API call
+  - Error messages display in Hebrew
+  - Clerk API integration confirmed working: `clerk.client.signIn.create()` returns proper status
+
+- **2FA Discovery**:
+  - Test user (maordaniel40@gmail.com) has 2FA enabled
+  - Clerk returns `status: "needs_second_factor"` correctly
+  - Error message in Hebrew: "נדרשים צעדים נוספים להתחברות"
+  - 2FA flow not implemented yet (would be future enhancement if needed)
+
+- **Production Safety**:
+  - login.html deployed to S3 but not linked from anywhere
+  - Existing Clerk modal tested and working perfectly on landing page
+  - Zero production impact confirmed
+  - CloudFront cache invalidated for auth-utils.js
+
+- **Files Deployed**:
+  - `/frontend/login.html` (282 lines) - Complete sign-in page
+  - `/frontend/auth-utils.js` (updated) - Fixed all Clerk API calls to use `clerk.client.*`
 
 ---
 
@@ -181,20 +210,20 @@ Replace Clerk's pre-built authentication popups with custom forms that perfectly
 
 ## Current Status
 
-**Phase:** Session 1 - Infrastructure Foundation ✅ COMPLETE
-**Progress:** 100% (Session 1 complete)
+**Phase:** Session 2 - Sign-In Page ✅ COMPLETE
+**Progress:** 40% (Sessions 1-2 complete, 3 remaining)
 **Blockers:** None
-**Next Action:** Session 2 - Create login.html (sign-in page)
+**Next Action:** Session 3 - Create signup.html and verify-email.html
 
 ---
 
 ## Files Tracking
 
 ### New Files Created
-- [x] `/frontend/auth-utils.js` - Clerk API wrapper (Session 1) ✅
+- [x] `/frontend/auth-utils.js` - Clerk API wrapper (Session 1, updated Session 2) ✅
 - [x] `/frontend/auth-styles.css` - Shared styling (Session 1) ✅
 - [x] `/frontend/test-auth-api.html` - Test page (Session 1) ✅
-- [ ] `/frontend/login.html` - Sign-in page (Session 2)
+- [x] `/frontend/login.html` - Sign-in page (Session 2) ✅
 - [ ] `/frontend/signup.html` - Registration page (Session 3)
 - [ ] `/frontend/verify-email.html` - Email verification (Session 3)
 - [ ] `/frontend/forgot-password.html` - Reset request (Session 4)
@@ -380,6 +409,6 @@ aws cloudfront create-invalidation \
 
 ---
 
-**Last Updated:** 2026-01-04 (Session 1 Complete)
+**Last Updated:** 2026-01-04 (Session 2 Complete)
 **Document Owner:** Claude Code Implementation
-**Status:** 🔄 Active Development - Session 2 Ready
+**Status:** 🔄 Active Development - Session 3 Ready
