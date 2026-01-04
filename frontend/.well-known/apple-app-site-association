@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "AM4DQFMAYP.com.builderexpenses.ofek",
+        "paths": [
+          "/app/*",
+          "/app/checkout-success",
+          "/app/checkout-success/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "AM4DQFMAYP.com.builderexpenses.ofek"
+    ]
+  }
+}

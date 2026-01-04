@@ -1,9 +1,12 @@
 // lambda/clerk-authorizer.js
 // Lambda Authorizer for API Gateway to validate Clerk JWT tokens
 
-const { verifyToken } = require('@clerk/backend');
+const { verifyToken, createClerkClient } = require('@clerk/backend');
 const { DynamoDB } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocument } = require('@aws-sdk/lib-dynamodb');
+
+// Clerk client for API calls (to fetch user details)
+let clerkClient = null;
 
 const dynamodb = DynamoDBDocument.from(new DynamoDB({}));
 
@@ -268,8 +271,28 @@ exports.handler = async (event) => {
     const userId = payload.sub;
     const orgId = payload.org_id || payload.org;
     const orgRole = payload.org_role;
-    const email = payload.email;
     const userName = payload.name || payload.given_name || payload.first_name;
+
+    // Get email - first try JWT payload, then fetch from Clerk API
+    let email = payload.email;
+
+    if (!email) {
+      console.log('Email not in JWT payload, fetching from Clerk API...');
+      try {
+        // Initialize Clerk client if not already done
+        if (!clerkClient) {
+          clerkClient = createClerkClient({ secretKey: clerkSecretKey });
+        }
+
+        // Fetch user details from Clerk API
+        const user = await clerkClient.users.getUser(userId);
+        email = user.emailAddresses?.[0]?.emailAddress || '';
+        console.log('Fetched email from Clerk API:', email ? email.substring(0, 3) + '***' : 'none');
+      } catch (clerkError) {
+        console.error('Failed to fetch user email from Clerk:', clerkError.message);
+        email = '';
+      }
+    }
 
     // Determine companyId - first check if user has any company membership (for invited users)
     // Then fall back to orgId (Clerk organization), then userId (single-user mode)
