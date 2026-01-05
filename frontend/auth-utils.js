@@ -46,6 +46,10 @@ async function signInWithPassword(email, password, rememberMe = false) {
             password: password
         });
 
+        // Log full sign-in attempt for debugging
+        console.log('[AUTH-UTILS] Sign-in attempt status:', signInAttempt.status);
+        console.log('[AUTH-UTILS] Sign-in attempt details:', JSON.stringify(signInAttempt, null, 2));
+
         // Check if sign-in is complete
         if (signInAttempt.status === 'complete') {
             // Set active session
@@ -56,8 +60,18 @@ async function signInWithPassword(email, password, rememberMe = false) {
                 success: true,
                 data: signInAttempt
             };
+        } else if (signInAttempt.status === 'needs_second_factor') {
+            // User has 2FA enabled - log available strategies
+            console.warn('[AUTH-UTILS] 2FA is enabled for this user');
+            console.log('[AUTH-UTILS] Available 2FA strategies:', signInAttempt.supportedSecondFactors);
+
+            // For now, return error asking user to disable 2FA
+            return {
+                success: false,
+                error: 'חשבון זה דורש אימות דו-שלבי. אנא פנה למנהל המערכת.'
+            };
         } else {
-            // Sign-in requires additional steps (shouldn't happen with email/password)
+            // Sign-in requires additional steps
             console.warn('[AUTH-UTILS] Sign in incomplete, status:', signInAttempt.status);
             return {
                 success: false,
