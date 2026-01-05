@@ -4626,8 +4626,11 @@
             console.log('[INIT] Initializing app...');
 
             try {
+                // Get Clerk instance and wait for it to be ready
+                const clerk = await ClerkAuth.getInstance();
+
                 // Check if user is authenticated
-                const user = window.Clerk?.user;
+                const user = clerk?.user;
                 if (!user) {
                     console.log('[INIT] No authenticated user - redirecting to login');
                     // ROLLBACK: Uncomment these lines to restore Clerk modal auth
@@ -4645,7 +4648,7 @@
                 console.log('[INIT] User authenticated:', user.id);
 
                 // Get session token for API calls
-                const token = await window.Clerk.session.getToken();
+                const token = await clerk.session.getToken();
                 window.authToken = token;
 
                 // Show main app (auth container is now disabled)
