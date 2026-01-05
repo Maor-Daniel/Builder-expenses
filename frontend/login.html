@@ -98,6 +98,9 @@
         </div>
     </div>
 
+    <!-- Clerk Auth (shared instance) -->
+    <script src="clerk-auth.js"></script>
+
     <!-- Auth Utils -->
     <script src="auth-utils.js"></script>
 
@@ -231,6 +234,12 @@
             clearErrors();
 
             try {
+                // Pause Clerk listeners to prevent navigation conflicts
+                if (window.ClerkAuth && window.ClerkAuth.pauseListeners) {
+                    console.log('[LOGIN] Pausing Clerk listeners during sign-in');
+                    window.ClerkAuth.pauseListeners();
+                }
+
                 // Call Clerk sign-in API
                 const result = await AuthUtils.signInWithPassword(email, password, rememberMe);
 
@@ -238,14 +247,27 @@
                     console.log('[LOGIN] Sign in successful, redirecting to:', redirectUrl);
 
                     // Success! Redirect to app or original destination
+                    // Note: No need to resume listeners - page will navigate away
                     window.location.href = redirectUrl;
                 } else {
+                    // Resume listeners on error
+                    if (window.ClerkAuth && window.ClerkAuth.resumeListeners) {
+                        console.log('[LOGIN] Resuming Clerk listeners after error');
+                        window.ClerkAuth.resumeListeners();
+                    }
+
                     // Show error message in Hebrew
                     console.error('[LOGIN] Sign in failed:', result.error);
                     showError(result.error);
                     setLoading(false);
                 }
             } catch (error) {
+                // Resume listeners on error
+                if (window.ClerkAuth && window.ClerkAuth.resumeListeners) {
+                    console.log('[LOGIN] Resuming Clerk listeners after exception');
+                    window.ClerkAuth.resumeListeners();
+                }
+
                 console.error('[LOGIN] Unexpected error:', error);
                 showError('אירעה שגיאה בלתי צפויה. אנא נסה שוב.');
                 setLoading(false);
@@ -256,13 +278,12 @@
         emailInput.addEventListener('input', () => hideFieldError('emailError'));
         passwordInput.addEventListener('input', () => hideFieldError('passwordError'));
 
-        // Auto-focus email field on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            emailInput.focus();
-        });
-
-        // Check if user is already authenticated
+        // Initialize page: auto-focus and check if already authenticated
         window.addEventListener('DOMContentLoaded', async () => {
+            // Auto-focus email field
+            emailInput.focus();
+
+            // Check if user is already authenticated
             try {
                 const clerk = await AuthUtils.getClerkInstance();
 

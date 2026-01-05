@@ -9,6 +9,7 @@ const CLERK_FRONTEND_API = window.CLERK_FRONTEND_API || 'https://clerk.builder-e
 let clerk = null;
 let isClerkReady = false;
 let lastAuthenticatedUserId = null; // Track to prevent duplicate auth events
+let isSigningIn = false; // Flag to pause listeners during sign-in
 
 /**
  * Initialize Clerk
@@ -42,6 +43,12 @@ async function initializeClerk() {
  * Only triggers onUserAuthenticated when user actually logs in (not on token refresh)
  */
 function handleClerkUpdate(clerkInstance) {
+  // Pause during active sign-in to prevent navigation conflicts
+  if (isSigningIn) {
+    console.log('[Clerk] Listener paused during active sign-in');
+    return;
+  }
+
   const session = clerkInstance.session;
   const user = clerkInstance.user;
 
@@ -360,7 +367,10 @@ window.ClerkAuth = {
   mountClerkComponents,
   ensureValidToken,
   getUserOrganizations,
-  switchOrganization
+  switchOrganization,
+  // Listener control for custom auth pages
+  pauseListeners: () => { isSigningIn = true; },
+  resumeListeners: () => { isSigningIn = false; }
 };
 
 // Note: Auto-initialization is handled by app.html

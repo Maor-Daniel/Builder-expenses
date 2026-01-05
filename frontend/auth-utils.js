@@ -8,35 +8,23 @@
  * Status: Not integrated (safe to deploy)
  */
 
-// Clerk configuration (same as clerk-auth.js)
-const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k';
-
-// Clerk instance (singleton pattern)
-let clerkInstance = null;
-
 /**
- * Get or initialize Clerk instance
+ * Get shared Clerk instance from clerk-auth.js
+ * This ensures we use the same instance across all auth pages
  * @returns {Promise<Clerk>} Clerk instance
  */
 async function getClerkInstance() {
-    if (clerkInstance) {
-        return clerkInstance;
+    // Use the shared ClerkAuth module if available
+    if (window.ClerkAuth && window.ClerkAuth.getInstance) {
+        return await window.ClerkAuth.getInstance();
     }
 
-    try {
-        // Import Clerk from CDN (ESM module)
-        const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
-
-        // Initialize Clerk
-        clerkInstance = new Clerk(CLERK_PUBLISHABLE_KEY);
-        await clerkInstance.load();
-
-        console.log('[AUTH-UTILS] Clerk initialized successfully');
-        return clerkInstance;
-    } catch (error) {
-        console.error('[AUTH-UTILS] Failed to initialize Clerk:', error);
-        throw new Error('Failed to initialize authentication');
-    }
+    // Fallback: Initialize directly if clerk-auth.js not loaded
+    console.warn('[AUTH-UTILS] ClerkAuth not found, initializing standalone instance');
+    const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
+    const clerk = new Clerk('pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k');
+    await clerk.load();
+    return clerk;
 }
 
 /**
