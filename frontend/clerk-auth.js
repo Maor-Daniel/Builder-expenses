@@ -24,6 +24,9 @@ async function initializeClerk() {
     clerk = new Clerk(CLERK_PUBLISHABLE_KEY);
     await clerk.load();
 
+    // Expose Clerk instance globally for app.html compatibility
+    window.Clerk = clerk;
+
     isClerkReady = true;
     console.log('Clerk initialized successfully');
 

@@ -4626,8 +4626,9 @@
             console.log('[INIT] Initializing app...');
 
             try {
-                // Check if user is authenticated
-                const user = window.Clerk?.user;
+                // Check if user is authenticated via window.currentUser (set by clerk-auth.js)
+                // Note: window.currentUser is set by handleClerkUpdate() callback and is more reliable than window.Clerk.user
+                const user = window.currentUser;
                 if (!user) {
                     console.log('[INIT] No authenticated user - redirecting to login');
                     // ROLLBACK: Uncomment these lines to restore Clerk modal auth
