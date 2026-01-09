@@ -4584,19 +4584,34 @@
         async function finalizeAppInitialization() {
             console.log('[INIT] Finalizing app initialization with company data');
 
-            // Load additional data
-            await loadExpenses();
-            await loadProjects();
-            await loadContractors();
-            await loadWorks();
-            await loadUsers();
-            await loadInvitations();
+            // Load all data in parallel
+            const [expensesResp, projectsResp, contractorsResp, worksResp] = await Promise.all([
+                apiCall('/expenses'),
+                apiCall('/projects'),
+                apiCall('/contractors'),
+                apiCall('/works')
+            ]);
+
+            appData.expenses = expensesResp.expenses || [];
+            appData.projects = projectsResp.projects || [];
+            appData.contractors = contractorsResp.contractors || [];
+            appData.works = worksResp.works || [];
+
+            // Build expense lookup maps for O(1) access
+            buildExpenseMaps();
+
+            // Update dashboard
+            updateDashboard();
+
+            // Initialize OCR component now that we have company context
+            initializeExpenseOcrComponent();
 
             // Show dashboard
             showTab('expenses');
 
             // Start usage polling
-            startUsagePolling();
+            // TODO: Implement startUsagePolling() for real-time usage stats updates
+            // startUsagePolling();
         }
 
         /**
