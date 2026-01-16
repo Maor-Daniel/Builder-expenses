@@ -10,28 +10,56 @@ const OPENROUTER_API_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const CLAUDE_MODEL = 'anthropic/claude-3.5-sonnet';
 
 // OCR prompt for Claude 3.5 Sonnet
-const OCR_PROMPT = `You are an expert invoice/receipt OCR system for Israeli construction expenses.
-Extract the following information from this Hebrew or English receipt image.
+const OCR_PROMPT = `You are an intelligent OCR system specialized in extracting structured data from Israeli invoices and receipts (חשבונית/קבלה).
 
-REQUIRED FIELDS (leave null if not found with high confidence):
-1. **amount**: Total amount as number (no currency symbols)
-2. **invoiceNum**: Invoice/receipt number (alphanumeric)
-3. **date**: Date in YYYY-MM-DD format
-4. **vendor**: Company/vendor name (the business that issued the receipt)
-5. **description**: The description of the PAID SERVICES or purchased items - this is usually the LARGEST section/square on the invoice containing the line items or work details. Look for handwritten text or line items describing what was purchased/delivered, typically found in sections labeled "פריטים", "פירוט", or "תיאור העבודה". This is NOT the company description or tagline. DO NOT use the vendor/company name or the company's business description. If no service/item description exists, use null.
-6. **paymentMethod**: Infer from context:
-   - "קופה"/"cash register"/"מזומן" → "מזומן"
-   - Credit card terminal/"כרטיס"/"VISA"/"Mastercard" → "כרטיס אשראי"
-   - Invoice format or bank details → "העברה בנקאית"
-   - Check number/"צ'ק" → "צ'ק"
-   - If uncertain → null
+## Your Task
+Extract the following fields from each invoice image and return them in the specified JSON format.
 
-CONFIDENCE SCORING (0-100):
-- Text clarity: 90-100 (very clear), 70-89 (readable), <70 (unclear)
-- Explicit labels: +10 points
-- Hebrew text: Native support, no penalties
+---
 
-RESPONSE FORMAT (JSON only):
+## Field Extraction Guide
+
+### 1. vendor (שם הקבלן/העסק)
+- **Location**: TOP of the invoice, typically the largest/boldest text
+- The primary business or contractor name
+- May have business description below (e.g., "חשמל ושיפוצים") - include only the name
+
+### 2. invoiceNum (מספר חשבונית)
+- **Location**: Upper portion, near "חשבון/קבלה מס'"
+- Usually a sequential number (e.g., "0136")
+- Look for labels: "מס'", "חשבון מס'", "קבלה מס'"
+- Return as string
+
+### 3. date (תאריך)
+- **Location**: Upper-left area, often handwritten
+- Israeli format: DD/MM/YY or DD/MM/YYYY
+- **Output format**: YYYY-MM-DD (ISO)
+- Assume 20XX for two-digit years
+
+### 4. description (פרטי השירות)
+- **Location**: Main table body under column "פרטים"
+- Often HANDWRITTEN in Hebrew
+- Extract all text describing work/services performed
+- Combine multiple lines with " / " separator
+
+### 5. amount (סה"כ לתשלום)
+- **Location**: BOTTOM of the invoice
+- Look for: "סה"כ", "סכום לתשלום"
+- Extract the FINAL total (after any deductions)
+- Return as number without currency symbols
+
+### 6. paymentMethod (אמצעי תשלום)
+- **Location**: Bottom section, typically checkboxes
+- Look for checked boxes (☑) or handwritten marks next to:
+  - "במזומן" → return "מזומן"
+  - "כרטיס אשראי" → return "כרטיס אשראי"
+  - "העברה בנקאית" → return "העברה בנקאית"
+  - "שיק" / "צ'ק" / check details table filled → return "צ'ק"
+- If no clear indication, return null
+
+---
+
+## Output Format
 {
   "amount": number or null,
   "invoiceNum": "string" or null,
@@ -52,12 +80,44 @@ RESPONSE FORMAT (JSON only):
   }
 }
 
+---
+
+## Special Handling Rules
+
+### Hebrew Text
+- Reads RIGHT to LEFT
+- Common handwriting confusions: ב/כ, ה/ח, ו/ז, ר/ד, ם/ס
+
+### Date Parsing
+- Input: 24/11/25, 24/11/2025, 24.11.25
+- Output: 2025-11-24
+
+### Amount Parsing
+- Remove separators: 10,000 → 10000
+- Handle decimal amounts: 1,234.56 → 1234.56
+- If multiple totals shown (subtotal + final), use the final amount
+
+### Payment Method Detection
+- Check marks may be: ✓, ✔, X, filled box, or circled option
+- If check table (מס' שיק, בנק/סניף) has data → "צ'ק"
+- Explain your reasoning in the reasoning.paymentMethod field
+
+### Confidence Scoring (0-100)
+- **90-100**: Printed text, clearly legible
+- **70-90**: Handwritten but readable
+- **50-70**: Partially legible, some inference
+- **<50**: Low confidence, uncertain
+
+---
+
+## Error Handling
+- If a field is unreadable → return null with confidence near 0
+- If multiple interpretations possible → choose most likely, lower confidence
+- Always provide reasoning for paymentMethod, even if null
+
 RULES:
 - Return ONLY valid JSON (no markdown code blocks)
-- Use null for confidence < 70
-- Keep description < 500 chars
-- Preserve Hebrew UTF-8 encoding
-- Multi-page: extract from first page only`;
+- Preserve Hebrew UTF-8 encoding`;
 
 /**
  * Call Claude Vision API via OpenRouter

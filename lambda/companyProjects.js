@@ -174,8 +174,7 @@ async function createProject(event, companyId, userId, userRole) {
 
   await dynamoOperation('put', params);
 
-  // Increment project counter for tier tracking
-  await incrementProjectCounter(companyId);
+  // Note: Project counter already incremented by checkProjectLimit() above
 
   // Audit log for CREATE operation
   auditLog.logCreate({
