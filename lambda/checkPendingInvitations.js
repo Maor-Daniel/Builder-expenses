@@ -63,7 +63,7 @@ exports.handler = withSecureCors(async (event) => {
             companyId: inv.companyId,
             companyName: companyResult.Item?.name || 'חברה לא ידועה',
             role: inv.role,
-            invitedBy: inv.invitedBy,
+            invitedBy: inv.inviterName || 'מנהל המערכת',
             createdAt: inv.createdAt
           };
         } catch (err) {
@@ -76,7 +76,7 @@ exports.handler = withSecureCors(async (event) => {
             companyId: inv.companyId,
             companyName: 'חברה לא ידועה',
             role: inv.role,
-            invitedBy: inv.invitedBy,
+            invitedBy: inv.inviterName || 'מנהל המערכת',
             createdAt: inv.createdAt
           };
         }
