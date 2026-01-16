@@ -25,9 +25,10 @@ const PRODUCTION_ORIGINS = [
   'https://builder-expenses.clerk.accounts.dev'
 ];
 
-// Allow all origins flag for mobile development
-// SECURITY: Endpoints are still protected by Clerk JWT authentication
-const ALLOW_ALL_ORIGINS = true;
+// Allow all origins flag - MUST be false in production
+// Mobile apps don't need CORS (they don't send Origin header)
+// Browsers will be validated against PRODUCTION_ORIGINS
+const ALLOW_ALL_ORIGINS = false;
 
 // Development origins (only in non-production environments)
 const DEVELOPMENT_ORIGINS = [
@@ -79,16 +80,22 @@ function isOriginAllowed(origin) {
   }
 
   if (!origin) {
-    // No origin header - could be same-origin request or non-browser client
-    // For API calls, we'll be strict and require origin in production
-    return !isProduction();
+    // No origin header - this includes:
+    // 1. Mobile apps (React Native, iOS, Android) - they don't send Origin
+    // 2. Server-to-server calls
+    // 3. Same-origin requests
+    // ALLOW these - they're still protected by Clerk JWT authentication
+    console.log('[CORS] No origin header - allowing (mobile app or server call)');
+    return true;
   }
 
   const allowedOrigins = getAllowedOrigins();
   const isAllowed = allowedOrigins.includes(origin);
 
-  if (!isAllowed) {
-    console.warn(`[CORS] Origin not allowed: ${origin}`);
+  if (isAllowed) {
+    console.log(`[CORS] Browser origin allowed: ${origin}`);
+  } else {
+    console.warn(`[CORS] Browser origin BLOCKED: ${origin}`);
   }
 
   return isAllowed;
