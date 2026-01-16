@@ -48,6 +48,9 @@ const LAMBDA_FUNCTIONS = [
   'paddleWebhook',
   'createPaddleCheckout',  // Create Paddle checkout sessions for subscription
   'updatePaddleSubscription',  // Update existing Paddle subscriptions (upgrade/downgrade)
+  'subscriptionDetails',  // Get comprehensive subscription details with usage and billing
+  'createCustomerPortalSession',  // Generate Paddle customer portal URL for self-service
+  'paymentHistory',  // Fetch transaction history with pagination
   // Webhooks
   'webhookPaddle',  // Paddle subscription/payment webhooks
   'webhookClerk',   // Clerk user authentication webhooks
