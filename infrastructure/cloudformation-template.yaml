@@ -61,6 +61,29 @@ Resources:
         - Key: Application
           Value: ConstructionExpenses
 
+  # Pending Payments Table (for email-based payment flow)
+  PendingPaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${StackName}-pending-payments'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: expiresAt
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -134,6 +157,25 @@ Resources:
                 Resource:
                   - !GetAtt ExpensesTable.Arn
                   - !Sub '${ExpensesTable.Arn}/index/*'
+                  - !GetAtt PendingPaymentsTable.Arn
+        - PolicyName: SESAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:paddle/*'
 
   # API Gateway
   ApiGateway:
@@ -315,6 +357,32 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ExpensesTable
           AWS_REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Placeholder - will be replaced during deployment' })
+            };
+          };
+      Timeout: 30
+
+  # Request Payment Email Function (Email-based payment flow)
+  RequestPaymentEmailFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-request-payment-email'
+      Runtime: nodejs18.x
+      Handler: requestPaymentEmail.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ExpensesTable
+          PENDING_PAYMENTS_TABLE: !Ref PendingPaymentsTable
+          AWS_REGION: !Ref AWS::Region
+          FROM_EMAIL: noreply@builder-expenses.com
+          CHECKOUT_HOST_URL: https://www.builder-expenses.com/checkout
+          CHECKOUT_SUCCESS_URL: https://www.builder-expenses.com/app/checkout-success
       Code:
         ZipFile: |
           exports.handler = async (event) => {

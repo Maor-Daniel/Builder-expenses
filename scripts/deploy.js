@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const STACK_NAME = 'construction-expenses-production';
+const STACK_NAME = 'construction-expenses-simple';
 const REGION = process.env.AWS_REGION || 'us-east-1';
 
 // Colors for terminal
@@ -71,9 +71,9 @@ function deployCloudFormation() {
   }
 
   // Deploy stack
-  const command = stackExists 
-    ? `aws cloudformation update-stack --stack-name ${STACK_NAME} --template-body file://${templatePath} --capabilities CAPABILITY_NAMED_IAM --region ${REGION}`
-    : `aws cloudformation create-stack --stack-name ${STACK_NAME} --template-body file://${templatePath} --capabilities CAPABILITY_NAMED_IAM --region ${REGION}`;
+  const command = stackExists
+    ? `aws cloudformation update-stack --stack-name ${STACK_NAME} --template-body "file://${templatePath}" --capabilities CAPABILITY_NAMED_IAM --region ${REGION}`
+    : `aws cloudformation create-stack --stack-name ${STACK_NAME} --template-body "file://${templatePath}" --capabilities CAPABILITY_NAMED_IAM --region ${REGION}`;
 
   execCommand(command, stackExists ? 'Updating CloudFormation stack' : 'Creating CloudFormation stack');
 

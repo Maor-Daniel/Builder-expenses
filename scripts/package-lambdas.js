@@ -51,6 +51,7 @@ const LAMBDA_FUNCTIONS = [
   'subscriptionDetails',  // Get comprehensive subscription details with usage and billing
   'createCustomerPortalSession',  // Generate Paddle customer portal URL for self-service
   'paymentHistory',  // Fetch transaction history with pagination
+  'requestPaymentEmail',  // Email-based payment flow (Apple App Store compliant)
   // Webhooks
   'webhookPaddle',  // Paddle subscription/payment webhooks
   'webhookClerk',   // Clerk user authentication webhooks
