@@ -1,0 +1,404 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Construction Expenses Tracker - Hybrid Infrastructure (Managed: Cognito, S3, CloudFront, IAM, API Gateway | External: DynamoDB, Lambda)'
+
+Parameters:
+  StackName:
+    Type: String
+    Default: 'construction-expenses-production'
+    Description: 'Name of the CloudFormation stack - MUST match existing production resources'
+
+  Environment:
+    Type: String
+    Default: 'production'
+    AllowedValues: ['production', 'staging']
+    Description: 'Environment name'
+
+Resources:
+  # ===========================
+  # COGNITO USER MANAGEMENT
+  # ===========================
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${StackName}-users'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: true
+          Mutable: true
+      UserPoolTags:
+        Environment: !Ref Environment
+        Application: ConstructionExpenses
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ClientName: !Sub '${StackName}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+
+  # ===========================
+  # IAM ROLE FOR LAMBDA FUNCTIONS
+  # ===========================
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RoleName: !Sub '${StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        # UPDATED: Wildcard access to all construction-expenses-* DynamoDB tables and indexes
+        - PolicyName: DynamoDBWildcardAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:DescribeTable
+                Resource:
+                  # All construction-expenses tables
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/construction-expenses-*'
+                  # All indexes on construction-expenses tables
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/construction-expenses-*/index/*'
+
+        - PolicyName: SESAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                  - ses:SendTemplatedEmail
+                Resource: '*'
+
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:paddle/*'
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:clerk/*'
+
+  # ===========================
+  # API GATEWAY
+  # ===========================
+
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${StackName}-api'
+      Description: 'Construction Expenses Tracker API'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${StackName}-cognito-auth'
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref ApiGateway
+      ProviderARNs:
+        - !GetAtt UserPool.Arn
+
+  # ===========================
+  # S3 FRONTEND HOSTING
+  # ===========================
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${StackName}-frontend-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ConstructionExpenses
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+
+  # ===========================
+  # CLOUDFRONT DISTRIBUTION
+  # ===========================
+
+  # Lambda@Edge Basic Auth Function (must be in us-east-1)
+  BasicAuthFunction:
+    Type: AWS::Lambda::Function
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      FunctionName: !Sub '${StackName}-basic-auth'
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt BasicAuthLambdaRole.Arn
+      Code:
+        ZipFile: |
+          'use strict';
+          const USERNAME = process.env.BASIC_AUTH_USERNAME || '';
+          const PASSWORD = process.env.BASIC_AUTH_PASSWORD || '';
+          exports.handler = (event, context, callback) => {
+            const request = event.Records[0].cf.request;
+            const headers = request.headers;
+            const authHeader = headers.authorization;
+            if (!authHeader || authHeader.length === 0) {
+              return unauthorized(callback);
+            }
+            const authValue = authHeader[0].value;
+            const encodedCreds = authValue.split(' ')[1];
+            if (!encodedCreds) {
+              return unauthorized(callback);
+            }
+            const decodedCreds = Buffer.from(encodedCreds, 'base64').toString('utf-8');
+            const [username, password] = decodedCreds.split(':');
+            if (username === USERNAME && password === PASSWORD) {
+              callback(null, request);
+            } else {
+              return unauthorized(callback);
+            }
+          };
+          function unauthorized(callback) {
+            const response = {
+              status: '401',
+              statusDescription: 'Unauthorized',
+              headers: {
+                'www-authenticate': [{ key: 'WWW-Authenticate', value: 'Basic realm="Construction Expenses Tracker"' }],
+                'content-type': [{ key: 'Content-Type', value: 'text/html; charset=UTF-8' }]
+              },
+              body: '<!DOCTYPE html><html><head><title>Authentication Required</title></head><body style="font-family: Arial; text-align: center; margin-top: 100px;"><h1>🔒 Authentication Required</h1><p>Please enter credentials to access Construction Expenses Tracker.</p></body></html>'
+            };
+            callback(null, response);
+          }
+      Timeout: 5
+
+  BasicAuthLambdaRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RoleName: !Sub '${StackName}-basic-auth-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  BasicAuthFunctionVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      FunctionName: !Ref BasicAuthFunction
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: true
+        DefaultRootObject: index.html
+        Comment: !Sub '${StackName} - Protected Frontend'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          TargetOriginId: S3Origin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !Ref BasicAuthFunctionVersion
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+# ===========================
+# OUTPUTS
+# ===========================
+
+Outputs:
+  # API Gateway Outputs
+  ApiGatewayUrl:
+    Description: 'API Gateway URL for Lambda integration'
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${StackName}-api-url'
+
+  ApiGatewayId:
+    Description: 'API Gateway REST API ID'
+    Value: !Ref ApiGateway
+    Export:
+      Name: !Sub '${StackName}-api-id'
+
+  ApiAuthorizerId:
+    Description: 'Cognito Authorizer ID for API Gateway'
+    Value: !Ref ApiAuthorizer
+    Export:
+      Name: !Sub '${StackName}-api-authorizer-id'
+
+  # Cognito Outputs
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${StackName}-user-pool-id'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${StackName}-user-pool-client-id'
+
+  UserPoolArn:
+    Description: 'Cognito User Pool ARN'
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${StackName}-user-pool-arn'
+
+  # IAM Outputs (for CLI Lambda deployment)
+  LambdaExecutionRoleArn:
+    Description: 'IAM Role ARN for Lambda functions (use this for CLI deployments)'
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${StackName}-lambda-role-arn'
+
+  LambdaExecutionRoleName:
+    Description: 'IAM Role Name for Lambda functions'
+    Value: !Ref LambdaExecutionRole
+    Export:
+      Name: !Sub '${StackName}-lambda-role-name'
+
+  # S3 Outputs
+  FrontendBucketName:
+    Description: 'S3 Frontend Bucket Name'
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${StackName}-frontend-bucket'
+
+  FrontendBucketArn:
+    Description: 'S3 Frontend Bucket ARN'
+    Value: !GetAtt FrontendBucket.Arn
+    Export:
+      Name: !Sub '${StackName}-frontend-bucket-arn'
+
+  FrontendUrl:
+    Description: 'Frontend URL (S3 Website Direct Access)'
+    Value: !Sub 'http://${FrontendBucket}.s3-website-${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub '${StackName}-frontend-url'
+
+  # CloudFront Outputs
+  CloudFrontUrl:
+    Description: 'CloudFront URL (Protected with Basic Auth: Levi/Levi2000)'
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${StackName}-cloudfront-url'
+
+  CloudFrontDistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${StackName}-cloudfront-id'
+
+  # Deployment Information
+  StackInformation:
+    Description: 'Deployment Model Information'
+    Value: 'HYBRID: CloudFormation manages Cognito/S3/CloudFront/IAM/API Gateway | DynamoDB tables and Lambda functions deployed via CLI scripts'

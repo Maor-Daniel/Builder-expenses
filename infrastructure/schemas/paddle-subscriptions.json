@@ -1,0 +1,106 @@
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "companyId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "paddleCustomerId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "subscriptionId",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "construction-expenses-paddle-subscriptions",
+        "KeySchema": [
+            {
+                "AttributeName": "companyId",
+                "KeyType": "HASH"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-11-06T17:30:54.936000+02:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 4035,
+        "ItemCount": 13,
+        "TableArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-paddle-subscriptions",
+        "TableId": "2ba3f5d5-92fa-489f-bdc6-018cad62814a",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2025-11-06T17:30:54.936000+02:00"
+        },
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "PaddleCustomerIndex",
+                "KeySchema": [
+                    {
+                        "AttributeName": "paddleCustomerId",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                    "NumberOfDecreasesToday": 0,
+                    "ReadCapacityUnits": 0,
+                    "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 4035,
+                "ItemCount": 13,
+                "IndexArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-paddle-subscriptions/index/PaddleCustomerIndex",
+                "WarmThroughput": {
+                    "ReadUnitsPerSecond": 12000,
+                    "WriteUnitsPerSecond": 4000,
+                    "Status": "ACTIVE"
+                }
+            },
+            {
+                "IndexName": "SubscriptionIdIndex",
+                "KeySchema": [
+                    {
+                        "AttributeName": "subscriptionId",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                    "NumberOfDecreasesToday": 0,
+                    "ReadCapacityUnits": 0,
+                    "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 4035,
+                "ItemCount": 13,
+                "IndexArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-paddle-subscriptions/index/SubscriptionIdIndex",
+                "WarmThroughput": {
+                    "ReadUnitsPerSecond": 12000,
+                    "WriteUnitsPerSecond": 4000,
+                    "Status": "ACTIVE"
+                }
+            }
+        ],
+        "StreamSpecification": {
+            "StreamEnabled": true,
+            "StreamViewType": "NEW_AND_OLD_IMAGES"
+        },
+        "LatestStreamLabel": "2025-11-06T15:30:54.936",
+        "LatestStreamArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-paddle-subscriptions/stream/2025-11-06T15:30:54.936",
+        "DeletionProtectionEnabled": false,
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,
+            "WriteUnitsPerSecond": 4000,
+            "Status": "ACTIVE"
+        }
+    }
+}

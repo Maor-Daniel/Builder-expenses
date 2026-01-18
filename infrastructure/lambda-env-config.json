@@ -1,0 +1,256 @@
+{
+  "_comment": "Lambda Environment Variables Configuration",
+  "_description": "Environment variables for all Lambda functions. Use environment-specific values, NOT hardcoded values.",
+
+  "common": {
+    "ENVIRONMENT": "production",
+    "TABLE_PREFIX": "construction-expenses",
+    "NODE_ENV": "production",
+    "LOG_LEVEL": "info"
+  },
+
+  "functions": {
+    "construction-expenses-get-expenses": {
+      "FUNCTION_NAME": "getExpenses"
+    },
+    "construction-expenses-add-expense": {
+      "FUNCTION_NAME": "addExpense"
+    },
+    "construction-expenses-update-expense": {
+      "FUNCTION_NAME": "updateExpense"
+    },
+    "construction-expenses-delete-expense": {
+      "FUNCTION_NAME": "deleteExpense"
+    },
+    "construction-expenses-get-projects": {
+      "FUNCTION_NAME": "getProjects"
+    },
+    "construction-expenses-add-project": {
+      "FUNCTION_NAME": "addProject"
+    },
+    "construction-expenses-delete-project": {
+      "FUNCTION_NAME": "deleteProject"
+    },
+    "construction-expenses-delete-project-clerk": {
+      "FUNCTION_NAME": "deleteProjectClerk"
+    },
+    "construction-expenses-get-contractors": {
+      "FUNCTION_NAME": "getContractors"
+    },
+    "construction-expenses-add-contractor": {
+      "FUNCTION_NAME": "addContractor"
+    },
+    "construction-expenses-delete-contractor": {
+      "FUNCTION_NAME": "deleteContractor"
+    },
+    "construction-expenses-delete-contractor-clerk": {
+      "FUNCTION_NAME": "deleteContractorClerk"
+    },
+    "construction-expenses-get-works": {
+      "FUNCTION_NAME": "getWorks"
+    },
+    "construction-expenses-add-work": {
+      "FUNCTION_NAME": "addWork"
+    },
+    "construction-expenses-delete-work": {
+      "FUNCTION_NAME": "deleteWork"
+    },
+    "construction-expenses-delete-work-clerk": {
+      "FUNCTION_NAME": "deleteWorkClerk"
+    },
+    "construction-expenses-company-expenses": {
+      "FUNCTION_NAME": "companyExpenses"
+    },
+    "construction-expenses-company-projects": {
+      "FUNCTION_NAME": "companyProjects"
+    },
+    "construction-expenses-company-contractors": {
+      "FUNCTION_NAME": "companyContractors"
+    },
+    "construction-expenses-company-works": {
+      "FUNCTION_NAME": "companyWorks"
+    },
+    "construction-expenses-get-company": {
+      "FUNCTION_NAME": "getCompany"
+    },
+    "construction-expenses-get-company-usage": {
+      "FUNCTION_NAME": "getCompanyUsage"
+    },
+    "construction-expenses-update-company": {
+      "FUNCTION_NAME": "updateCompany"
+    },
+    "construction-expenses-upload-logo": {
+      "FUNCTION_NAME": "uploadCompanyLogo"
+    },
+    "construction-expenses-upload-receipt": {
+      "FUNCTION_NAME": "uploadReceipt"
+    },
+    "construction-expenses-register-company": {
+      "FUNCTION_NAME": "registerCompany",
+      "COGNITO_USER_POOL_ID": "us-east-1_pGD9UfJIY"
+    },
+    "construction-expenses-register-company-clerk": {
+      "FUNCTION_NAME": "registerCompanyClerk"
+    },
+    "construction-expenses-subscription-manager": {
+      "FUNCTION_NAME": "subscriptionManager"
+    },
+    "construction-expenses-paddle-webhook": {
+      "FUNCTION_NAME": "paddleWebhook",
+      "PADDLE_WEBHOOK_SECRET": "${PADDLE_WEBHOOK_SECRET}",
+      "PADDLE_STARTER_PRICE_ID": "${PADDLE_STARTER_PRICE_ID}",
+      "PADDLE_PRO_PRICE_ID": "${PADDLE_PRO_PRICE_ID}",
+      "PADDLE_ENTERPRISE_PRICE_ID": "${PADDLE_ENTERPRISE_PRICE_ID}"
+    },
+    "construction-expenses-create-paddle-checkout": {
+      "FUNCTION_NAME": "createPaddleCheckout",
+      "PADDLE_API_KEY": "${PADDLE_API_KEY}",
+      "PADDLE_VENDOR_ID": "${PADDLE_VENDOR_ID}",
+      "PADDLE_STARTER_PRICE_ID": "${PADDLE_STARTER_PRICE_ID}",
+      "PADDLE_PRO_PRICE_ID": "${PADDLE_PRO_PRICE_ID}",
+      "PADDLE_ENTERPRISE_PRICE_ID": "${PADDLE_ENTERPRISE_PRICE_ID}"
+    },
+    "construction-expenses-update-paddle-subscription": {
+      "FUNCTION_NAME": "updatePaddleSubscription",
+      "PADDLE_API_KEY": "${PADDLE_API_KEY}"
+    },
+    "construction-expenses-webhook-paddle": {
+      "FUNCTION_NAME": "webhookPaddle",
+      "PADDLE_WEBHOOK_SECRET": "${PADDLE_WEBHOOK_SECRET}",
+      "PADDLE_STARTER_PRICE_ID": "${PADDLE_STARTER_PRICE_ID}",
+      "PADDLE_PRO_PRICE_ID": "${PADDLE_PRO_PRICE_ID}",
+      "PADDLE_ENTERPRISE_PRICE_ID": "${PADDLE_ENTERPRISE_PRICE_ID}"
+    },
+    "construction-expenses-request-payment-email": {
+      "FUNCTION_NAME": "requestPaymentEmail",
+      "FROM_EMAIL": "noreply@builder-expenses.com",
+      "CHECKOUT_HOST_URL": "https://www.builder-expenses.com/checkout",
+      "CHECKOUT_SUCCESS_URL": "https://www.builder-expenses.com/app/checkout-success"
+    },
+    "construction-expenses-subscriptionDetails": {
+      "FUNCTION_NAME": "subscriptionDetails",
+      "PADDLE_API_KEY": "${PADDLE_API_KEY}"
+    },
+    "construction-expenses-createCustomerPortalSession": {
+      "FUNCTION_NAME": "createCustomerPortalSession",
+      "PADDLE_API_KEY": "${PADDLE_API_KEY}"
+    },
+    "construction-expenses-paymentHistory": {
+      "FUNCTION_NAME": "paymentHistory",
+      "PADDLE_API_KEY": "${PADDLE_API_KEY}"
+    },
+    "construction-expenses-webhook-clerk": {
+      "FUNCTION_NAME": "webhookClerk",
+      "CLERK_WEBHOOK_SECRET": "${CLERK_WEBHOOK_SECRET}"
+    },
+    "construction-expenses-clerk-authorizer": {
+      "FUNCTION_NAME": "clerk-authorizer",
+      "CLERK_SECRET_KEY": "${CLERK_SECRET_KEY}",
+      "CLERK_PUBLISHABLE_KEY": "${CLERK_PUBLISHABLE_KEY}",
+      "JWT_MAX_TOKEN_AGE": "3600",
+      "JWT_EXPIRY_GRACE_PERIOD": "30"
+    },
+    "construction-expenses-list-users": {
+      "FUNCTION_NAME": "listUsers"
+    },
+    "construction-expenses-update-user": {
+      "FUNCTION_NAME": "updateUser"
+    },
+    "construction-expenses-remove-user": {
+      "FUNCTION_NAME": "removeUser"
+    },
+    "construction-expenses-invite-user": {
+      "FUNCTION_NAME": "inviteUser",
+      "FROM_EMAIL": "noreply@builder-expenses.com",
+      "FRONTEND_URL": "https://www.builder-expenses.com"
+    },
+    "construction-expenses-send-invitation": {
+      "FUNCTION_NAME": "sendInvitation",
+      "FROM_EMAIL": "noreply@builder-expenses.com",
+      "FRONTEND_URL": "https://www.builder-expenses.com"
+    },
+    "construction-expenses-list-invitations": {
+      "FUNCTION_NAME": "listInvitations"
+    },
+    "construction-expenses-accept-invitation": {
+      "FUNCTION_NAME": "acceptInvitation"
+    },
+    "construction-expenses-resend-invitation": {
+      "FUNCTION_NAME": "resendInvitation",
+      "FROM_EMAIL": "noreply@builder-expenses.com",
+      "FRONTEND_URL": "https://www.builder-expenses.com"
+    },
+    "construction-expenses-cancel-invitation": {
+      "FUNCTION_NAME": "cancelInvitation"
+    },
+    "construction-expenses-process-receipt-ocr": {
+      "FUNCTION_NAME": "processReceiptOCR",
+      "TEXTRACT_CONFIDENCE_THRESHOLD": "80"
+    },
+    "construction-expenses-checkPendingInvitations": {
+      "FUNCTION_NAME": "checkPendingInvitations"
+    },
+    "construction-expenses-verifyApplePurchase": {
+      "FUNCTION_NAME": "verifyApplePurchase",
+      "APPLE_SHARED_SECRET": "${APPLE_SHARED_SECRET}"
+    },
+    "construction-expenses-appleWebhook": {
+      "FUNCTION_NAME": "appleWebhook",
+      "APPLE_SHARED_SECRET": "${APPLE_SHARED_SECRET}"
+    }
+  },
+
+  "_env_substitution": {
+    "_description": "Environment variables to be substituted from system environment or AWS Secrets Manager",
+    "PADDLE_API_KEY": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle API key for subscription management"
+    },
+    "PADDLE_VENDOR_ID": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle vendor/seller ID"
+    },
+    "PADDLE_WEBHOOK_SECRET": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle webhook signature verification secret"
+    },
+    "PADDLE_STARTER_PRICE_ID": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle price ID for Starter plan"
+    },
+    "PADDLE_PRO_PRICE_ID": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle price ID for Professional plan"
+    },
+    "PADDLE_ENTERPRISE_PRICE_ID": {
+      "source": "environment",
+      "required": true,
+      "description": "Paddle price ID for Enterprise plan"
+    },
+    "CLERK_SECRET_KEY": {
+      "source": "environment",
+      "required": true,
+      "description": "Clerk secret key for JWT verification"
+    },
+    "CLERK_PUBLISHABLE_KEY": {
+      "source": "environment",
+      "required": true,
+      "description": "Clerk publishable key"
+    },
+    "CLERK_WEBHOOK_SECRET": {
+      "source": "environment",
+      "required": true,
+      "description": "Clerk webhook signature verification secret"
+    },
+    "APPLE_SHARED_SECRET": {
+      "source": "environment",
+      "required": true,
+      "description": "Apple App Store Connect shared secret for receipt validation"
+    }
+  }
+}

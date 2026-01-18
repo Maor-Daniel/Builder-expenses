@@ -1,0 +1,122 @@
+DynamoDB Table Schema Summary
+Generated: Sat Jan 17 15:38:53 IST 2026
+Table Prefix: construction-expenses
+Region: us-east-1
+
+  ✓ construction-expenses-companies
+    - Partition Key: companyId
+    - Sort Key: 
+    - GSI Count: 1
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 16
+    - Table Size: 0.01 MB
+    - Schema File: infrastructure/schemas/companies.json
+
+  ✓ construction-expenses-company-users
+    - Partition Key: companyId
+    - Sort Key: userId
+    - GSI Count: 2
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 15
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/company-users.json
+
+  ✓ construction-expenses-company-expenses
+    - Partition Key: companyId
+    - Sort Key: expenseId
+    - GSI Count: 2
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 27
+    - Table Size: 0.28 MB
+    - Schema File: infrastructure/schemas/company-expenses.json
+
+  ✓ construction-expenses-company-projects
+    - Partition Key: companyId
+    - Sort Key: projectId
+    - GSI Count: 0
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 41
+    - Table Size: 0.01 MB
+    - Schema File: infrastructure/schemas/company-projects.json
+
+  ✓ construction-expenses-company-contractors
+    - Partition Key: companyId
+    - Sort Key: contractorId
+    - GSI Count: 0
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 32
+    - Table Size: 0.01 MB
+    - Schema File: infrastructure/schemas/company-contractors.json
+
+  ✓ construction-expenses-company-works
+    - Partition Key: companyId
+    - Sort Key: workId
+    - GSI Count: 0
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 14
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/company-works.json
+
+  ✓ construction-expenses-invitations
+    - Partition Key: companyId
+    - Sort Key: invitationId
+    - GSI Count: 1
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 16
+    - Table Size: 0.01 MB
+    - Schema File: infrastructure/schemas/invitations.json
+
+  ✓ construction-expenses-paddle-subscriptions
+    - Partition Key: companyId
+    - Sort Key: 
+    - GSI Count: 2
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 13
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/paddle-subscriptions.json
+
+  ✓ construction-expenses-paddle-customers
+    - Partition Key: paddleCustomerId
+    - Sort Key: 
+    - GSI Count: 2
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 0
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/paddle-customers.json
+
+  ✓ construction-expenses-paddle-payments
+    - Partition Key: paymentId
+    - Sort Key: 
+    - GSI Count: 1
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 41
+    - Table Size: 0.01 MB
+    - Schema File: infrastructure/schemas/paddle-payments.json
+
+  ✓ construction-expenses-paddle-webhooks
+    - Partition Key: webhookId
+    - Sort Key: 
+    - GSI Count: 1
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 147
+    - Table Size: 0.39 MB
+    - Schema File: infrastructure/schemas/paddle-webhooks.json
+
+  ✓ construction-expenses-paddle-webhook-dlq
+    - Partition Key: dlqEntryId
+    - Sort Key: 
+    - GSI Count: 1
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 0
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/paddle-webhook-dlq.json
+
+  ✓ construction-expenses-pending-payments
+    - Partition Key: userId
+    - Sort Key: 
+    - GSI Count: 0
+    - Billing Mode: PAY_PER_REQUEST
+    - Item Count: 0
+    - Table Size: 0.00 MB
+    - Schema File: infrastructure/schemas/pending-payments.json
+

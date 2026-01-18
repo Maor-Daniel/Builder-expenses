@@ -1,0 +1,46 @@
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "companyId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "workId",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "construction-expenses-company-works",
+        "KeySchema": [
+            {
+                "AttributeName": "companyId",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "workId",
+                "KeyType": "RANGE"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-10-30T17:39:36.823000+02:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 5164,
+        "ItemCount": 14,
+        "TableArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-works",
+        "TableId": "03cdf4f8-f135-4611-b9b1-4ea7482ac03c",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2025-10-30T17:39:36.823000+02:00"
+        },
+        "DeletionProtectionEnabled": false,
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,
+            "WriteUnitsPerSecond": 4000,
+            "Status": "ACTIVE"
+        }
+    }
+}

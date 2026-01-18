@@ -1,0 +1,116 @@
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "companyId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "contractorId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "expenseId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "invoiceNum",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "construction-expenses-company-expenses",
+        "KeySchema": [
+            {
+                "AttributeName": "companyId",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "expenseId",
+                "KeyType": "RANGE"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-10-30T17:39:25.885000+02:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 295093,
+        "ItemCount": 27,
+        "TableArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-expenses",
+        "TableId": "a7310c31-0811-4a62-b37a-10038c2266c1",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2025-10-30T17:39:25.885000+02:00"
+        },
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "invoiceNum-index",
+                "KeySchema": [
+                    {
+                        "AttributeName": "companyId",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "invoiceNum",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "KEYS_ONLY"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                    "NumberOfDecreasesToday": 0,
+                    "ReadCapacityUnits": 0,
+                    "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 2300,
+                "ItemCount": 27,
+                "IndexArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-expenses/index/invoiceNum-index",
+                "WarmThroughput": {
+                    "ReadUnitsPerSecond": 12000,
+                    "WriteUnitsPerSecond": 4000,
+                    "Status": "ACTIVE"
+                }
+            },
+            {
+                "IndexName": "contractor-invoiceNum-index",
+                "KeySchema": [
+                    {
+                        "AttributeName": "contractorId",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "invoiceNum",
+                        "KeyType": "RANGE"
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                    "NumberOfDecreasesToday": 0,
+                    "ReadCapacityUnits": 0,
+                    "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 295093,
+                "ItemCount": 27,
+                "IndexArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-expenses/index/contractor-invoiceNum-index",
+                "WarmThroughput": {
+                    "ReadUnitsPerSecond": 12000,
+                    "WriteUnitsPerSecond": 4000,
+                    "Status": "ACTIVE"
+                }
+            }
+        ],
+        "DeletionProtectionEnabled": false,
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,
+            "WriteUnitsPerSecond": 4000,
+            "Status": "ACTIVE"
+        }
+    }
+}

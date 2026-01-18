@@ -1,0 +1,46 @@
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "companyId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "projectId",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "construction-expenses-company-projects",
+        "KeySchema": [
+            {
+                "AttributeName": "companyId",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "projectId",
+                "KeyType": "RANGE"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-10-30T17:39:03.271000+02:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 13218,
+        "ItemCount": 41,
+        "TableArn": "arn:aws:dynamodb:us-east-1:702358134603:table/construction-expenses-company-projects",
+        "TableId": "f22c6418-8a29-4a8d-bbd2-6e30a0ce80b5",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2025-10-30T17:39:03.271000+02:00"
+        },
+        "DeletionProtectionEnabled": false,
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,
+            "WriteUnitsPerSecond": 4000,
+            "Status": "ACTIVE"
+        }
+    }
+}
