@@ -127,10 +127,19 @@
             document.getElementById('digit6')
         ];
 
-        // Get email from session storage (depends on mode)
+        // Get email from session storage or URL params (fallback for Safari private mode)
+        const urlEmail = new URLSearchParams(window.location.search).get('email') || '';
         const email = mode === 'reset'
-            ? sessionStorage.getItem('reset_email') || ''
-            : sessionStorage.getItem('signup_email') || '';
+            ? sessionStorage.getItem('reset_email') || urlEmail
+            : sessionStorage.getItem('signup_email') || urlEmail;
+
+        console.log('[VERIFY-EMAIL] Email source:', {
+            mode,
+            fromSessionStorage: mode === 'reset' ? sessionStorage.getItem('reset_email') : sessionStorage.getItem('signup_email'),
+            fromUrlParams: urlEmail,
+            final: email
+        });
+
         userEmailSpan.textContent = email || 'האימייל שלך';
 
         // Update back link based on mode
@@ -146,6 +155,58 @@
         // Auto-focus first input
         window.addEventListener('DOMContentLoaded', () => {
             codeInputs[0].focus();
+        });
+
+        // Check if sign-up state exists on page load (only for signup mode)
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Only check for signup mode, not password reset
+            if (mode !== 'signup') {
+                console.log('[VERIFY-EMAIL] Skipping sign-up state check (mode:', mode, ')');
+                return;
+            }
+
+            try {
+                console.log('[VERIFY-EMAIL] Checking sign-up state on page load...');
+                const clerk = await AuthUtils.getClerkInstance();
+                const hasSignUpState = !!clerk.client?.signUp;
+
+                console.log('[VERIFY-EMAIL] Sign-up state check:', {
+                    hasClerkInstance: !!window.ClerkInstance,
+                    hasClient: !!clerk.client,
+                    hasSignUpState: hasSignUpState,
+                    signUpEmail: clerk.client?.signUp?.emailAddress,
+                    signUpStatus: clerk.client?.signUp?.status
+                });
+
+                if (!hasSignUpState) {
+                    console.warn('[VERIFY-EMAIL] No sign-up state found on page load');
+                    console.warn('[VERIFY-EMAIL] User may have refreshed the page or navigated directly');
+
+                    // Show warning message
+                    showError('תהליך ההרשמה לא נמצא. ייתכן שרענת את הדף. אנא התחל מחדש.');
+
+                    // Create and add "Start Over" button
+                    const startOverBtn = document.createElement('a');
+                    startOverBtn.href = 'signup.html';
+                    startOverBtn.className = 'btn btn-secondary';
+                    startOverBtn.textContent = 'חזור להרשמה';
+                    startOverBtn.style.marginTop = '15px';
+                    startOverBtn.style.display = 'block';
+
+                    // Insert after the form
+                    form.parentNode.insertBefore(startOverBtn, form.nextSibling);
+
+                    // Disable verification form
+                    submitButton.disabled = true;
+                    codeInputs.forEach(input => input.disabled = true);
+                } else {
+                    console.log('[VERIFY-EMAIL] Sign-up state verified successfully');
+                }
+            } catch (error) {
+                console.error('[VERIFY-EMAIL] Error checking sign-up state:', error);
+                // Don't block the user if there's an error checking state
+                // They can still try to verify, and the actual error will be shown if it fails
+            }
         });
 
         // Handle input for each digit
@@ -395,18 +456,60 @@
                         // Show success message
                         showSuccess('✓ אימות הצליח! מעביר אותך למערכת...');
 
-                        // Clear email from session storage
-                        sessionStorage.removeItem('signup_email');
+                        // Check if this is a mobile app signup
+                        const isMobileSignup = sessionStorage.getItem('mobile_app_signup') === 'true';
 
-                        // Redirect to app after brief delay
+                        // Clear stored data
+                        sessionStorage.removeItem('signup_email');
+                        sessionStorage.removeItem('mobile_app_signup');
+
+                        // Redirect after brief delay
                         setTimeout(() => {
-                            window.location.href = 'app.html';
+                            if (isMobileSignup) {
+                                // Mobile app signup: redirect to Universal Link
+                                const userEmail = email; // Already available from line 133
+                                const encodedEmail = encodeURIComponent(userEmail);
+                                const deepLinkUrl = `https://www.builder-expenses.com/app/signup-complete?email=${encodedEmail}`;
+
+                                console.log('[VERIFY] Redirecting to mobile app via Universal Link:', deepLinkUrl);
+                                window.location.href = deepLinkUrl;
+                            } else {
+                                // Regular web signup: redirect to web app
+                                window.location.href = 'app.html';
+                            }
                         }, 1500);
                     } else {
                         // Show error message in Hebrew
                         console.error('[VERIFY] Verification failed:', result.error);
-                        showError(result.error);
-                        clearCodeInputs();
+
+                        // Check if this is the SIGNUP_STATE_LOST error
+                        if (result.errorCode === 'SIGNUP_STATE_LOST') {
+                            showError(result.error);
+
+                            // Check if "Start Over" button already exists
+                            const existingBtn = document.querySelector('.btn-secondary[href="signup.html"]');
+                            if (!existingBtn) {
+                                // Create and add "Start Over" button
+                                const startOverBtn = document.createElement('a');
+                                startOverBtn.href = 'signup.html';
+                                startOverBtn.className = 'btn btn-secondary';
+                                startOverBtn.textContent = 'חזור להרשמה';
+                                startOverBtn.style.marginTop = '15px';
+                                startOverBtn.style.display = 'block';
+
+                                // Insert after the form
+                                form.parentNode.insertBefore(startOverBtn, form.nextSibling);
+                            }
+
+                            // Disable verification form
+                            submitButton.disabled = true;
+                            codeInputs.forEach(input => input.disabled = true);
+                        } else {
+                            // Regular error - just show the message
+                            showError(result.error);
+                            clearCodeInputs();
+                        }
+
                         setLoading(false);
                     }
                 }

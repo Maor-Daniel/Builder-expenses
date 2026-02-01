@@ -55,8 +55,11 @@
             <!-- Error Message (hidden by default) -->
             <div id="errorMessage" class="message message-error hidden"></div>
 
+            <!-- Mobile Debug Panel (only visible with ?debug=1) -->
+            <div id="debugPanel" style="display: none; background: #000; color: #0f0; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 10px; max-height: 200px; overflow-y: auto; border-radius: 4px;"></div>
+
             <!-- Signup Form -->
-            <form id="signupForm" class="auth-form" novalidate>
+            <form id="signupForm" class="auth-form" novalidate autocomplete="off" action="javascript:void(0);">
                 <!-- Email Field -->
                 <div class="form-group">
                     <label for="email" class="form-label">כתובת אימייל</label>
@@ -178,6 +181,70 @@
         const agreeTermsCheckbox = document.getElementById('agreeTerms');
         const submitButton = document.getElementById('submitButton');
         const errorMessageDiv = document.getElementById('errorMessage');
+
+        // Detect mobile app signup flow
+        const urlParams = new URLSearchParams(window.location.search);
+        const isMobileSignup = urlParams.get('source') === 'mobile';
+
+        // Detect mobile Safari
+        const isMobileSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|OPiOS|mercury/.test(navigator.userAgent);
+
+        console.log('[SIGNUP] Environment:', {
+            isMobileSignup,
+            isMobileSafari,
+            userAgent: navigator.userAgent
+        });
+
+        if (isMobileSignup) {
+            console.log('[SIGNUP] Mobile app signup flow detected');
+        }
+
+        // Check sessionStorage availability
+        function isSessionStorageAvailable() {
+            try {
+                const testKey = '__storage_test__';
+                sessionStorage.setItem(testKey, 'test');
+                sessionStorage.removeItem(testKey);
+                return true;
+            } catch (e) {
+                console.error('[SIGNUP] sessionStorage not available:', e);
+                return false;
+            }
+        }
+
+        const sessionStorageAvailable = isSessionStorageAvailable();
+        console.log('[SIGNUP] sessionStorage available:', sessionStorageAvailable);
+
+        // Debug mode (enabled with ?debug=1 in URL)
+        const debugMode = urlParams.get('debug') === '1';
+        const debugPanel = document.getElementById('debugPanel');
+
+        if (debugMode) {
+            debugPanel.style.display = 'block';
+        }
+
+        // Debug logger that writes to both console and debug panel
+        function debugLog(message, data) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+
+            console.log(logMessage, data || '');
+
+            if (debugMode && debugPanel) {
+                const logEntry = data
+                    ? `${logMessage} ${JSON.stringify(data)}`
+                    : logMessage;
+                debugPanel.innerHTML += logEntry + '<br>';
+                debugPanel.scrollTop = debugPanel.scrollHeight;
+            }
+        }
+
+        debugLog('Page loaded', {
+            isMobileSignup,
+            isMobileSafari,
+            sessionStorageAvailable,
+            debugMode
+        });
 
         // Password Toggle Elements
         const togglePasswordBtn = document.getElementById('togglePassword');
@@ -362,47 +429,128 @@
 
         // Handle Form Submission
         form.addEventListener('submit', async (e) => {
+            // Prevent form submission IMMEDIATELY
             e.preventDefault();
+            e.stopPropagation();
+
+            debugLog('Form submit triggered');
+
+            // Prevent double submission
+            if (submitButton.disabled) {
+                debugLog('Form already submitting, ignoring duplicate submit');
+                return false;
+            }
 
             // Client-side validation
             if (!validateForm()) {
-                return;
+                debugLog('Validation failed');
+                return false;
             }
 
             // Get form values
             const email = emailInput.value.trim();
             const password = passwordInput.value;
 
-            console.log('[SIGNUP] Attempting sign up for:', email);
+            debugLog('Starting signup process', { email });
 
-            // Set loading state
+            // Set loading state BEFORE async operation
             setLoading(true);
             clearErrors();
 
             try {
-                // Call Clerk sign-up API
-                const result = await AuthUtils.signUpWithPassword(email, password);
+                debugLog('Calling AuthUtils.signUpWithPassword');
+
+                // Call Clerk sign-up API with explicit timeout
+                const result = await Promise.race([
+                    AuthUtils.signUpWithPassword(email, password),
+                    new Promise((resolve) =>
+                        setTimeout(() => {
+                            debugLog('Signup timeout reached (45s)');
+                            return resolve({
+                                success: false,
+                                error: 'הבקשה לקחה זמן רב מדי. אנא בדוק את החיבור לאינטרנט ונסה שוב.'
+                            });
+                        }, 45000)
+                    )
+                ]);
+
+                debugLog('Signup result received', { success: result.success, hasError: !!result.error });
 
                 if (result.success) {
-                    console.log('[SIGNUP] Sign up successful, redirecting to verification');
+                    debugLog('Sign up successful, preparing redirect');
+
+                    // Verify Clerk instance is stored in window object
+                    if (window.ClerkInstance) {
+                        debugLog('Clerk instance verified in window object', {
+                            hasSignUp: !!window.ClerkInstance.client?.signUp,
+                            signUpEmail: window.ClerkInstance.client?.signUp?.emailAddress
+                        });
+                    } else {
+                        debugLog('WARNING: Clerk instance not found in window object!');
+                    }
 
                     // Store email for verification page
-                    sessionStorage.setItem('signup_email', email);
+                    if (sessionStorageAvailable) {
+                        try {
+                            sessionStorage.setItem('signup_email', email);
+                            debugLog('Email stored in sessionStorage');
+                        } catch (e) {
+                            debugLog('Failed to store email in sessionStorage', { error: e.message });
+                        }
+
+                        // Store mobile app flag if present
+                        if (isMobileSignup) {
+                            try {
+                                sessionStorage.setItem('mobile_app_signup', 'true');
+                                debugLog('Mobile app flag stored');
+                            } catch (e) {
+                                debugLog('Failed to store mobile flag', { error: e.message });
+                            }
+                        }
+                    } else {
+                        debugLog('sessionStorage not available, will use URL params');
+                    }
 
                     // Redirect to email verification
-                    window.location.href = 'verify-email.html?mode=signup';
+                    const redirectUrl = sessionStorageAvailable
+                        ? 'verify-email.html?mode=signup'
+                        : `verify-email.html?mode=signup&email=${encodeURIComponent(email)}`;
+
+                    debugLog('Redirecting to verification page', { url: redirectUrl, method: isMobileSafari ? 'replace' : 'href' });
+
+                    // Add a small delay before redirect on mobile Safari to ensure logs are visible
+                    const doRedirect = () => {
+                        if (isMobileSafari) {
+                            window.location.replace(redirectUrl);
+                        } else {
+                            window.location.href = redirectUrl;
+                        }
+                    };
+
+                    if (debugMode) {
+                        // In debug mode, wait 2 seconds so user can see logs
+                        setTimeout(doRedirect, 2000);
+                    } else {
+                        doRedirect();
+                    }
                 } else {
                     // Show error message in Hebrew
-                    console.error('[SIGNUP] Sign up failed:', result.error);
-                    showError(result.error);
+                    debugLog('Sign up failed', { error: result.error });
+                    showError(result.error || 'אירעה שגיאה בהרשמה. אנא נסה שוב.');
                     setLoading(false);
                 }
             } catch (error) {
-                console.error('[SIGNUP] Unexpected error:', error);
+                debugLog('Unexpected error during signup', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
                 showError('אירעה שגיאה בלתי צפויה. אנא נסה שוב.');
                 setLoading(false);
             }
-        });
+
+            return false;
+        }, false);
 
         // Clear field errors on input
         emailInput.addEventListener('input', () => hideFieldError('emailError'));
@@ -410,9 +558,28 @@
         passwordConfirmInput.addEventListener('input', () => hideFieldError('passwordConfirmError'));
         agreeTermsCheckbox.addEventListener('change', () => hideFieldError('termsError'));
 
-        // Auto-focus email field on page load
+        // Global error handler for uncaught errors
+        window.addEventListener('error', (e) => {
+            console.error('[SIGNUP] Uncaught error:', e.error);
+            console.error('[SIGNUP] Error message:', e.message);
+            console.error('[SIGNUP] Error filename:', e.filename);
+            console.error('[SIGNUP] Error line:', e.lineno);
+        });
+
+        // Global handler for unhandled promise rejections
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('[SIGNUP] Unhandled promise rejection:', e.reason);
+            console.error('[SIGNUP] Promise:', e.promise);
+        });
+
+        // Auto-focus email field on page load (with mobile Safari delay)
         window.addEventListener('DOMContentLoaded', () => {
-            emailInput.focus();
+            // Delay focus on mobile Safari to prevent keyboard issues
+            if (isMobileSafari) {
+                setTimeout(() => emailInput.focus(), 300);
+            } else {
+                emailInput.focus();
+            }
         });
 
         // Check if user is already authenticated

@@ -12,30 +12,60 @@
 const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnVpbGRlci1leHBlbnNlcy5jb20k';
 
 // Clerk instance (singleton pattern)
-let clerkInstance = null;
+// Use global window object for cross-page persistence
+if (!window.ClerkInstance) {
+    window.ClerkInstance = null;
+}
 
 /**
  * Get or initialize Clerk instance
  * @returns {Promise<Clerk>} Clerk instance
  */
 async function getClerkInstance() {
-    if (clerkInstance) {
-        return clerkInstance;
+    if (window.ClerkInstance) {
+        console.log('[AUTH-UTILS] Returning existing global Clerk instance');
+        console.log('[AUTH-UTILS] Sign-up state exists:', !!window.ClerkInstance.client?.signUp);
+        console.log('[AUTH-UTILS] Sign-in state exists:', !!window.ClerkInstance.client?.signIn);
+        return window.ClerkInstance;
     }
 
     try {
-        // Import Clerk from CDN (ESM module)
-        const { Clerk } = await import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm');
+        console.log('[AUTH-UTILS] Creating new Clerk instance');
+        console.log('[AUTH-UTILS] Importing Clerk from CDN...');
 
-        // Initialize Clerk
-        clerkInstance = new Clerk(CLERK_PUBLISHABLE_KEY);
-        await clerkInstance.load();
+        // Import Clerk from CDN (ESM module) with timeout
+        const clerkModule = await Promise.race([
+            import('https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/+esm'),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Clerk import timed out after 15 seconds')), 15000)
+            )
+        ]);
+
+        console.log('[AUTH-UTILS] Clerk module imported, initializing...');
+        const { Clerk } = clerkModule;
+
+        // Initialize Clerk with timeout
+        window.ClerkInstance = new Clerk(CLERK_PUBLISHABLE_KEY);
+
+        console.log('[AUTH-UTILS] Loading Clerk...');
+        await Promise.race([
+            window.ClerkInstance.load(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Clerk load timed out after 15 seconds')), 15000)
+            )
+        ]);
 
         console.log('[AUTH-UTILS] Clerk initialized successfully');
-        return clerkInstance;
+        console.log('[AUTH-UTILS] New instance created, sign-up state:', !!window.ClerkInstance.client?.signUp);
+        return window.ClerkInstance;
     } catch (error) {
         console.error('[AUTH-UTILS] Failed to initialize Clerk:', error);
-        throw new Error('Failed to initialize authentication');
+        console.error('[AUTH-UTILS] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        throw new Error('Failed to initialize authentication: ' + error.message);
     }
 }
 
@@ -93,18 +123,33 @@ async function signInWithPassword(email, password, rememberMe = false) {
  */
 async function signUpWithPassword(email, password) {
     try {
-        const clerk = await getClerkInstance();
-
         console.log('[AUTH-UTILS] Attempting sign up for:', email);
+        console.log('[AUTH-UTILS] User agent:', navigator.userAgent);
 
-        // Create sign-up attempt
-        const signUpAttempt = await clerk.client.signUp.create({
-            emailAddress: email,
-            password: password
-        });
+        const clerk = await getClerkInstance();
+        console.log('[AUTH-UTILS] Clerk instance obtained');
 
-        // Prepare email verification (Clerk sends verification code)
-        await signUpAttempt.prepareEmailAddressVerification({ strategy: 'email_code' });
+        // Create sign-up attempt with timeout protection
+        console.log('[AUTH-UTILS] Creating sign-up attempt...');
+        const signUpAttempt = await Promise.race([
+            clerk.client.signUp.create({
+                emailAddress: email,
+                password: password
+            }),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Sign up request timed out')), 30000)
+            )
+        ]);
+
+        console.log('[AUTH-UTILS] Sign-up attempt created, preparing email verification...');
+
+        // Prepare email verification (Clerk sends verification code) with timeout
+        await Promise.race([
+            signUpAttempt.prepareEmailAddressVerification({ strategy: 'email_code' }),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Email verification preparation timed out')), 30000)
+            )
+        ]);
 
         console.log('[AUTH-UTILS] Sign up successful, verification email sent');
         return {
@@ -113,6 +158,11 @@ async function signUpWithPassword(email, password) {
         };
     } catch (error) {
         console.error('[AUTH-UTILS] Sign up error:', error);
+        console.error('[AUTH-UTILS] Error details:', {
+            message: error.message,
+            code: error?.errors?.[0]?.code,
+            stack: error.stack
+        });
         return {
             success: false,
             error: parseClerkError(error)
@@ -130,14 +180,26 @@ async function verifyEmailCode(code) {
         const clerk = await getClerkInstance();
         const signUp = clerk.client.signUp;
 
+        // ENHANCED: Better error handling for missing sign-up state
         if (!signUp) {
+            console.error('[AUTH-UTILS] No sign-up state found');
+            console.error('[AUTH-UTILS] This usually means page was refreshed or sign-up was not initiated');
+            console.error('[AUTH-UTILS] Clerk client state:', {
+                hasClient: !!clerk.client,
+                hasSignUp: !!clerk.client?.signUp,
+                hasSignIn: !!clerk.client?.signIn,
+                hasUser: !!clerk.user
+            });
             return {
                 success: false,
-                error: 'לא נמצא תהליך הרשמה פעיל'
+                error: 'לא נמצא תהליך הרשמה פעיל. אנא התחל מחדש.',
+                errorCode: 'SIGNUP_STATE_LOST'
             };
         }
 
-        console.log('[AUTH-UTILS] Attempting email verification');
+        console.log('[AUTH-UTILS] Sign-up state found, attempting verification');
+        console.log('[AUTH-UTILS] Sign-up status:', signUp.status);
+        console.log('[AUTH-UTILS] Sign-up email:', signUp.emailAddress);
 
         // Attempt verification
         const result = await signUp.attemptEmailAddressVerification({ code });
@@ -153,6 +215,7 @@ async function verifyEmailCode(code) {
             };
         } else {
             console.warn('[AUTH-UTILS] Email verification incomplete, status:', result.status);
+            console.warn('[AUTH-UTILS] Result details:', result);
             return {
                 success: false,
                 error: 'אימות האימייל לא הושלם'
