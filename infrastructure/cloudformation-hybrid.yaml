@@ -13,6 +13,16 @@ Parameters:
     AllowedValues: ['production', 'staging']
     Description: 'Environment name'
 
+  BasicAuthUsername:
+    Type: String
+    NoEcho: true
+    Description: 'Username for basic authentication (REQUIRED - no default for security)'
+
+  BasicAuthPassword:
+    Type: String
+    NoEcho: true
+    Description: 'Password for basic authentication (REQUIRED - no default for security)'
+
 Resources:
   # ===========================
   # COGNITO USER MANAGEMENT
@@ -210,10 +220,11 @@ Resources:
       Handler: index.handler
       Role: !GetAtt BasicAuthLambdaRole.Arn
       Code:
-        ZipFile: |
+        ZipFile: !Sub |
           'use strict';
-          const USERNAME = process.env.BASIC_AUTH_USERNAME || '';
-          const PASSWORD = process.env.BASIC_AUTH_PASSWORD || '';
+          // Credentials injected from CloudFormation parameters at deployment time
+          const USERNAME = '${BasicAuthUsername}';
+          const PASSWORD = '${BasicAuthPassword}';
           exports.handler = (event, context, callback) => {
             const request = event.Records[0].cf.request;
             const headers = request.headers;
